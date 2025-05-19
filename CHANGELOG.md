@@ -1,9 +1,14 @@
 ## 0.3.0
 
-- dotprompt_dart package support
+- added [dotprompt_dart](https://pub.dev/packages/dotprompt_dart) package
+  support via `Agent.runPrompt(DotPrompt prompt)`
 - expanded model naming to include "providerName", "providerName:model" or
   "providerName/model", e.g. "openai" or "googleai/gemini-2.0-flash"
-- moving types specified by `Map<String, dynamic>` to a `JsonSchema` object
+- move types specified by `Map<String, dynamic>` to a `JsonSchema` object;
+  added `toMap()` extension method to `JsonSchema` and `toSchema` to
+  `Map<String, dynamic>` to make going back and forth more convenient.
+- move the provider argument to `Agent.provider` as the most flexible case,
+  but also the less common one. `Agent()` will contine to take a model string.
 
 ## 0.2.0
 

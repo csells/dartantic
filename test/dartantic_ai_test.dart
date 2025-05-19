@@ -16,7 +16,7 @@ void main() {
   group('Dartantic AI Integration Tests', () {
     group('Agent.model constructor', () {
       test('Hello World Example', () async {
-        final agent = Agent.model(
+        final agent = Agent(
           'openai',
           systemPrompt: 'Be concise, reply with one sentence.',
         );
@@ -37,10 +37,7 @@ void main() {
           'additionalProperties': false,
         };
 
-        final agent = Agent.model(
-          'openai',
-          outputType: outputSchema.toSchema(),
-        );
+        final agent = Agent('openai', outputType: outputSchema.toSchema());
         final result = await agent.run('The windy city in the US of A.');
         expect(result.output, isNotEmpty);
         expect(result.output, contains('Chicago'));
@@ -57,7 +54,7 @@ void main() {
           'additionalProperties': false,
         };
 
-        final agent = Agent.model(
+        final agent = Agent(
           'openai',
           outputType: tncSchema.toSchema(),
           outputFromJson:
@@ -82,7 +79,7 @@ void main() {
       });
 
       test('Tool Usage Example', () async {
-        final agent = Agent.model(
+        final agent = Agent(
           'openai',
           systemPrompt:
               'Be sure to include the name of the location in your response. '
@@ -135,7 +132,7 @@ void main() {
       });
 
       test('Gemini Integration', () async {
-        final agent = Agent.model(
+        final agent = Agent(
           'google:gemini-2.0-flash',
           outputType:
               {
@@ -167,7 +164,7 @@ void main() {
       });
 
       test('OpenAI Integration', () async {
-        final agent = Agent.model(
+        final agent = Agent(
           'openai/gpt-4o',
           outputType:
               {
@@ -218,7 +215,7 @@ Summarize this in {{length}} words: {{text}}
 
     group('Agent constructor with provider', () {
       test('OpenAI Provider Basic', () async {
-        final agent = Agent(
+        final agent = Agent.provider(
           OpenAiProvider(),
           systemPrompt: 'Be concise, reply with one sentence.',
         );
@@ -229,7 +226,7 @@ Summarize this in {{length}} words: {{text}}
       });
 
       test('OpenAI Provider with Schema', () async {
-        final agent = Agent(
+        final agent = Agent.provider(
           OpenAiProvider(),
           outputType:
               {
@@ -261,7 +258,7 @@ Summarize this in {{length}} words: {{text}}
       });
 
       test('Gemini Provider Basic', () async {
-        final agent = Agent(
+        final agent = Agent.provider(
           GeminiProvider(),
           systemPrompt: 'Be concise, reply with one sentence.',
         );
@@ -272,7 +269,7 @@ Summarize this in {{length}} words: {{text}}
       });
 
       test('Gemini Provider with Schema', () async {
-        final agent = Agent(
+        final agent = Agent.provider(
           GeminiProvider(),
           outputType:
               {
@@ -304,7 +301,7 @@ Summarize this in {{length}} words: {{text}}
       });
 
       test('Provider with Tools', () async {
-        final agent = Agent(
+        final agent = Agent.provider(
           OpenAiProvider(),
           systemPrompt:
               'Be sure to include the name of the location in your response. '
@@ -358,7 +355,7 @@ Summarize this in {{length}} words: {{text}}
       });
 
       test('Gemini Provider with Tools', () async {
-        final agent = Agent(
+        final agent = Agent.provider(
           GeminiProvider(),
           systemPrompt:
               'Be sure to include the name of the location in your response. '

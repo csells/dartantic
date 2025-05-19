@@ -1,14 +1,13 @@
 name: dartantic_ai
 description: A Dart library for easily interacting with LLMs in a typed manner.
-version: 0.2.0
+version: 0.3.0
 repository: https://github.com/csells/dartantic_ai
 
 environment:
   sdk: ^3.7.2
 
 dependencies:
-  dotprompt_dart:
-    path: ../dotprompt_dart
+  dotprompt_dart: ^0.2.0
   google_generative_ai: ^0.4.7
   json_schema: ^5.2.1
   openai_dart: ^0.4.5

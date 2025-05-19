@@ -19,7 +19,7 @@ The following are the target features for this package:
 - [x] Define tools and their inputs/outputs easily
 - [x] Automatically generate LLM-specific tool/output schemas
 - [x] Bring your own provider
-- [x] Execute tools with validated inputs
+- [ ] Execute tools with validated inputs
 - [ ] Chains and Sequential Execution
 - [ ] JSON Mode, Functions Mode, Flexible Decoding
 - [ ] Simple Assistant/Agent loop utilities
@@ -31,19 +31,60 @@ The following are some examples that work in the current build.
 
 ### Basic Agent Usage
 
-The following shows simple agent usage.
+The following shows simple agent usage using the `Agent()` constructor, which
+takes a model string.
 
 ```dart
 void main() async {
   // Create an agent with a system prompt
   final agent = Agent(
-    model: 'openai:gpt-4o'
+    'openai',  // Can also use 'openai:gpt-4o' or 'openai/gpt-4o'
     systemPrompt: 'Be concise, reply with one sentence.',
   );
 
   // Run the agent with a prompt
   final result = await agent.run('Where does "hello world" come from?');
   print(result.output); // Output: one sentence on the origin on "hello world"
+}
+```
+
+Alternatively, you can use the `Agent()` constructor which takes a provider
+directly:
+
+```dart
+void main() async {
+  // Create an agent with a provider
+  final agent = Agent.provider(
+    OpenAiProvider(),
+    systemPrompt: 'Be concise, reply with one sentence.',
+  );
+
+  // Run the agent with a prompt
+  final result = await agent.run('Where does "hello world" come from?');
+  print(result.output); // Output: one sentence on the origin on "hello world"
+}
+```
+
+### Using DotPrompt
+
+You can also use the `Agent.runPrompt()` method with a `DotPrompt` object for
+more structured prompts:
+
+```dart
+void main() async {
+  final prompt = DotPrompt('''
+---
+model: openai
+input:
+  default:
+    length: 3
+    text: "The quick brown fox jumps over the lazy dog."
+---
+Summarize this in {{length}} words: {{text}}
+''');
+
+  final result = await Agent.runPrompt(prompt);
+  print(result.output); // Output: Quick brown fox.
 }
 ```
 
@@ -68,8 +109,8 @@ void main() async {
 
   // Create an agent with the schema
   final agent = Agent(
-    model: 'openai:gpt-4o'
-    outputType: townCountrySchema,
+    'openai',
+    outputType: townCountrySchema.toSchema(),
   );
 
   // Get structured output as a JSON object
@@ -90,9 +131,9 @@ class TownAndCountry {
   final String town;
   final String country;
   
-  TownAndCountry({required this.town, required this.country});
+  TownAndcountry({required this.town, required this.country});
   
-  factory TownAndCountry.fromJson(Map<String, dynamic> json) => TownAndCountry(
+  factory TownAndcountry.fromJson(Map<String, dynamic> json) => TownAndcountry(
       town: json['town'],
       country: json['country'],
     );
@@ -108,22 +149,22 @@ class TownAndCountry {
   };
   
   @override
-  String toString() => 'TownAndCountry(town: $town, country: $country)';
+  String toString() => 'TownAndcountry(town: $town, country: $country)';
 }
 
 void main() async {
   // Use runFor with a type parameter for automatic conversion 
   final agent = Agent(
-    model: 'openai:gpt-4o'
-    outputType: TownAndCountry.schemaMap,
-    outputFromJson: TownAndCountry.fromJson,
+    'openai',
+    outputType: TownAndcountry.schemaMap.toSchema(),
+    outputFromJson: TownAndcountry.fromJson,
   );
 
-  final result = await agent.runFor<TownAndCountry>(
+  final result = await agent.runFor<TownAndcountry>(
     'The windy city in the US of A.',
   );
 
-  print(result.output); // Output: TownAndCountry(town: Chicago, country: United States)
+  print(result.output); // Output: TownAndcountry(town: Chicago, country: United States)
 }
 ```
 
@@ -138,37 +179,37 @@ automatic Json Schema definition.
 // Create a data class in your code
 @SotiSchema()
 @JsonSerializable()
-class TownAndCountry {
-  TownAndCountry({required this.town, required this.country});
+class TownAndcountry {
+  TownAndcountry({required this.town, required this.country});
 
-  factory TownAndCountry.fromJson(Map<String, dynamic> json) =>
-      _$TownAndCountryFromJson(json);
+  factory TownAndcountry.fromJson(Map<String, dynamic> json) =>
+      _$TownAndcountryFromJson(json);
 
   final String town;
   final String country;
 
-  Map<String, dynamic> toJson() => _$TownAndCountryToJson(this);
+  Map<String, dynamic> toJson() => _$TownAndcountryToJson(this);
 
   @jsonSchema
-  static Map<String, dynamic> get schemaMap => _$TownAndCountrySchemaMap;
+  static Map<String, dynamic> get schemaMap => _$TownAndcountrySchemaMap;
 
   @override
-  String toString() => 'TownAndCountry(town: $town, country: $country)';
+  String toString() => 'TownAndcountry(town: $town, country: $country)';
 }
 
-void main() {
+void main() async {
   // Use runFor with a type parameter for automatic conversion 
   final agent = Agent(
-    model: 'openai:gpt-4o'
-    outputType: TownAndCountry.schemaMap,
-    outputFromJson: TownAndCountry.fromJson,
+    'openai',
+    outputType: TownAndcountry.schemaMap.toSchema(),
+    outputFromJson: TownAndcountry.fromJson,
   );
 
-  final result = await agent.runFor<TownAndCountry>(
+  final result = await agent.runFor<TownAndcountry>(
     'The windy city in the US of A.',
   );
 
-  print(result.output); // Output: TownAndCountry(town: Chicago, country: United States)
+  print(result.output); // Output: TownAndcountry(town: Chicago, country: United States)
 }
 ```
 
@@ -201,13 +242,13 @@ tool:
 ```dart
 Future<void> toolExample() async {
   final agent = Agent(
-    model: 'openai:gpt-4o',
+    'openai',
     systemPrompt: 'Show the time as local time.',
     tools: [
       Tool(
         name: 'time',
         description: 'Get the current time in a given time zone',
-        inputType: TimeFunctionInput.schemaMap,
+        inputType: TimeFunctionInput.schemaMap.toSchema(),
         onCall: onTimeCall,
       ),
     ],
@@ -277,7 +318,7 @@ Future<Map<String, dynamic>?> onTimeCall(Map<String, dynamic> input) async {
   final now = tz.TZDateTime.now(location);
 
   // return a JSON map directly as output
-  return {'time': now);
+  return {'time': now};
 }
 ```
 

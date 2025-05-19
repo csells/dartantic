@@ -19,28 +19,6 @@ export 'tool.dart';
 /// This class provides a unified interface for interacting with different
 /// AI model providers and handling both string and typed responses.
 class Agent {
-  /// Creates a new [Agent] with the given [provider].
-  ///
-  /// The [provider] is the provider to use for the agent. The [systemPrompt] is
-  /// the system prompt to use for the agent. The [outputType] is the output
-  /// type to use for the agent. The [outputFromJson] is the function to use to
-  /// convert the output to a typed object. The [tools] parameter allows you to
-  /// provide a collection of tools that the agent can use to perform external
-  /// actions or access specific capabilities.
-  Agent(
-    Provider provider, {
-    String? systemPrompt,
-    JsonSchema? outputType,
-    this.outputFromJson,
-    Iterable<Tool>? tools,
-  }) : _model = provider.createModel(
-         ModelSettings(
-           systemPrompt: systemPrompt,
-           outputType: outputType,
-           tools: tools,
-         ),
-       );
-
   /// Factory constructor to create an [Agent] for a specific model.
   ///
   /// This constructor allows you to create an [Agent] by specifying the model
@@ -55,19 +33,41 @@ class Agent {
   /// - [outputFromJson]: An optional function to convert JSON output to a typed
   ///   object.
   /// - [tools]: An optional collection of tools the agent can use.
-  factory Agent.model(
+  factory Agent(
     String model, {
     String? systemPrompt,
     JsonSchema? outputType,
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     Iterable<Tool>? tools,
-  }) => Agent(
+  }) => Agent.provider(
     providerFor(model),
     systemPrompt: systemPrompt,
     outputType: outputType,
     outputFromJson: outputFromJson,
     tools: tools,
   );
+
+  /// Creates a new [Agent] with the given [provider].
+  ///
+  /// The [provider] is the provider to use for the agent. The [systemPrompt] is
+  /// the system prompt to use for the agent. The [outputType] is the output
+  /// type to use for the agent. The [outputFromJson] is the function to use to
+  /// convert the output to a typed object. The [tools] parameter allows you to
+  /// provide a collection of tools that the agent can use to perform external
+  /// actions or access specific capabilities.
+  Agent.provider(
+    Provider provider, {
+    String? systemPrompt,
+    JsonSchema? outputType,
+    this.outputFromJson,
+    Iterable<Tool>? tools,
+  }) : _model = provider.createModel(
+         ModelSettings(
+           systemPrompt: systemPrompt,
+           outputType: outputType,
+           tools: tools,
+         ),
+       );
 
   final Model _model;
 
@@ -117,7 +117,7 @@ class Agent {
     Iterable<Tool>? tools,
     Map<String, dynamic> input = const {},
   }) async {
-    final agent = Agent.model(
+    final agent = Agent(
       prompt.frontMatter.model ?? 'google',
       systemPrompt: systemPrompt,
       outputType: outputType,

@@ -21,7 +21,7 @@ void main() async {
 Future<void> helloWorldExample() async {
   print('\nhelloWorldExample');
 
-  final agent = Agent.model(
+  final agent = Agent(
     'openai',
     systemPrompt: 'Be concise, reply with one sentence.',
   );
@@ -43,7 +43,7 @@ Future<void> outputTypeExampleWithJsonSchemaAndStringOutput() async {
     'additionalProperties': false,
   };
 
-  final agent = Agent.model('openai', outputType: tncSchema.toSchema());
+  final agent = Agent('openai', outputType: tncSchema.toSchema());
   final result = await agent.run('The windy city in the US of A.');
   print(result.output);
 }
@@ -61,7 +61,7 @@ Future<void> outputTypeExampleWithJsonSchemaAndOutjectOutput() async {
     'additionalProperties': false,
   };
 
-  final agent = Agent.model(
+  final agent = Agent(
     'openai',
     outputType: tncSchema.toSchema(),
     outputFromJson: TownAndCountry.fromJson,
@@ -77,7 +77,7 @@ Future<void> outputTypeExampleWithJsonSchemaAndOutjectOutput() async {
 Future<void> outputTypeExampleWithSotiSchema() async {
   print('\noutputTypeExampleWithSotiSchema');
 
-  final agent = Agent.model(
+  final agent = Agent(
     'openai',
     outputType: TownAndCountry.schemaMap.toSchema(),
     outputFromJson: TownAndCountry.fromJson,
@@ -92,7 +92,7 @@ Future<void> outputTypeExampleWithSotiSchema() async {
 Future<void> toolExample() async {
   print('\ntoolExample');
 
-  final agent = Agent.model(
+  final agent = Agent(
     'openai',
     systemPrompt:
         'Be sure to include the name of the location in your response. Show '
@@ -125,7 +125,7 @@ Future<void> toolExample() async {
 Future<void> toolExampleWithTypedOutput() async {
   print('\ntoolExampleWithTypedOutput');
 
-  final agent = Agent.model(
+  final agent = Agent(
     'openai',
     systemPrompt:
         'Be sure to include the name of the location in your response. '
@@ -150,7 +150,7 @@ Future<void> toolExampleWithTypedOutput() async {
     'What is the time and temperature in New York City and Chicago?',
   );
 
-  final agent2 = Agent.model(
+  final agent2 = Agent(
     'openai',
     systemPrompt: "Translate the user's prompt into a tool call.",
     outputType: ListOfLocTimeTemps.schemaMap.toSchema(),

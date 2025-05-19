@@ -3,7 +3,7 @@
 import 'dart:io';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:example/loc_time_temp.dart';
+import 'package:dotprompt_dart/dotprompt_dart.dart';
 import 'package:example/temp_tool_call.dart';
 import 'package:example/time_tool_call.dart';
 import 'package:example/town_and_country.dart';
@@ -15,6 +15,7 @@ void main() async {
   await outputTypeExampleWithSotiSchema();
   await toolExample();
   await toolExampleWithTypedOutput();
+  await dotPromptExample();
   exit(0);
 }
 
@@ -149,14 +150,36 @@ Future<void> toolExampleWithTypedOutput() async {
   final result = await agent.run(
     'What is the time and temperature in New York City and Chicago?',
   );
+  print(result.output);
 
-  final agent2 = Agent(
-    'openai',
-    systemPrompt: "Translate the user's prompt into a tool call.",
-    outputType: ListOfLocTimeTemps.schemaMap.toSchema(),
-    outputFromJson: ListOfLocTimeTemps.fromJson,
-  );
+  // TODO: this doesn't work yet; perhaps it needs a RefProvider.sync() to
+  // resolve the LocTimeTemp schema? this would require a call to direct call to
+  // JsonSchema.create() instead of the toSchema() extension method.
+  // final agent2 = Agent(
+  //   'openai',
+  //   systemPrompt: "Translate the user's prompt into a tool call.",
+  //   outputType: ListOfLocTimeTemps.schemaMap.toSchema(),
+  //   outputFromJson: ListOfLocTimeTemps.fromJson,
+  // );
 
-  final result2 = await agent2.runFor<ListOfLocTimeTemps>(result.output);
-  print(result2.output);
+  // final result2 = await agent2.runFor<ListOfLocTimeTemps>(result.output);
+  // print(result2.output);
+}
+
+Future<void> dotPromptExample() async {
+  print('\ndotPromptExample');
+
+  final prompt = DotPrompt('''
+---
+model: openai
+input:
+  default:
+    length: 3
+    text: "The quick brown fox jumps over the lazy dog."
+---
+Summarize this in {{length}} words: {{text}}
+''');
+
+  final result = await Agent.runPrompt(prompt);
+  print(result.output);
 }

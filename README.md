@@ -84,7 +84,7 @@ Summarize this in {{length}} words: {{text}}
 ''');
 
   final result = await Agent.runPrompt(prompt);
-  print(result.output); // Output: Quick brown fox.
+  print(result.output); // Output: Fox jumps dog.
 }
 ```
 

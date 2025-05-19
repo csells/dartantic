@@ -8,6 +8,7 @@ environment:
 dependencies:
   dartantic_ai:
     path: ..
+  dotprompt_dart: ^0.2.0
   google_generative_ai: ^0.4.7
   http: ^1.2.0
   json_annotation: ^4.9.0

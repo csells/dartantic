@@ -76,14 +76,14 @@ tools.
   user stories.
 
 ## Acceptance Criteria
-- [ ] Agents can be created using both model strings and provider instances.
-- [ ] Agents can run prompts and return streaming string outputs.
-- [ ] Agents can run prompts and return typed outputs, mapped to custom Dart types.
-- [ ] Agents can use DotPrompt for structured prompt input.
+- [x] Agents can be created using both model strings and provider instances.
+- [x] Agents can run prompts and return streaming string outputs.
+- [x] Agents can run prompts and return typed outputs, mapped to custom Dart types.
+- [x] Agents can use DotPrompt for structured prompt input.
 - [ ] Agents can define and use tools with typed input/output, validated via JSON schema.
-- [ ] The system supports both OpenAI and Gemini providers, with API keys loaded from environment variables.
-- [ ] The system provides clear error messages for missing API keys or unsupported providers.
-- [ ] Integration tests pass for all major features, including:
+- [x] The system supports both OpenAI and Gemini providers, with API keys loaded from environment variables.
+- [x] The system provides clear error messages for missing API keys or unsupported providers.
+- [x] Integration tests pass for all major features, including:
   - Basic agent usage (string and typed output)
   - JSON schema output
   - Tool usage (time, temperature, etc.)
@@ -92,26 +92,30 @@ tools.
 
 ## Milestones
 
-### Milestone 1: Core Agent Functionality (done)
-- Agent creation via model string (e.g., `openai:gpt-4o`) or provider instance
-  (e.g., `OpenAiProvider()`).
-- Running prompts and returning string outputs (`Agent.run`).
-- Running prompts and returning typed outputs (`Agent.runFor`).
-- DotPrompt support for structured prompt input (`Agent.runPrompt`).
-- Provider resolution and abstraction (OpenAI, Gemini, etc.).
-- Output mapping via `outputFromJson` for typed results.
-- Passing system prompts to models.
+### Milestone 1: Core Agent Functionality
+- [x] Agent creation via model string (e.g., `openai:gpt-4o`) or provider
+  instance (e.g., `OpenAiProvider()`).
+- [x] Running prompts and returning string outputs (`Agent.run`).
+- [x] Running prompts and returning typed outputs (`Agent.runFor`).
+- [x] DotPrompt support for structured prompt input (`Agent.runPrompt`).
+- [x] Provider resolution and abstraction (OpenAI, Gemini, etc.).
+- [x] Output mapping via `outputFromJson` for typed results.
+- [x] Passing system prompts to models.
 
 ### Milestone 2: Multi-turn Chat, Streaming, and Embedding Support
-- **Multi-turn chat**: Add support for passing a list of `ChatMessage` objects
-  (with roles: system, user, assistant, tool, function) to the agent for
+- [ ] **Multi-turn chat**: Add support for passing a list of `ChatMessage`
+  objects (with roles: system, user, assistant, tool, function) to the agent for
   context-aware, conversational LLM interactions.
   - Introduce `ChatMessageRole` enum and `ChatMessage` class with role, content,
     and optional tool/function fields.
   - Update `Agent` and provider interfaces to accept and process message
     history.
-- **Streaming responses**: LLM responses can be streamed via `Agent.runStream`, `Agent.runPromptStream`, and similar methods, all of which return a `Stream<AgentResponse>`. This allows
-  real-time consumption of output as it's generated. Streaming is a core, stable feature of the API, and is the primary way to consume real-time output from the agent. Note: `Agent.run` returns a `Future<AgentResponse>` with the full response, not a stream.
+- [x] **Streaming responses**: LLM responses can be streamed via
+  `Agent.runStream`, `Agent.runPromptStream`, and similar methods, all of which
+  return a `Stream<AgentResponse>`. This allows real-time consumption of output
+  as it's generated. Streaming is a core, stable feature of the API, and is the
+  primary way to consume real-time output from the agent. Note: `Agent.run`
+  returns a `Future<AgentResponse>` with the full response, not a stream.
 
   ```dart
   // Example of streaming with Agent.runStream
@@ -127,23 +131,24 @@ tools.
   }
   ```
 
-- **Embedding generation**: Add methods to generate vector embeddings for text:
+- [ ] **Embedding generation**: Add methods to generate vector embeddings for
+  text:
   - `Future<List<double>> createEmbedding(String text, {EmbeddingType type})`
   - Introduce `EmbeddingType` enum (document, query).
-- **API changes**:
+- [ ] **API changes**:
   - Extend `AgentResponse` to include the full message history.
   - Add new methods to `Agent` for chat, streaming, and embedding.
-- **Provider-specific implementations**:
+- [ ] **Provider-specific implementations**:
   - OpenAI: Map `ChatMessage` to OpenAI chat API, support streaming and
     embedding endpoints.
   - Gemini: Map `ChatMessage` to Gemini API, support streaming if available, and
     implement embedding (or throw if not supported).
-- **Testing & Documentation**:
+- [ ] **Testing & Documentation**:
   - Add tests for multi-turn chat, streaming, and embedding APIs.
   - Update documentation and usage examples to cover new features.
 
 ### Milestone 3: Typed Response + Tools + Simple Agent Loop
-- e.g. two tools, typed response and we keep looping till the LLM is done
+- [ ] e.g. two tools, typed response and we keep looping till the LLM is done
 - Just like pydantic-ai can do!
 
 ```python

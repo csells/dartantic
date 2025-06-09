@@ -102,7 +102,7 @@ tools.
 - [x] Output mapping via `outputFromJson` for typed results.
 - [x] Passing system prompts to models.
 
-### Milestone 2: Multi-turn Chat, Streaming, and Embedding Support
+### Milestone 2: Multi-turn Chat, Streaming
 - [x] **Streaming responses**: LLM responses can be streamed via
   `Agent.runStream`, `Agent.runPromptStream`, and similar methods, all of which
   return a `Stream<AgentResponse>`. This allows real-time consumption of output
@@ -130,12 +130,8 @@ tools.
     and optional tool/function fields.
   - Update `Agent` and provider interfaces to accept and process message
     history.
-
-- [ ] **Embedding generation**: Add methods to generate vector embeddings for
-  text:
-  - `Future<List<double>> createEmbedding(String text, {EmbeddingType type})`
-  - Introduce `EmbeddingType` enum (document, query).
-- [ ] **API changes**:
+  - Update `AgentResponse` to return message history.
+  - [ ] **API changes**:
   - Extend `AgentResponse` to include the full message history.
   - Add new methods to `Agent` for chat, streaming, and embedding.
 - [ ] **Provider-specific implementations**:
@@ -143,11 +139,23 @@ tools.
     embedding endpoints.
   - Gemini: Map `ChatMessage` to Gemini API, support streaming if available, and
     implement embedding (or throw if not supported).
-- [ ] **Testing & Documentation**:
-  - Add tests for multi-turn chat, streaming, and embedding APIs.
-  - Update documentation and usage examples to cover new features.
 
-### Milestone 3: Typed Response + Tools + Simple Agent Loop
+### Milestone 3: Multi-media input
+- [ ] `Model.runStream` should take a `List<Message>`, so that the last message
+  can be a user message with multiple parts, including media parts
+- [ ] `Agent.runXxx()` should be updated to support a prompt message, including
+  multi-media parts
+
+### Milestone 4: Dartantic provider for Flutter AI Toolkit
+- [ ] Implement the `LlmProvider` interface in terms of `Agent`
+
+### Milestone 5: RAG and Embedding Support
+- [ ] **Embedding generation**: Add methods to generate vector embeddings for
+  text:
+  - `Future<List<double>> createEmbedding(String text, {EmbeddingType type})`
+  - Introduce `EmbeddingType` enum (document, query).
+
+### Milestone 6: Typed Response + Tools + Simple Agent Loop
 - [ ] e.g. two tools, typed response and we keep looping till the LLM is done
 - Just like pydantic-ai can do!
 

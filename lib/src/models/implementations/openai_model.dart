@@ -6,6 +6,7 @@ import 'package:openai_dart/openai_dart.dart' as openai;
 
 import '../../../dartantic_ai.dart';
 import '../interface/model.dart';
+import '../message.dart';
 
 /// Implementation of [Model] that uses OpenAI's API.
 ///
@@ -42,10 +43,14 @@ class OpenAiModel extends Model {
   final Iterable<Tool>? _tools;
 
   @override
-  Stream<AgentResponse> runStream(String prompt) async* {
-    final messages = <openai.ChatCompletionMessage>[
-      if (_systemPrompt != null)
+  Stream<AgentResponse> runStream({
+    required String prompt,
+    required List<Message> messages,
+  }) async* {
+    final oiaMessages = <openai.ChatCompletionMessage>[
+      if (_systemPrompt != null && messages.isEmpty)
         openai.ChatCompletionMessage.system(content: _systemPrompt),
+      ..._openaiMessagesFrom(messages),
       openai.ChatCompletionMessage.user(
         content: openai.ChatCompletionUserMessageContent.string(prompt),
       ),
@@ -59,7 +64,7 @@ class OpenAiModel extends Model {
         request: openai.CreateChatCompletionRequest(
           model: openai.ChatCompletionModel.modelId(_modelName),
           responseFormat: _responseFormat,
-          messages: messages,
+          messages: oiaMessages,
           tools:
               _tools
                   ?.map(
@@ -97,7 +102,10 @@ class OpenAiModel extends Model {
         // Handle content streaming
         if (delta.content != null) {
           dev.log('[OpenAiModel] Yielding content: ${delta.content!}');
-          yield AgentResponse(output: delta.content!);
+          yield AgentResponse(
+            output: delta.content!,
+            messages: _messagesFrom(oiaMessages),
+          );
         }
 
         // Handle tool calls
@@ -163,7 +171,7 @@ class OpenAiModel extends Model {
                   ),
                 )
                 .toList();
-        messages.add(
+        oiaMessages.add(
           openai.ChatCompletionMessage.assistant(
             content: null,
             toolCalls: toolCalls,
@@ -195,7 +203,7 @@ class OpenAiModel extends Model {
           '[OpenAiModel] Adding tool response to messages: id=$toolCallId, '
           'result=${jsonEncode(result)}',
         );
-        messages.add(
+        oiaMessages.add(
           openai.ChatCompletionMessage.tool(
             toolCallId: toolCallId,
             content: jsonEncode(result),
@@ -292,4 +300,83 @@ class OpenAiModel extends Model {
 
     return result;
   }
+
+  static List<openai.ChatCompletionMessage> _openaiMessagesFrom(
+    List<Message> messages,
+  ) =>
+      messages.map((message) {
+        final contentString = message.content
+            .map((part) {
+              if (part is TextPart) {
+                return part.text;
+              } else if (part is MediaPart) {
+                return '[media: ${part.contentType ?? ''}] ${part.url ?? ''}';
+              } else if (part is ToolPart) {
+                return '[tool call: ${part.name ?? ''}]';
+              } else {
+                throw UnsupportedError(
+                  'Unknown part type: \\${part.runtimeType}',
+                );
+              }
+            })
+            .join(' ');
+
+        switch (message.role) {
+          case MessageRole.system:
+            return openai.ChatCompletionMessage.system(content: contentString);
+          case MessageRole.user:
+            return openai.ChatCompletionMessage.user(
+              content: openai.ChatCompletionUserMessageContent.string(
+                contentString,
+              ),
+            );
+          case MessageRole.model:
+            return openai.ChatCompletionMessage.assistant(
+              content: contentString,
+            );
+        }
+      }).toList();
+
+  static List<Message> _messagesFrom(
+    List<openai.ChatCompletionMessage> oiaMessages,
+  ) =>
+      oiaMessages.map((message) {
+        // Map OpenAI role to MessageRole
+        final role = switch (message.role) {
+          openai.ChatCompletionMessageRole.system => MessageRole.system,
+          openai.ChatCompletionMessageRole.user => MessageRole.user,
+          openai.ChatCompletionMessageRole.assistant => MessageRole.model,
+          _ => MessageRole.model,
+        };
+
+        final parts = <Part>[];
+        // Handle content as String or List<String>
+        if (message.content is String) {
+          parts.add(TextPart(message.content! as String));
+        } else if (message.content is List) {
+          for (final c in message.content! as List) {
+            if (c is String) {
+              parts.add(TextPart(c));
+            }
+          }
+        }
+        // Handle tool calls for assistant messages
+        if (message.role == openai.ChatCompletionMessageRole.assistant &&
+            message is openai.ChatCompletionAssistantMessage) {
+          final assistantMsg = message;
+          final toolCalls = assistantMsg.toolCalls;
+          if (toolCalls != null) {
+            for (final call in toolCalls) {
+              parts.add(
+                ToolPart(
+                  id: call.id,
+                  name: call.function.name,
+                  arguments: call.function.arguments,
+                ),
+              );
+            }
+          }
+        }
+        return Message(role: role, content: parts);
+      }).toList();
 }

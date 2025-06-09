@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_ai/src/models/message.dart';
 import 'package:test/test.dart';
 
@@ -49,4 +50,49 @@ void main() {
       expect(outputJson, equals(inputJson));
     });
   });
+
+  Future<void> testEmptyMessagesPromptIncludesUserAndModelMessages(
+    Provider provider,
+  ) async {
+    const prompt = 'What is 2 + 2?';
+    final agent = Agent.provider(provider);
+    final responses = <AgentResponse>[];
+    await agent.runStream(prompt, messages: []).forEach(responses.add);
+    final messages =
+        responses.isNotEmpty
+            ? List<Message>.from(responses.last.messages)
+            : <Message>[];
+    expect(
+      messages,
+      isNotEmpty,
+      reason: '${provider.displayName}: messages should not be empty',
+    );
+    expect(
+      messages.first.role,
+      MessageRole.user,
+      reason: '${provider.displayName}: first message should be user',
+    );
+    expect(
+      messages.first.content.whereType<TextPart>().any((p) => p.text == prompt),
+      isTrue,
+      reason:
+          '${provider.displayName}: prompt should be present in first user '
+          'message',
+    );
+    expect(
+      messages.any((m) => m.role == MessageRole.model),
+      isTrue,
+      reason: '${provider.displayName}: should contain a model response',
+    );
+  }
+
+  test(
+    'empty history + prompt (OpenAI)',
+    () => testEmptyMessagesPromptIncludesUserAndModelMessages(OpenAiProvider()),
+  );
+
+  test(
+    'empty history + prompt (Gemini)',
+    () => testEmptyMessagesPromptIncludesUserAndModelMessages(GeminiProvider()),
+  );
 }

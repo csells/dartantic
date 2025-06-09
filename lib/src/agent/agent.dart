@@ -5,6 +5,7 @@ import 'package:json_schema/json_schema.dart';
 
 import '../models/interface/model.dart';
 import '../models/interface/model_settings.dart';
+import '../models/message.dart';
 import '../providers/implementation/provider_table.dart';
 import '../providers/interface/provider.dart';
 import '../providers/interface/provider_settings.dart';
@@ -88,31 +89,42 @@ class Agent {
   ///
   /// Returns an [AgentResponse] containing the concatenated output from the
   /// model.
-  Future<AgentResponse> run(String prompt) async {
-    final stream = _model.runStream(prompt);
+  Future<AgentResponse> run(
+    String prompt, {
+    List<Message> messages = const [],
+  }) async {
+    final stream = _model.runStream(prompt: prompt, messages: messages);
     final output = StringBuffer();
+    var outputMessages = <Message>[];
     await for (final chunk in stream) {
       output.write(chunk.output);
+      outputMessages = chunk.messages;
     }
-    return AgentResponse(output: output.toString());
+    return AgentResponse(output: output.toString(), messages: outputMessages);
   }
 
   /// Runs the given [prompt] through the model and returns the response as a
   /// stream.
   ///
   /// Returns a [Stream] of [AgentResponse] containing the raw string output.
-  Stream<AgentResponse> runStream(String prompt) => _model.runStream(prompt);
+  Stream<AgentResponse> runStream(
+    String prompt, {
+    List<Message> messages = const [],
+  }) => _model.runStream(prompt: prompt, messages: messages);
 
   /// Runs the given [prompt] through the model and returns a typed response.
   ///
   /// Returns an [AgentResponseFor<T>] containing the output converted to type
   /// [T]. Uses [outputFromJson] to convert the JSON response if provided,
   /// otherwise returns the decoded JSON.
-  Future<AgentResponseFor<T>> runFor<T>(String prompt) async {
-    final response = await run(prompt);
+  Future<AgentResponseFor<T>> runFor<T>(
+    String prompt, {
+    List<Message> messages = const [],
+  }) async {
+    final response = await run(prompt, messages: messages);
     final outputJson = jsonDecode(response.output);
     final outputTyped = outputFromJson?.call(outputJson) ?? outputJson;
-    return AgentResponseFor(output: outputTyped);
+    return AgentResponseFor(output: outputTyped, messages: response.messages);
   }
 
   /// Executes a given [DotPrompt] and returns the complete response.
@@ -141,13 +153,14 @@ class Agent {
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     Iterable<Tool>? tools,
     Map<String, dynamic> input = const {},
+    List<Message> messages = const [],
   }) => Agent(
     prompt.frontMatter.model ?? 'google',
     systemPrompt: systemPrompt,
     outputType: outputType,
     outputFromJson: outputFromJson,
     tools: tools,
-  ).run(prompt.render(input));
+  ).run(prompt.render(input), messages: messages);
 
   /// Executes a [DotPrompt] and returns a typed response.
   ///
@@ -177,13 +190,14 @@ class Agent {
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     Iterable<Tool>? tools,
     Map<String, dynamic> input = const {},
+    List<Message> messages = const [],
   }) => Agent(
     prompt.frontMatter.model ?? 'google',
     systemPrompt: systemPrompt,
     outputType: outputType,
     outputFromJson: outputFromJson,
     tools: tools,
-  ).runFor<T>(prompt.render(input));
+  ).runFor<T>(prompt.render(input), messages: messages);
 
   /// Executes a given [DotPrompt] using the specified parameters and returns
   /// the response as a [Stream] of [AgentResponse].
@@ -208,13 +222,14 @@ class Agent {
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     Iterable<Tool>? tools,
     Map<String, dynamic> input = const {},
+    List<Message> messages = const [],
   }) => Agent(
     prompt.frontMatter.model ?? 'google',
     systemPrompt: systemPrompt,
     outputType: outputType,
     outputFromJson: outputFromJson,
     tools: tools,
-  ).runStream(prompt.render(input));
+  ).runStream(prompt.render(input), messages: messages);
 
   /// Resolves the [Provider] for the given [model] string.
   ///

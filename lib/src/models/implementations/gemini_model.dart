@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:developer' as dev;
+import 'dart:typed_data';
 
 import 'package:google_generative_ai/google_generative_ai.dart' as gemini;
 import 'package:json_schema/json_schema.dart';
@@ -7,6 +9,7 @@ import '../../agent/agent_response.dart';
 import '../../agent/tool.dart';
 import '../../json_schema_extension.dart';
 import '../interface/model.dart';
+import '../message.dart';
 
 /// Implementation of [Model] that uses Google's Gemini API.
 ///
@@ -45,9 +48,12 @@ class GeminiModel extends Model {
   final Iterable<Tool>? _tools;
 
   @override
-  Stream<AgentResponse> runStream(String prompt) async* {
-    // send the prompt to the model
-    final chat = _model.startChat();
+  Stream<AgentResponse> runStream({
+    required String prompt,
+    required List<Message> messages,
+  }) async* {
+    final history = _geminiHistoryFrom(messages);
+    final chat = _model.startChat(history: history.isEmpty ? null : history);
     final stream = chat.sendMessageStream(gemini.Content.text(prompt));
 
     final chunks = <String>[];
@@ -57,7 +63,10 @@ class GeminiModel extends Model {
       final text = chunk.text ?? '';
       if (text.isNotEmpty) {
         chunks.add(text);
-        yield AgentResponse(output: text);
+        yield AgentResponse(
+          output: text,
+          messages: _messagesFrom(chat.history),
+        );
       }
 
       // Collect function calls
@@ -82,7 +91,10 @@ class GeminiModel extends Model {
       );
 
       if (result.text != null && result.text!.isNotEmpty) {
-        yield AgentResponse(output: result.text!);
+        yield AgentResponse(
+          output: result.text!,
+          messages: _messagesFrom(chat.history),
+        );
       }
     }
   }
@@ -224,4 +236,66 @@ class GeminiModel extends Model {
 
     return result;
   }
+
+  static List<gemini.Content> _geminiHistoryFrom(List<Message> messages) =>
+      messages
+          .map(
+            (m) => gemini.Content.multi(
+              m.content.map((p) {
+                if (p is TextPart) {
+                  return gemini.TextPart(p.text);
+                } else if (p is MediaPart) {
+                  final url = p.url ?? '';
+                  Uint8List? bytes;
+                  if (url.startsWith('data:')) {
+                    final base64Str = url.split(',').last;
+                    bytes = Uint8List.fromList(
+                      const Base64Decoder().convert(base64Str),
+                    );
+                  } else {
+                    bytes = Uint8List(0);
+                  }
+                  return gemini.DataPart(p.contentType ?? '', bytes);
+                } else if (p is ToolPart) {
+                  return gemini.FunctionCall(
+                    p.name ?? '',
+                    p.arguments is Map<String, dynamic> ? p.arguments : {},
+                  );
+                } else {
+                  throw UnsupportedError(
+                    'Unknown part type: \\${p.runtimeType}',
+                  );
+                }
+              }).toList(),
+            ),
+          )
+          .toList();
+
+  static List<Message> _messagesFrom(Iterable<gemini.Content> history) =>
+      history
+          .map((content) {
+            final parts = <Part>[];
+            if (content is gemini.TextPart) {
+              final textPart = content as gemini.TextPart;
+              parts.add(TextPart(textPart.text));
+            }
+            if (content is gemini.DataPart) {
+              final dataPart = content as gemini.DataPart;
+              final base64 = base64Encode(dataPart.bytes);
+              final dataUri = 'data:${dataPart.mimeType};base64,$base64';
+              parts.add(
+                MediaPart(contentType: dataPart.mimeType, url: dataUri),
+              );
+            }
+            if (content is gemini.FunctionCall) {
+              final funcPart = content as gemini.FunctionCall;
+              parts.add(
+                ToolPart(name: funcPart.name, arguments: funcPart.args),
+              );
+            }
+            if (parts.isEmpty) return null;
+            return Message(role: MessageRole.model, content: parts);
+          })
+          .whereType<Message>()
+          .toList();
 }

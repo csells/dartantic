@@ -63,15 +63,19 @@ class GeminiModel extends Model {
       final text = chunk.text ?? '';
       if (text.isNotEmpty) {
         chunks.add(text);
-        yield AgentResponse(
-          output: text,
-          messages: _messagesFrom(chat.history),
-        );
+        yield AgentResponse(output: text, messages: []);
       }
 
       // Collect function calls
       functionCalls.addAll(chunk.functionCalls);
     }
+
+    // output a blank response to include the final history, as the history
+    // won't be updated until after the stream is done
+    print('Gemini: chat.history.length= ${chat.history.length}');
+    final foo = _messagesFrom(chat.history);
+    print('Gemini: foo.length= ${foo.length}');
+    yield AgentResponse(output: '', messages: foo);
 
     // If there are function calls, handle them
     if (functionCalls.isNotEmpty) {
@@ -271,31 +275,48 @@ class GeminiModel extends Model {
           )
           .toList();
 
-  static List<Message> _messagesFrom(Iterable<gemini.Content> history) =>
-      history
-          .map((content) {
-            final parts = <Part>[];
-            if (content is gemini.TextPart) {
-              final textPart = content as gemini.TextPart;
-              parts.add(TextPart(textPart.text));
-            }
-            if (content is gemini.DataPart) {
-              final dataPart = content as gemini.DataPart;
-              final base64 = base64Encode(dataPart.bytes);
-              final dataUri = 'data:${dataPart.mimeType};base64,$base64';
-              parts.add(
-                MediaPart(contentType: dataPart.mimeType, url: dataUri),
-              );
-            }
-            if (content is gemini.FunctionCall) {
-              final funcPart = content as gemini.FunctionCall;
-              parts.add(
-                ToolPart(name: funcPart.name, arguments: funcPart.args),
-              );
-            }
-            if (parts.isEmpty) return null;
-            return Message(role: MessageRole.model, content: parts);
-          })
-          .whereType<Message>()
-          .toList();
+  static List<Message> _messagesFrom(Iterable<gemini.Content> history) {
+    final messages = <Message>[];
+    for (final content in history) {
+      final role = switch (content.role) {
+        'user' => MessageRole.user,
+        'model' => MessageRole.model,
+        'system' => MessageRole.system,
+        _ => MessageRole.model,
+      };
+
+      final parts = <Part>[];
+      for (final part in content.parts) {
+        if (part is gemini.TextPart) {
+          parts.add(TextPart(part.text));
+        } else if (part is gemini.DataPart) {
+          final base64 = base64Encode(part.bytes);
+          final dataUri = 'data:${part.mimeType};base64,$base64';
+          parts.add(MediaPart(contentType: part.mimeType, url: dataUri));
+        } else if (part is gemini.FunctionCall) {
+          parts.add(ToolPart(name: part.name, arguments: part.args));
+        } else {
+          print('Unhandled part type: ${part.runtimeType}, value: $part');
+        }
+      }
+      if (parts.isEmpty) {
+        print(
+          'Skipped content (no parts extracted) for type: ${content.runtimeType}, value: $content',
+        );
+        continue;
+      }
+      messages.add(Message(role: role, content: parts));
+    }
+    assert(
+      messages.length == history.length,
+      'Output message list length (${messages.length}) does not match input history list length (${history.length})',
+    );
+    return messages;
+  }
+
+  static String _textFromGeminiContent(gemini.Content content) =>
+      content.parts.map((p) => p is gemini.TextPart ? p.text : '').join();
+
+  static String _textFromMessage(Message message) =>
+      message.content.map((p) => p is TextPart ? p.text : '').join();
 }

@@ -4,6 +4,16 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_ai/src/models/message.dart';
 import 'package:test/test.dart';
 
+// NOTE: some of these tests require environment variables to be set.
+// I recommend using .vscode/settings.json like so:
+//
+// {
+//   "dart.env": {
+//     "GEMINI_API_KEY": "your_gemini_api_key",
+//     "OPENAI_API_KEY": "your_openai_api_key"
+//   }
+// }
+
 void main() {
   group('Message serialization', () {
     test('deserializes and reserializes to the same JSON structure', () {
@@ -59,9 +69,8 @@ void main() {
     final responses = <AgentResponse>[];
     await agent.runStream(prompt, messages: []).forEach(responses.add);
     final messages =
-        responses.isNotEmpty
-            ? List<Message>.from(responses.last.messages)
-            : <Message>[];
+        responses.isNotEmpty ? responses.last.messages : <Message>[];
+
     expect(
       messages,
       isNotEmpty,
@@ -72,6 +81,7 @@ void main() {
       MessageRole.user,
       reason: '${provider.displayName}: first message should be user',
     );
+
     expect(
       messages.first.content.whereType<TextPart>().any((p) => p.text == prompt),
       isTrue,

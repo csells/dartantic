@@ -141,8 +141,8 @@ tools.
     implement embedding (or throw if not supported).
 
 ### Milestone 3: Multi-media input
-- [ ] `Model.runStream` should take a `List<Message>`, so that the last message
-  can be a user message with multiple parts, including media parts
+- [ ] `Model.runStream` should take a `Message` as a prompt, so that it can
+  include media parts
 - [ ] `Agent.runXxx()` should be updated to support a prompt message, including
   multi-media parts
 

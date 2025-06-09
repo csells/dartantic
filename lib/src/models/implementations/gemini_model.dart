@@ -72,10 +72,7 @@ class GeminiModel extends Model {
 
     // output a blank response to include the final history, as the history
     // won't be updated until after the stream is done
-    print('Gemini: chat.history.length= ${chat.history.length}');
-    final foo = _messagesFrom(chat.history);
-    print('Gemini: foo.length= ${foo.length}');
-    yield AgentResponse(output: '', messages: foo);
+    yield AgentResponse(output: '', messages: _messagesFrom(chat.history));
 
     // If there are function calls, handle them
     if (functionCalls.isNotEmpty) {
@@ -296,12 +293,13 @@ class GeminiModel extends Model {
         } else if (part is gemini.FunctionCall) {
           parts.add(ToolPart(name: part.name, arguments: part.args));
         } else {
-          print('Unhandled part type: ${part.runtimeType}, value: $part');
+          dev.log('Unhandled part type: ${part.runtimeType}, value: $part');
         }
       }
       if (parts.isEmpty) {
-        print(
-          'Skipped content (no parts extracted) for type: ${content.runtimeType}, value: $content',
+        dev.log(
+          'Skipped content (no parts extracted) for type: '
+          '${content.runtimeType}, value: $content',
         );
         continue;
       }
@@ -309,14 +307,15 @@ class GeminiModel extends Model {
     }
     assert(
       messages.length == history.length,
-      'Output message list length (${messages.length}) does not match input history list length (${history.length})',
+      'Output message list length (${messages.length}) does not match input '
+      'history list length (${history.length})',
     );
     return messages;
   }
 
-  static String _textFromGeminiContent(gemini.Content content) =>
-      content.parts.map((p) => p is gemini.TextPart ? p.text : '').join();
+  // static String _textFromGeminiContent(gemini.Content content) =>
+  //     content.parts.map((p) => p is gemini.TextPart ? p.text : '').join();
 
-  static String _textFromMessage(Message message) =>
-      message.content.map((p) => p is TextPart ? p.text : '').join();
+  // static String _textFromMessage(Message message) =>
+  //     message.content.map((p) => p is TextPart ? p.text : '').join();
 }

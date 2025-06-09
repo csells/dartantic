@@ -74,8 +74,9 @@ void main() {
     expect(
       messages,
       isNotEmpty,
-      reason: '${provider.displayName}: messages should not be empty',
+      reason: '\\${provider.displayName}: messages should not be empty',
     );
+
     expect(
       messages.first.role,
       MessageRole.user,

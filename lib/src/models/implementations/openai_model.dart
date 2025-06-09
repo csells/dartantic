@@ -48,7 +48,7 @@ class OpenAiModel extends Model {
     required List<Message> messages,
   }) async* {
     final oiaMessages = <openai.ChatCompletionMessage>[
-      if (_systemPrompt != null && messages.isEmpty)
+      if (_systemPrompt != null && _systemPrompt.isNotEmpty && messages.isEmpty)
         openai.ChatCompletionMessage.system(content: _systemPrompt),
       ..._openaiMessagesFrom(messages),
       openai.ChatCompletionMessage.user(
@@ -86,6 +86,9 @@ class OpenAiModel extends Model {
       final toolCallBuffers = <String, ({String name, StringBuffer args})>{};
       var isFinished = false;
 
+      // Accumulate the assistant/model response as it streams in
+      final assistantBuffer = StringBuffer();
+
       await for (final chunk in stream) {
         final choice = chunk.choices.first;
         final delta = choice.delta;
@@ -102,6 +105,7 @@ class OpenAiModel extends Model {
         // Handle content streaming
         if (delta.content != null) {
           dev.log('[OpenAiModel] Yielding content: ${delta.content!}');
+          assistantBuffer.write(delta.content);
           yield AgentResponse(
             output: delta.content!,
             messages: _messagesFrom(oiaMessages),
@@ -137,6 +141,17 @@ class OpenAiModel extends Model {
           }
         }
       }
+
+      // After streaming, append the assistant message to the conversation
+      if (assistantBuffer.isNotEmpty) {
+        oiaMessages.add(
+          openai.ChatCompletionMessage.assistant(
+            content: assistantBuffer.toString(),
+          ),
+        );
+      }
+      // Yield the full message list including the model's response
+      yield AgentResponse(output: '', messages: _messagesFrom(oiaMessages));
 
       // Remove incomplete tool call buffers (empty or invalid JSON)
       toolCallBuffers.removeWhere((_, v) {
@@ -339,44 +354,59 @@ class OpenAiModel extends Model {
 
   static List<Message> _messagesFrom(
     List<openai.ChatCompletionMessage> oiaMessages,
-  ) =>
-      oiaMessages.map((message) {
-        // Map OpenAI role to MessageRole
-        final role = switch (message.role) {
-          openai.ChatCompletionMessageRole.system => MessageRole.system,
-          openai.ChatCompletionMessageRole.user => MessageRole.user,
-          openai.ChatCompletionMessageRole.assistant => MessageRole.model,
-          _ => MessageRole.model,
-        };
+  ) {
+    final result =
+        oiaMessages.map((message) {
+          // Map OpenAI role to MessageRole
+          final role = switch (message.role) {
+            openai.ChatCompletionMessageRole.system => MessageRole.system,
+            openai.ChatCompletionMessageRole.user => MessageRole.user,
+            openai.ChatCompletionMessageRole.assistant => MessageRole.model,
+            _ => MessageRole.model,
+          };
 
-        final parts = <Part>[];
-        // Handle content as String or List<String>
-        if (message.content is String) {
-          parts.add(TextPart(message.content! as String));
-        } else if (message.content is List) {
-          for (final c in message.content! as List) {
-            if (c is String) {
-              parts.add(TextPart(c));
+          final parts = <Part>[];
+          // Handle content as String or List<String>
+          if (message.content is String) {
+            parts.add(TextPart(message.content! as String));
+          } else if (message.content is List) {
+            for (final c in message.content! as List) {
+              if (c is String) {
+                parts.add(TextPart(c));
+              }
+            }
+          } else if (message.content
+              is openai.ChatCompletionUserMessageContent) {
+            final userContent =
+                message.content! as openai.ChatCompletionUserMessageContent;
+            parts.add(TextPart(userContent.value as String));
+          }
+          // Handle tool calls for assistant messages
+          if (message.role == openai.ChatCompletionMessageRole.assistant &&
+              message is openai.ChatCompletionAssistantMessage) {
+            final assistantMsg = message;
+            final toolCalls = assistantMsg.toolCalls;
+            if (toolCalls != null) {
+              for (final call in toolCalls) {
+                parts.add(
+                  ToolPart(
+                    id: call.id,
+                    name: call.function.name,
+                    arguments: call.function.arguments,
+                  ),
+                );
+              }
             }
           }
-        }
-        // Handle tool calls for assistant messages
-        if (message.role == openai.ChatCompletionMessageRole.assistant &&
-            message is openai.ChatCompletionAssistantMessage) {
-          final assistantMsg = message;
-          final toolCalls = assistantMsg.toolCalls;
-          if (toolCalls != null) {
-            for (final call in toolCalls) {
-              parts.add(
-                ToolPart(
-                  id: call.id,
-                  name: call.function.name,
-                  arguments: call.function.arguments,
-                ),
-              );
-            }
-          }
-        }
-        return Message(role: role, content: parts);
-      }).toList();
+          return Message(role: role, content: parts);
+        }).toList();
+
+    assert(
+      result.length == oiaMessages.length,
+      r'Output message list length (${result.length}) does not match input '
+      'message list length (${oiaMessages.length})',
+    );
+
+    return result;
+  }
 }

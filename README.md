@@ -26,16 +26,6 @@ The following are the target features for this package:
 - [ ] Simple Assistant/Agent loop utilities
 - [ ] Per call usage statistics
 
-## Provider Switching
-
-dartantic_ai supports seamless switching between OpenAI and Gemini providers within a single conversation. You can alternate between providers (e.g., OpenAI → Gemini → OpenAI) and the message history—including tool calls and tool results—remains compatible and threaded correctly. This enables robust multi-provider workflows, such as starting a conversation with one provider and continuing it with another, or leveraging provider-specific strengths in a single chat.
-
-- Message history is serialized and deserialized in a provider-agnostic way.
-- Tool call and result IDs are stable and compatible across providers.
-- Integration tests verify that tool calls and results are preserved and threaded correctly when switching providers.
-
-This feature allows you to build advanced, resilient LLM applications that can leverage multiple providers transparently.
-
 ## Usage
 
 The following are some examples that work in the current build.
@@ -383,5 +373,45 @@ void main() async {
   await for (final response in stream) {
     stdout.write(response.output);
   }
+}
+```
+
+## Provider Switching
+
+dartantic_ai supports seamless switching between OpenAI and Gemini providers within a single conversation. You can alternate between providers (e.g., OpenAI → Gemini → OpenAI) and the message history—including tool calls and tool results—remains compatible and threaded correctly. This enables robust multi-provider workflows, such as starting a conversation with one provider and continuing it with another, or leveraging provider-specific strengths in a single chat.
+
+- Message history is serialized and deserialized in a provider-agnostic way.
+- Tool call and result IDs are stable and compatible across providers.
+- Integration tests verify that tool calls and results are preserved and threaded correctly when switching providers.
+
+This feature allows you to build advanced, resilient LLM applications that can leverage multiple providers transparently.
+
+### Example: Switching Providers in a Conversation
+
+```dart
+import 'package:dartantic_ai/dartantic_ai.dart';
+
+void main() async {
+  final openaiAgent = Agent.provider(OpenAiProvider(), systemPrompt: 'You are a helpful assistant.');
+  final geminiAgent = Agent.provider(GeminiProvider(), systemPrompt: 'You are a helpful assistant.');
+
+  // Start conversation with OpenAI
+  var response = await openaiAgent.run('What animal says "moo"?');
+  print('OpenAI: ${response.output}'); // cow
+  var history = response.messages;
+
+  // Continue conversation with Gemini
+  response = await geminiAgent.run('What animal says "quack"?', messages: history);
+  print('Gemini: ${response.output}'); // duck
+  history = response.messages;
+
+  // Store some info with OpenAI
+  response = await openaiAgent.run('My favorite animal is the platypus.', messages: history);
+  print('OpenAI: ${response.output}'); // I like platypuses, too!
+  history = response.messages;
+
+  // Retrieve info with Gemini
+  response = await geminiAgent.run('What animal did I say I liked?', messages: history);
+  print('Gemini: ${response.output}'); // platypus
 }
 ```

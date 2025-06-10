@@ -290,21 +290,19 @@ extension on MessageRole {
 }
 
 extension on gemini.Content {
-  /// Converts Gemini content to a Message, ensuring each FunctionCall gets a unique ID,
-  /// and the corresponding FunctionResponse uses the same ID. IDs are not reused.
+  /// Converts Gemini content to a Message, ensuring each FunctionCall gets a
+  /// unique ID, and the corresponding FunctionResponse uses the same ID. IDs
+  /// are not reused.
   Message toMessageWithToolIdQueue(Map<String, List<String>> toolCallIdQueue) {
     final role = this.role.messageRole;
     final parts = <Part>[];
     const uuid = Uuid();
     for (final part in this.parts) {
       if (part is gemini.FunctionCall) {
-        final callKey = '${part.name}:${jsonEncode(part.args)}';
+        final callKey = part.name; // Use only the function name
         // Always generate a new unique ID for each call
         final id = uuid.v4();
         toolCallIdQueue.putIfAbsent(callKey, () => <String>[]).add(id);
-        print(
-          'Synthesizing ToolPartKind.call with id: $id, name: ${part.name}, args: ${part.args}',
-        );
         final argsMap = Map<String, dynamic>.from(
           (part.args as Map).map((k, v) => MapEntry(k as String, v)),
         );
@@ -317,19 +315,18 @@ extension on gemini.Content {
           ),
         );
       } else if (part is gemini.FunctionResponse) {
-        // Match to the oldest outstanding call with the same name/args
+        // Match to the oldest outstanding call with the same name (FIFO)
         var id = '';
-        final callKey =
-            '${part.name}:${jsonEncode(part.response?['sound'] != null ? {'sound': part.response!['sound']} : {})}';
+        final callKey = part.name; // Use only the function name
         final queue = toolCallIdQueue[callKey];
         if (queue != null && queue.isNotEmpty) {
           id = queue.removeAt(0);
         } else {
-          id = uuid.v4(); // fallback, but this should be rare
+          throw StateError(
+            'No outstanding tool call to match FunctionResponse for function: '
+            '$callKey',
+          );
         }
-        print(
-          'Synthesizing ToolPartKind.result with id: $id, name: ${part.name}, result: ${part.response}',
-        );
         Map<String, dynamic> resultMap;
         if (part.response == null) {
           resultMap = <String, dynamic>{};
@@ -358,11 +355,13 @@ extension on gemini.Content {
         assert(false, 'Unhandled part type: ${part.runtimeType}, value: $part');
       }
     }
+
     assert(
       parts.length == this.parts.length,
       'Output parts length (${parts.length}) does not match input '
       'Content parts length (${this.parts.length})',
     );
+
     return Message(role: role, content: parts);
   }
 }

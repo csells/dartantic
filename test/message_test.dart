@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_ai/src/models/message.dart';
+import 'package:dartantic_ai/src/providers/implementation/provider_table.dart';
 import 'package:test/test.dart';
 
 // NOTE: some of these tests require environment variables to be set.
@@ -473,7 +474,7 @@ void main() {
     });
 
     Future<void> testGrowingHistoryWithProviders(
-      List<Provider> providers,
+      Iterable<Provider> providers,
       String testName,
     ) async {
       final tool = Tool(
@@ -507,8 +508,7 @@ Do not answer directly; always call the tool with the sound in question and retu
 ''';
       var history = <Message>[];
       var prompt = 'What animal says "moo"?';
-      for (var i = 0; i < providers.length; i++) {
-        final provider = providers[i];
+      for (final provider in providers) {
         final agent = Agent.provider(
           provider,
           tools: [tool],
@@ -590,6 +590,33 @@ Do not answer directly; always call the tool with the sound in question and retu
         GeminiProvider(),
         GeminiProvider(),
       ], 'Gemini→Gemini→Gemini→Gemini');
+    });
+
+    // use this to ensure that all new providers are history compatible
+    test('growing history with every unique provider by type', () async {
+      // get all providers from the provider table
+      final providers = [
+        for (final providerName in ProviderTable.providers.keys)
+          ProviderTable.providerFor(
+            ProviderSettings(
+              providerName: providerName,
+              modelName: null,
+              apiKey: null,
+            ),
+          ),
+      ];
+
+      // grab a set of providers unique by runtime type, i.e. GeminiProvider,
+      // OpenAiProvider, etc.
+      final typeToProvider = <String, Provider>{};
+      for (final provider in providers) {
+        typeToProvider[provider.runtimeType.toString()] = provider;
+      }
+
+      await testGrowingHistoryWithProviders(
+        typeToProvider.values,
+        'all providers',
+      );
     });
 
     Future<void> testToolResultReferencedInContext(Provider provider) async {

@@ -386,24 +386,6 @@ class OpenAiModel extends Model {
         }
       }
     }
-    // Instrumentation: print the translated OpenAI message history (plain text only)
-    print('--- OpenAI Message History ---');
-    for (var i = 0; i < result.length; i++) {
-      final m = result[i];
-      print('[$i] role: ${m.role}');
-      if (m.content != null) print('    content: ${m.content}');
-      if (m is openai.ChatCompletionAssistantMessage && m.toolCalls != null) {
-        for (final tc in m.toolCalls!) {
-          print(
-            '    toolCall: id=${tc.id}, name=${tc.function.name}, args=${tc.function.arguments}',
-          );
-        }
-      }
-      if (m is openai.ChatCompletionToolMessage) {
-        print('    toolCallId: ${m.toolCallId}');
-      }
-    }
-    print('-----------------------------');
     return result;
   }
 

@@ -320,39 +320,79 @@ class OpenAiModel extends Model {
 
   static List<openai.ChatCompletionMessage> _openaiMessagesFrom(
     List<Message> messages,
-  ) =>
-      messages.map((message) {
-        final contentString = message.content
-            .map((part) {
-              if (part is TextPart) {
-                return part.text;
-              } else if (part is MediaPart) {
-                return '[media: ${part.contentType ?? ''}] ${part.url ?? ''}';
-              } else if (part is ToolPart) {
-                return '[tool call: ${part.name ?? ''}]';
-              } else {
-                throw UnsupportedError(
-                  'Unknown part type: \\${part.runtimeType}',
-                );
-              }
-            })
-            .join(' ');
-
+  ) {
+    final result = <openai.ChatCompletionMessage>[];
+    for (final message in messages) {
+      // Gather tool calls and tool results
+      final toolCalls = <openai.ChatCompletionMessageToolCall>[];
+      ToolPart? toolResult;
+      final textParts = <String>[];
+      for (final part in message.content) {
+        if (part is TextPart) {
+          textParts.add(part.text);
+        } else if (part is MediaPart) {
+          textParts.add('[media: ${part.contentType ?? ''}] ${part.url ?? ''}');
+        } else if (part is ToolPart) {
+          if (part.kind == ToolPartKind.call) {
+            toolCalls.add(
+              openai.ChatCompletionMessageToolCall(
+                id: part.id ?? '',
+                type: openai.ChatCompletionMessageToolCallType.function,
+                function: openai.ChatCompletionMessageFunctionCall(
+                  name: part.name ?? '',
+                  arguments:
+                      part.arguments is String
+                          ? part.arguments
+                          : jsonEncode(part.arguments ?? {}),
+                ),
+              ),
+            );
+          } else if (part.kind == ToolPartKind.result) {
+            toolResult = part;
+          }
+        }
+      }
+      final contentString = textParts.join(' ');
+      if (toolResult != null) {
+        // Tool result: emit a tool role message
+        result.add(
+          openai.ChatCompletionMessage.tool(
+            toolCallId: toolResult.id ?? '',
+            content: jsonEncode(toolResult.result ?? {}),
+          ),
+        );
+      } else if (toolCalls.isNotEmpty) {
+        // Tool call: emit an assistant message with toolCalls
+        result.add(
+          openai.ChatCompletionMessage.assistant(
+            content: contentString.isNotEmpty ? contentString : null,
+            toolCalls: toolCalls,
+          ),
+        );
+      } else {
+        // Regular message
         switch (message.role) {
           case MessageRole.system:
-            return openai.ChatCompletionMessage.system(content: contentString);
+            result.add(
+              openai.ChatCompletionMessage.system(content: contentString),
+            );
           case MessageRole.user:
-            return openai.ChatCompletionMessage.user(
-              content: openai.ChatCompletionUserMessageContent.string(
-                contentString,
+            result.add(
+              openai.ChatCompletionMessage.user(
+                content: openai.ChatCompletionUserMessageContent.string(
+                  contentString,
+                ),
               ),
             );
           case MessageRole.model:
-            return openai.ChatCompletionMessage.assistant(
-              content: contentString,
+            result.add(
+              openai.ChatCompletionMessage.assistant(content: contentString),
             );
         }
-      }).toList();
+      }
+    }
+    return result;
+  }
 
   static List<Message> _messagesFrom(
     List<openai.ChatCompletionMessage> oiaMessages,
@@ -364,39 +404,67 @@ class OpenAiModel extends Model {
             openai.ChatCompletionMessageRole.system => MessageRole.system,
             openai.ChatCompletionMessageRole.user => MessageRole.user,
             openai.ChatCompletionMessageRole.assistant => MessageRole.model,
+            openai.ChatCompletionMessageRole.tool => MessageRole.model,
             _ => MessageRole.model,
           };
 
           final parts = <Part>[];
-          // Handle content as String or List<String>
-          if (message.content is String) {
-            parts.add(TextPart(message.content! as String));
-          } else if (message.content is List) {
-            for (final c in message.content! as List) {
-              if (c is String) {
-                parts.add(TextPart(c));
-              }
-            }
-          } else if (message.content
-              is openai.ChatCompletionUserMessageContent) {
-            final userContent =
-                message.content! as openai.ChatCompletionUserMessageContent;
-            parts.add(TextPart(userContent.value as String));
-          }
-          // Handle tool calls for assistant messages
-          if (message.role == openai.ChatCompletionMessageRole.assistant &&
-              message is openai.ChatCompletionAssistantMessage) {
-            final assistantMsg = message;
-            final toolCalls = assistantMsg.toolCalls;
-            if (toolCalls != null) {
-              for (final call in toolCalls) {
+          // Handle tool result messages (role: tool)
+          if (message.role == openai.ChatCompletionMessageRole.tool) {
+            // Tool result: parse content as JSON and create ToolPart(kind:
+            // result)
+            final content = message.content;
+            if (content is String && content.isNotEmpty) {
+              try {
+                final resultJson = jsonDecode(content);
                 parts.add(
                   ToolPart(
-                    id: call.id,
-                    name: call.function.name,
-                    arguments: call.function.arguments,
+                    kind: ToolPartKind.result,
+                    id:
+                        message is openai.ChatCompletionToolMessage
+                            ? message.toolCallId
+                            : null, // Set tool call ID if available
+                    name: null, // OpenAI doesn't provide tool name here
+                    result: resultJson,
                   ),
                 );
+              } on Exception catch (_) {
+                // If not valid JSON, just store as text
+                parts.add(TextPart(content));
+              }
+            }
+          } else {
+            // Handle content as String or List<String>
+            if (message.content is String) {
+              parts.add(TextPart(message.content! as String));
+            } else if (message.content is List) {
+              for (final c in message.content! as List) {
+                if (c is String) {
+                  parts.add(TextPart(c));
+                }
+              }
+            } else if (message.content
+                is openai.ChatCompletionUserMessageContent) {
+              final userContent =
+                  message.content! as openai.ChatCompletionUserMessageContent;
+              parts.add(TextPart(userContent.value as String));
+            }
+            // Handle tool calls for assistant messages
+            if (message.role == openai.ChatCompletionMessageRole.assistant &&
+                message is openai.ChatCompletionAssistantMessage) {
+              final assistantMsg = message;
+              final toolCalls = assistantMsg.toolCalls;
+              if (toolCalls != null) {
+                for (final call in toolCalls) {
+                  parts.add(
+                    ToolPart(
+                      kind: ToolPartKind.call,
+                      id: call.id,
+                      name: call.function.name,
+                      arguments: call.function.arguments,
+                    ),
+                  );
+                }
               }
             }
           }

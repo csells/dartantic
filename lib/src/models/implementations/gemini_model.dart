@@ -298,9 +298,26 @@ extension on gemini.Content {
         final dataUri = 'data:${part.mimeType};base64,$base64';
         parts.add(MediaPart(contentType: part.mimeType, url: dataUri));
       } else if (part is gemini.FunctionCall) {
-        parts.add(ToolPart(name: part.name, arguments: part.args));
+        parts.add(
+          ToolPart(
+            kind: ToolPartKind.call,
+            name: part.name,
+            arguments: part.args,
+          ),
+        );
+      } else if (part is gemini.FunctionResponse) {
+        parts.add(
+          ToolPart(
+            kind: ToolPartKind.result,
+            name: part.name,
+            result: part.response,
+          ),
+        );
       } else {
-        print('Unhandled part type: \\${part.runtimeType}, value: $part');
+        assert(
+          false,
+          'Unhandled part type: \\${part.runtimeType}, value: $part',
+        );
       }
     }
 
@@ -334,10 +351,15 @@ extension on Message {
             }
             return [gemini.DataPart(p.contentType ?? '', bytes)];
           }()
-        else if (p is ToolPart)
+        else if (p is ToolPart && p.kind == ToolPartKind.call)
           gemini.FunctionCall(
             p.name ?? '',
             p.arguments is Map<String, dynamic> ? p.arguments : {},
+          )
+        else if (p is ToolPart && p.kind == ToolPartKind.result)
+          gemini.FunctionResponse(
+            p.name ?? '',
+            p.result is Map<String, dynamic> ? p.result : {},
           )
         else
           throw UnsupportedError('Unknown part type: \\${p.runtimeType}'),

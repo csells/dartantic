@@ -377,26 +377,25 @@ void main() {
         final m = messages[i];
         print('Message #$i: role=${m.role}, content:');
         for (final part in m.content) {
-          if (part is TextPart) {
-            print('  TextPart: text="${part.text}"');
-          } else if (part is ToolPart) {
-            print(
-              '  ToolPart: name="${part.name}", arguments=${part.arguments}',
-            );
-          } else if (part is MediaPart) {
-            print(
-              '  MediaPart: contentType="${part.contentType}", url="${part.url}"',
-            );
-          } else {
-            print('  ${part.runtimeType}: value=$part');
-          }
+          print('  $part');
         }
       }
-      // Should include a tool call and a tool response in the message history
+
       final hasToolCall = messages.any(
-        (m) => m.content.any((p) => p is ToolPart),
+        (m) =>
+            m.content.any((p) => p is ToolPart && p.kind == ToolPartKind.call),
+      );
+      final hasToolResult = messages.any(
+        (m) => m.content.any(
+          (p) => p is ToolPart && p.kind == ToolPartKind.result,
+        ),
       );
       expect(hasToolCall, isTrue, reason: 'Should include a tool call message');
+      expect(
+        hasToolResult,
+        isTrue,
+        reason: 'Should include a tool result message',
+      );
       expect(
         messages.any((m) => m.role == MessageRole.model),
         isTrue,
@@ -404,9 +403,15 @@ void main() {
       );
       expect(
         messages.any(
-          (m) => m.content.whereType<TextPart>().any(
-            (p) => p.text.contains('hello world'),
-          ),
+          (m) =>
+              m.content.whereType<TextPart>().any(
+                (p) => p.text.contains('hello world'),
+              ) ||
+              m.content.whereType<ToolPart>().any(
+                (p) =>
+                    p.kind == ToolPartKind.result &&
+                    p.result.toString().contains('hello world'),
+              ),
         ),
         isTrue,
         reason: 'Should echo the message',
@@ -453,6 +458,195 @@ void main() {
       );
       final secondOutput = secondResponse.output.toLowerCase();
       expect(secondOutput, contains('blue'));
+    });
+
+    Future<void> testGrowingHistoryWithProviders(
+      List<Provider> providers,
+      String testName,
+    ) async {
+      final tool = Tool(
+        name: 'echo',
+        description: 'Echoes the input',
+        inputType:
+            {
+              'type': 'object',
+              'properties': {
+                'message': {'type': 'string'},
+              },
+              'required': ['message'],
+            }.toSchema(),
+        onCall: (input) async => {'echo': input['message']},
+      );
+      final schema = {
+        'type': 'object',
+        'properties': {
+          'animal': {'type': 'string'},
+          'sound': {'type': 'string'},
+        },
+        'required': ['animal', 'sound'],
+        'additionalProperties': false,
+      };
+      const systemPrompt = 'You are a test system prompt.';
+      var history = <Message>[
+        Message(
+          role: MessageRole.system,
+          content: [const TextPart(systemPrompt)],
+        ),
+      ];
+      var prompt = 'What animal says "moo"?';
+      for (var i = 0; i < providers.length; i++) {
+        final provider = providers[i];
+        final agent = Agent.provider(
+          provider,
+          tools: [tool],
+          systemPrompt: systemPrompt,
+          outputType: schema.toSchema(),
+          outputFromJson:
+              (json) => {'animal': json['animal'], 'sound': json['sound']},
+        );
+        final result = await agent.runFor<Map<String, dynamic>>(
+          prompt,
+          messages: history,
+        );
+        print('Provider: ${provider.displayName}, output: ${result.output}');
+        // Append the new messages to the history, skipping duplicate system
+        // prompt
+        final newMessages = result.messages;
+        if (newMessages.isNotEmpty &&
+            newMessages.first.role == MessageRole.system) {
+          history = [history.first, ...newMessages.skip(1)];
+        } else {
+          history = [...history, ...newMessages];
+        }
+        // Change the prompt for the next round
+        prompt = 'What animal says "quack"?';
+      }
+      // Final check: history should contain both tool calls and results, and be
+      // valid for both providers
+      expect(
+        history.any(
+          (m) => m.content.any(
+            (p) => p is ToolPart && p.kind == ToolPartKind.call,
+          ),
+        ),
+        isTrue,
+        reason: 'History should contain at least one tool call',
+      );
+      expect(
+        history.any(
+          (m) => m.content.any(
+            (p) => p is ToolPart && p.kind == ToolPartKind.result,
+          ),
+        ),
+        isTrue,
+        reason: 'History should contain at least one tool result',
+      );
+      expect(
+        history.any((m) => m.role == MessageRole.system),
+        isTrue,
+        reason: 'History should contain a system prompt',
+      );
+      expect(
+        history.any(
+          (m) => m.content.whereType<TextPart>().any(
+            (p) => p.text.contains('moo') || p.text.contains('quack'),
+          ),
+        ),
+        isTrue,
+        reason: 'History should contain animal sounds',
+      );
+    }
+
+    test('growing history Gemini→OpenAI→Gemini→OpenAI', () async {
+      await testGrowingHistoryWithProviders([
+        GeminiProvider(),
+        OpenAiProvider(),
+        GeminiProvider(),
+        OpenAiProvider(),
+      ], 'Gemini→OpenAI→Gemini→OpenAI');
+    });
+
+    test('growing history OpenAI→Gemini→OpenAI→Gemini', () async {
+      await testGrowingHistoryWithProviders([
+        OpenAiProvider(),
+        GeminiProvider(),
+        OpenAiProvider(),
+        GeminiProvider(),
+      ], 'OpenAI→Gemini→OpenAI→Gemini');
+    });
+
+    Future<void> testToolResultReferencedInContext(Provider provider) async {
+      final tool = Tool(
+        name: 'echo',
+        description: 'Echoes the input',
+        inputType:
+            {
+              'type': 'object',
+              'properties': {
+                'message': {'type': 'string'},
+              },
+              'required': ['message'],
+            }.toSchema(),
+        onCall: (input) async => {'echo': input['message']},
+      );
+      const systemPrompt = 'You are a test system prompt.';
+      // Step 1: Run initial tool call
+      final agent1 = Agent.provider(
+        provider,
+        tools: [tool],
+        systemPrompt: systemPrompt,
+      );
+      final responses1 = await agent1.run('Echo this: magic-value-123');
+      final history = responses1.messages;
+      // Debug: Print message history after first run
+      print(
+        '--- Debug: Message history after first agent run (provider: \\${provider.displayName}) ---',
+      );
+      for (var i = 0; i < history.length; i++) {
+        final m = history[i];
+        print('Message #$i: role=\\${m.role}, content:');
+        for (final part in m.content) {
+          print('  $part');
+        }
+      }
+      // Step 2: Ask a follow-up referencing the tool result
+      final agent2 = Agent.provider(
+        provider,
+        tools: [tool],
+        systemPrompt: systemPrompt,
+      );
+      const followup = 'What value did I ask you to echo?';
+      final responses2 = await agent2.run(followup, messages: history);
+      final output = responses2.output;
+      // Debug: Print follow-up output and message content
+      print(
+        '--- Debug: Follow-up output (provider: \\${provider.displayName}) ---',
+      );
+      print('Follow-up prompt: \\$followup');
+      print('Follow-up output: \\$output');
+      final followupMessages = responses2.messages;
+      print('--- Debug: Follow-up message history ---');
+      for (var i = 0; i < followupMessages.length; i++) {
+        final m = followupMessages[i];
+        print('Message #$i: role=\\${m.role}, content:');
+        for (final part in m.content) {
+          print('  $part');
+        }
+      }
+      expect(
+        output.toLowerCase(),
+        contains('magic-value-123'),
+        reason:
+            'The agent should reference the tool result from earlier in the '
+            'chat',
+      );
+    }
+
+    test('tool result is referenced in later chat (Gemini)', () async {
+      await testToolResultReferencedInContext(GeminiProvider());
+    });
+    test('tool result is referenced in later chat (OpenAI)', () async {
+      await testToolResultReferencedInContext(OpenAiProvider());
     });
   });
 }

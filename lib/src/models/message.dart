@@ -14,6 +14,15 @@ enum MessageRole {
   model,
 }
 
+/// Enum to distinguish between tool call and tool result parts.
+enum ToolPartKind {
+  /// A tool call.
+  call,
+
+  /// A tool result.
+  result,
+}
+
 /// Represents a message in a conversation, consisting of a role and a list of
 /// content parts.
 ///
@@ -129,13 +138,22 @@ class MediaPart extends Part {
 /// A tool call part of a message's content, representing a call to an external
 /// tool or function.
 class ToolPart extends Part {
-  /// Creates a [ToolPart] with the given tool call details.
-  const ToolPart({this.id, this.name, this.arguments, this.result});
+  /// Creates a [ToolPart] with the given tool call or result details.
+  const ToolPart({
+    required this.kind,
+    this.id,
+    this.name,
+    this.arguments,
+    this.result,
+  });
 
   /// Creates a [ToolPart] from a JSON map.
   factory ToolPart.fromJson(Map<String, dynamic> json) {
     final tool = json['tool'] as Map<String, dynamic>?;
+    final hasResult = tool?['result'] != null;
+    final kind = hasResult ? ToolPartKind.result : ToolPartKind.call;
     return ToolPart(
+      kind: kind,
       id: tool?['id'],
       name: tool?['name'],
       arguments: tool?['arguments'],
@@ -143,24 +161,38 @@ class ToolPart extends Part {
     );
   }
 
+  /// The kind of tool part: call or result.
+  final ToolPartKind kind;
+
   /// The unique identifier for the tool call.
   final String? id;
 
   /// The name of the tool being called.
   final String? name;
 
-  /// The arguments passed to the tool.
+  /// The arguments passed to the tool (for calls).
   final dynamic arguments;
 
-  /// The result returned from the tool call.
+  /// The result returned from the tool call (for results).
   final dynamic result;
 
   @override
   Map<String, dynamic> toJson() => {
-    'tool': {'id': id, 'name': name, 'arguments': arguments, 'result': result},
+    'tool': {
+      'kind': kind.name,
+      'id': id,
+      'name': name,
+      'arguments': arguments,
+      'result': result,
+    },
   };
 
   @override
-  String toString() =>
-      'ToolPart(id: $id, name: $name, arguments: $arguments, result: $result)';
+  String toString() => switch (kind) {
+    ToolPartKind.call =>
+      'ToolPart(kind: call, id: $id, name: $name, '
+          'arguments: $arguments)',
+    ToolPartKind.result =>
+      'ToolPart(kind: result, id: $id, name: $name, result: $result)',
+  };
 }

@@ -64,6 +64,10 @@ tools.
   using annotations (e.g., SotiSchema, JsonSerializable).
 - The system MUST support both OpenAI and Gemini providers, with API keys loaded
   from environment variables.
+- The system MUST serialize and deserialize message history in a
+  provider-agnostic way, so that message histories can be shared and replayed
+  seamlessly between different providers (e.g., OpenAI and Gemini) without loss
+  of tool call, tool result, or context information.
 - The system SHOULD support structured prompts via DotPrompt.
 - The system SHOULD allow custom providers to be added.
 - The system SHOULD provide clear error messages for missing API keys or

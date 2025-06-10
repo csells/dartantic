@@ -331,19 +331,16 @@ class OpenAiModel extends Model {
         if (part is TextPart) {
           textParts.add(part.text);
         } else if (part is MediaPart) {
-          textParts.add('[media: ${part.contentType ?? ''}] ${part.url ?? ''}');
+          textParts.add('[media: ${part.contentType}] ${part.url}');
         } else if (part is ToolPart) {
           if (part.kind == ToolPartKind.call) {
             toolCalls.add(
               openai.ChatCompletionMessageToolCall(
-                id: part.id ?? '',
+                id: part.id,
                 type: openai.ChatCompletionMessageToolCallType.function,
                 function: openai.ChatCompletionMessageFunctionCall(
-                  name: part.name ?? '',
-                  arguments:
-                      part.arguments is String
-                          ? part.arguments
-                          : jsonEncode(part.arguments ?? {}),
+                  name: part.name,
+                  arguments: jsonEncode(part.arguments),
                 ),
               ),
             );
@@ -357,8 +354,8 @@ class OpenAiModel extends Model {
         // Tool result: emit a tool role message
         result.add(
           openai.ChatCompletionMessage.tool(
-            toolCallId: toolResult.id ?? '',
-            content: jsonEncode(toolResult.result ?? {}),
+            toolCallId: toolResult.id,
+            content: jsonEncode(toolResult.result),
           ),
         );
       } else if (toolCalls.isNotEmpty) {
@@ -397,79 +394,88 @@ class OpenAiModel extends Model {
   static List<Message> _messagesFrom(
     List<openai.ChatCompletionMessage> oiaMessages,
   ) {
-    final result =
-        oiaMessages.map((message) {
-          // Map OpenAI role to MessageRole
-          final role = switch (message.role) {
-            openai.ChatCompletionMessageRole.system => MessageRole.system,
-            openai.ChatCompletionMessageRole.user => MessageRole.user,
-            openai.ChatCompletionMessageRole.assistant => MessageRole.model,
-            openai.ChatCompletionMessageRole.tool => MessageRole.model,
-            _ => MessageRole.model,
-          };
-
-          final parts = <Part>[];
-          // Handle tool result messages (role: tool)
-          if (message.role == openai.ChatCompletionMessageRole.tool) {
-            // Tool result: parse content as JSON and create ToolPart(kind:
-            // result)
-            final content = message.content;
-            if (content is String && content.isNotEmpty) {
-              try {
-                final resultJson = jsonDecode(content);
-                parts.add(
-                  ToolPart(
-                    kind: ToolPartKind.result,
-                    id:
-                        message is openai.ChatCompletionToolMessage
-                            ? message.toolCallId
-                            : null, // Set tool call ID if available
-                    name: null, // OpenAI doesn't provide tool name here
-                    result: resultJson,
-                  ),
-                );
-              } on Exception catch (_) {
-                // If not valid JSON, just store as text
-                parts.add(TextPart(content));
-              }
-            }
-          } else {
-            // Handle content as String or List<String>
-            if (message.content is String) {
-              parts.add(TextPart(message.content! as String));
-            } else if (message.content is List) {
-              for (final c in message.content! as List) {
-                if (c is String) {
-                  parts.add(TextPart(c));
-                }
-              }
-            } else if (message.content
-                is openai.ChatCompletionUserMessageContent) {
-              final userContent =
-                  message.content! as openai.ChatCompletionUserMessageContent;
-              parts.add(TextPart(userContent.value as String));
-            }
-            // Handle tool calls for assistant messages
-            if (message.role == openai.ChatCompletionMessageRole.assistant &&
-                message is openai.ChatCompletionAssistantMessage) {
-              final assistantMsg = message;
-              final toolCalls = assistantMsg.toolCalls;
-              if (toolCalls != null) {
-                for (final call in toolCalls) {
-                  parts.add(
-                    ToolPart(
-                      kind: ToolPartKind.call,
-                      id: call.id,
-                      name: call.function.name,
-                      arguments: call.function.arguments,
-                    ),
-                  );
-                }
-              }
+    // Map tool call IDs to tool names
+    final toolCallIdToName = <String, String>{};
+    final result = <Message>[];
+    for (final message in oiaMessages) {
+      final role = switch (message.role) {
+        openai.ChatCompletionMessageRole.system => MessageRole.system,
+        openai.ChatCompletionMessageRole.user => MessageRole.user,
+        openai.ChatCompletionMessageRole.assistant => MessageRole.model,
+        openai.ChatCompletionMessageRole.tool => MessageRole.model,
+        _ => MessageRole.model,
+      };
+      final parts = <Part>[];
+      if (message.role == openai.ChatCompletionMessageRole.tool) {
+        // Tool result: parse content as JSON and create ToolPart(kind: result)
+        final content = message.content;
+        if (content is String && content.isNotEmpty) {
+          try {
+            final resultJson = jsonDecode(content);
+            final toolCallId =
+                message is openai.ChatCompletionToolMessage
+                    ? message.toolCallId
+                    : '';
+            final toolName = toolCallIdToName[toolCallId] ?? '';
+            parts.add(
+              ToolPart(
+                kind: ToolPartKind.result,
+                id: toolCallId,
+                name: toolName,
+                result:
+                    resultJson is Map<String, dynamic>
+                        ? resultJson
+                        : <String, dynamic>{},
+              ),
+            );
+          } on Exception catch (_) {
+            parts.add(TextPart(content));
+          }
+        }
+      } else {
+        if (message.content is String) {
+          parts.add(TextPart(message.content! as String));
+        } else if (message.content is List) {
+          for (final c in message.content! as List) {
+            if (c is String) {
+              parts.add(TextPart(c));
             }
           }
-          return Message(role: role, content: parts);
-        }).toList();
+        } else if (message.content is openai.ChatCompletionUserMessageContent) {
+          final userContent =
+              message.content! as openai.ChatCompletionUserMessageContent;
+          parts.add(TextPart(userContent.value as String));
+        }
+        if (message.role == openai.ChatCompletionMessageRole.assistant &&
+            message is openai.ChatCompletionAssistantMessage) {
+          final assistantMsg = message;
+          final toolCalls = assistantMsg.toolCalls;
+          if (toolCalls != null) {
+            for (final call in toolCalls) {
+              toolCallIdToName[call.id] = call.function.name;
+              parts.add(
+                ToolPart(
+                  kind: ToolPartKind.call,
+                  id: call.id,
+                  name: call.function.name,
+                  arguments: () {
+                    try {
+                      final decoded = jsonDecode(call.function.arguments);
+                      return decoded is Map<String, dynamic>
+                          ? decoded
+                          : <String, dynamic>{};
+                    } on Exception catch (_) {
+                      return <String, dynamic>{};
+                    }
+                  }(),
+                ),
+              );
+            }
+          }
+        }
+      }
+      result.add(Message(role: role, content: parts));
+    }
 
     assert(
       result.length == oiaMessages.length,

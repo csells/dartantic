@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:google_generative_ai/google_generative_ai.dart' as gemini;
 import 'package:json_schema/json_schema.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../agent/agent_response.dart';
 import '../../agent/tool.dart';
@@ -290,6 +291,7 @@ extension on gemini.Content {
   Message get message {
     final role = this.role.messageRole;
     final parts = <Part>[];
+    const uuid = Uuid();
     for (final part in this.parts) {
       if (part is gemini.TextPart) {
         parts.add(TextPart(part.text));
@@ -298,19 +300,35 @@ extension on gemini.Content {
         final dataUri = 'data:${part.mimeType};base64,$base64';
         parts.add(MediaPart(contentType: part.mimeType, url: dataUri));
       } else if (part is gemini.FunctionCall) {
+        Map<String, dynamic> argsMap;
+        argsMap = Map<String, dynamic>.from(
+          (part.args as Map).map((k, v) => MapEntry(k as String, v)),
+        );
         parts.add(
           ToolPart(
             kind: ToolPartKind.call,
+            id: uuid.v4(),
             name: part.name,
-            arguments: part.args,
+            arguments: argsMap,
           ),
         );
       } else if (part is gemini.FunctionResponse) {
+        Map<String, dynamic> resultMap;
+        if (part.response == null) {
+          resultMap = <String, dynamic>{};
+        } else if (part.response is Map) {
+          resultMap = Map<String, dynamic>.from(
+            (part.response! as Map).map((k, v) => MapEntry(k as String, v)),
+          );
+        } else {
+          resultMap = <String, dynamic>{};
+        }
         parts.add(
           ToolPart(
             kind: ToolPartKind.result,
+            id: uuid.v4(),
             name: part.name,
-            result: part.response,
+            result: resultMap,
           ),
         );
       } else {
@@ -339,8 +357,9 @@ extension on Message {
           gemini.TextPart(p.text)
         else if (p is MediaPart)
           ...() {
-            final url = p.url ?? '';
-            Uint8List? bytes;
+            final url = p.url;
+            final contentType = p.contentType;
+            Uint8List bytes;
             if (url.startsWith('data:')) {
               final base64Str = url.split(',').last;
               bytes = Uint8List.fromList(
@@ -349,18 +368,12 @@ extension on Message {
             } else {
               bytes = Uint8List(0);
             }
-            return [gemini.DataPart(p.contentType ?? '', bytes)];
+            return [gemini.DataPart(contentType, bytes)];
           }()
         else if (p is ToolPart && p.kind == ToolPartKind.call)
-          gemini.FunctionCall(
-            p.name ?? '',
-            p.arguments is Map<String, dynamic> ? p.arguments : {},
-          )
+          gemini.FunctionCall(p.name, p.arguments)
         else if (p is ToolPart && p.kind == ToolPartKind.result)
-          gemini.FunctionResponse(
-            p.name ?? '',
-            p.result is Map<String, dynamic> ? p.result : {},
-          )
+          gemini.FunctionResponse(p.name, p.result)
         else
           throw UnsupportedError('Unknown part type: \\${p.runtimeType}'),
     ];

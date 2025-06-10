@@ -11,6 +11,7 @@ dependencies:
   google_generative_ai: ^0.4.7
   json_schema: ^5.2.1
   openai_dart: ^0.4.5
+  uuid: ^4.3.3
 
 dev_dependencies:
   all_lint_rules_community: ^0.0.43

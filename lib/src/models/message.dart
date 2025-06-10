@@ -112,19 +112,28 @@ class TextPart extends Part {
 /// A media part of a message's content, such as an image or video.
 class MediaPart extends Part {
   /// Creates a [MediaPart] with the given [contentType] and [url].
-  const MediaPart({this.contentType, this.url});
+  MediaPart({required this.contentType, required this.url})
+    : assert(contentType.isNotEmpty, 'MediaPart contentType must not be empty'),
+      assert(url.isNotEmpty, 'MediaPart url must not be empty');
 
   /// Creates a [MediaPart] from a JSON map.
   factory MediaPart.fromJson(Map<String, dynamic> json) {
     final media = json['media'] as Map<String, dynamic>?;
-    return MediaPart(contentType: media?['contentType'], url: media?['url']);
+    final contentType = media?['contentType'] as String? ?? '';
+    final url = media?['url'] as String? ?? '';
+    assert(
+      contentType.isNotEmpty,
+      'MediaPart contentType must not be empty (fromJson)',
+    );
+    assert(url.isNotEmpty, 'MediaPart url must not be empty (fromJson)');
+    return MediaPart(contentType: contentType, url: url);
   }
 
   /// The MIME type of the media (e.g., 'image/jpeg').
-  final String? contentType;
+  final String contentType;
 
   /// The URL or data URI of the media.
-  final String? url;
+  final String url;
 
   @override
   Map<String, dynamic> toJson() => {
@@ -139,25 +148,41 @@ class MediaPart extends Part {
 /// tool or function.
 class ToolPart extends Part {
   /// Creates a [ToolPart] with the given tool call or result details.
-  const ToolPart({
+  ToolPart({
     required this.kind,
-    this.id,
-    this.name,
-    this.arguments,
-    this.result,
-  });
+    required this.id,
+    required this.name,
+    this.arguments = const {},
+    this.result = const {},
+  }) : assert(id.isNotEmpty, 'ToolPart id must not be empty'),
+       assert(name.isNotEmpty, 'ToolPart name must not be empty');
 
   /// Creates a [ToolPart] from a JSON map.
   factory ToolPart.fromJson(Map<String, dynamic> json) {
     final tool = json['tool'] as Map<String, dynamic>?;
     final hasResult = tool?['result'] != null;
     final kind = hasResult ? ToolPartKind.result : ToolPartKind.call;
+    final id = tool?['id'] as String? ?? '';
+    final name = tool?['name'] as String? ?? '';
+    var arguments = <String, dynamic>{};
+    if (tool != null && tool['arguments'] is Map) {
+      arguments = Map<String, dynamic>.from(tool['arguments'] as Map);
+    }
+    var result = <String, dynamic>{};
+    if (tool != null && tool['result'] is Map) {
+      result = Map<String, dynamic>.from(tool['result'] as Map);
+    }
+    assert(id.isNotEmpty, 'ToolPart id must not be null or empty (fromJson)');
+    assert(
+      name.isNotEmpty,
+      'ToolPart name must not be null or empty (fromJson)',
+    );
     return ToolPart(
       kind: kind,
-      id: tool?['id'],
-      name: tool?['name'],
-      arguments: tool?['arguments'],
-      result: tool?['result'],
+      id: id,
+      name: name,
+      arguments: arguments,
+      result: result,
     );
   }
 
@@ -165,16 +190,16 @@ class ToolPart extends Part {
   final ToolPartKind kind;
 
   /// The unique identifier for the tool call.
-  final String? id;
+  final String id;
 
   /// The name of the tool being called.
-  final String? name;
+  final String name;
 
   /// The arguments passed to the tool (for calls).
-  final dynamic arguments;
+  final Map<String, dynamic> arguments;
 
   /// The result returned from the tool call (for results).
-  final dynamic result;
+  final Map<String, dynamic> result;
 
   @override
   Map<String, dynamic> toJson() => {

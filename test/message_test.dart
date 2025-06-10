@@ -427,7 +427,7 @@ void main() {
       () => testToolCallHistory(GeminiProvider()),
     );
 
-    test('context is maintained across chat responses (OpenAI)', () async {
+    test('context is maintained across chat responses: OpenAI', () async {
       final agent = Agent.provider(
         OpenAiProvider(),
         systemPrompt: 'You are a helpful assistant.',
@@ -443,7 +443,7 @@ void main() {
       final secondOutput = secondResponse.output.toLowerCase();
       expect(secondOutput, contains('blue'));
     });
-    test('context is maintained across chat responses (Gemini)', () async {
+    test('context is maintained across chat responses: Gemini', () async {
       final agent = Agent.provider(
         GeminiProvider(),
         systemPrompt: 'You are a helpful assistant.',
@@ -642,10 +642,10 @@ void main() {
       );
     }
 
-    test('tool result is referenced in later chat (Gemini)', () async {
+    test('tool result is referenced in later chat: Gemini', () async {
       await testToolResultReferencedInContext(GeminiProvider());
     });
-    test('tool result is referenced in later chat (OpenAI)', () async {
+    test('tool result is referenced in later chat: OpenAI', () async {
       await testToolResultReferencedInContext(OpenAiProvider());
     });
   });

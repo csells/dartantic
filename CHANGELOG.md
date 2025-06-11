@@ -1,3 +1,9 @@
+## 0.4.0
+- Streaming responses via `Agent.runStream` and related methods.
+- Multi-turn chat support
+- Provider switching: seamlessly alternate between multiple providers in a
+  single conversation, with full context and tool call/result compatibility.
+
 ## 0.3.0
 
 - added [dotprompt_dart](https://pub.dev/packages/dotprompt_dart) package

@@ -1,3 +1,14 @@
+## 0.5.0
+- Embedding generation: Add methods to generate vector embeddings for text:
+  - `Future<Float64List> createEmbedding(String text, {EmbeddingType type})`
+  - Introduce `EmbeddingType` enum (document, query).
+  - `Agent.cosineSimilarity()` static method for comparing embeddings.
+  - Updated `main.dart` with examples for embedding generation and similarity
+    checks.
+  - Updated `main.dart` with examples for streaming, multi-turn chat, and
+    provider switching from the previous release (which I forgot to do in that
+    release!)
+
 ## 0.4.0
 - Streaming responses via `Agent.runStream` and related methods.
 - Multi-turn chat support

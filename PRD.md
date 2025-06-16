@@ -93,7 +93,8 @@ tools.
   - JSON schema output
   - Tool usage (time, temperature, etc.)
   - Provider switching (OpenAI, Gemini)
-  - DotPrompt usage 
+  - DotPrompt usage
+  - MCP server integration (remote connection, tool discovery, execution) 
 
 ## Milestones
 
@@ -194,6 +195,9 @@ tools.
   - Type-safe tool execution - MCP tools return `Map<String, dynamic>` like
     local tools
   - Agent initialization remains synchronous while MCP tool discovery is async
+  - Comprehensive integration tests with live remote MCP server (Hugging Face)
+    verify connection, tool discovery, execution, error handling, and Agent
+    integration
 
 ### Milestone 6: Dartantic provider for Flutter AI Toolkit
 - [ ] Implement the `LlmProvider` interface in terms of `Agent`

@@ -10,18 +10,22 @@ Only supporting Gemini and OpenAI models via API keys in this limited release.
 ## Features
 The following are the target features for this package:
 - [x] Multi-Model Support
-- [x] Create agents from model strings (e.g. `openai:gpt-4o`) or typed
-  providers (e.g. `GeminiProvider()`)
+- [x] Create agents from model strings (e.g. `openai:gpt-4o`) or typed providers
+  (e.g. `GeminiProvider()`)
 - [x] Automatically check environment for API key if none is provided (not web
   compatible)
 - [x] Streaming string output via `Agent.runStream`
-- [x] Multi-turn chat/message history support via the `messages` parameter and the `Message` class (with roles and content types)
+- [x] Multi-turn chat/message history support via the `messages` parameter and
+  the `Message` class (with roles and content types)
 - [x] Typed output via `Agent.runFor`
 - [x] Define tools and their inputs/outputs easily
 - [x] Automatically generate LLM-specific tool/output schemas
 - [x] Bring your own provider
 - [x] Execute tools with validated inputs
-- [x] Embedding generation with `Agent.createEmbedding` and cosine similarity utilities
+- [x] Embedding generation with `Agent.createEmbedding` and cosine similarity
+  utilities
+- [x] MCP (Model Context Protocol) server support for integrating external tools
+  from local and remote servers
 - [ ] Logging control via dev.log or logging package levels
 - [ ] Chains and Sequential Execution
 - [ ] JSON Mode, Functions Mode, Flexible Decoding
@@ -370,7 +374,8 @@ void main() async {
 
 ### Message Construction Convenience Methods
 
-dartantic_ai provides several convenience methods to simplify creating messages and content:
+dartantic_ai provides several convenience methods to simplify creating messages
+and content:
 
 #### Content Type Alias and Text Creation
 
@@ -434,7 +439,9 @@ void main() async {
 
 ## Embedding Generation
 
-dartantic_ai supports generating vector embeddings for text using both OpenAI and Gemini providers. Embeddings are useful for semantic search, clustering, and building RAG (Retrieval-Augmented Generation) applications.
+dartantic_ai supports generating vector embeddings for text using both OpenAI
+and Gemini providers. Embeddings are useful for semantic search, clustering, and
+building RAG (Retrieval-Augmented Generation) applications.
 
 ### Basic Embedding Usage
 
@@ -464,7 +471,8 @@ void main() async {
 
 ### Embedding Similarity and Search
 
-Use the built-in cosine similarity function to compare embeddings for semantic search:
+Use the built-in cosine similarity function to compare embeddings for semantic
+search:
 
 ```dart
 import 'package:dartantic_ai/dartantic_ai.dart';
@@ -497,7 +505,8 @@ void main() async {
 
 ### Cross-Provider Embedding Support
 
-Both OpenAI and Gemini providers support embedding generation with consistent APIs:
+Both OpenAI and Gemini providers support embedding generation with consistent
+APIs:
 
 ```dart
 import 'package:dartantic_ai/dartantic_ai.dart';
@@ -522,13 +531,89 @@ void main() async {
 
 ## Provider Switching
 
-dartantic_ai supports seamless switching between OpenAI and Gemini providers within a single conversation. You can alternate between providers (e.g., OpenAI → Gemini → OpenAI) and the message history—including tool calls and tool results—remains compatible and threaded correctly. This enables robust multi-provider workflows, such as starting a conversation with one provider and continuing it with another, or leveraging provider-specific strengths in a single chat.
+dartantic_ai supports seamless switching between OpenAI and Gemini providers
+within a single conversation. You can alternate between providers (e.g., OpenAI
+→ Gemini → OpenAI) and the message history—including tool calls and tool
+results—remains compatible and threaded correctly. This enables robust
+multi-provider workflows, such as starting a conversation with one provider and
+continuing it with another, or leveraging provider-specific strengths in a
+single chat.
 
 - Message history is serialized and deserialized in a provider-agnostic way.
 - Tool call and result IDs are stable and compatible across providers.
-- Integration tests verify that tool calls and results are preserved and threaded correctly when switching providers.
+- Integration tests verify that tool calls and results are preserved and
+  threaded correctly when switching providers.
 
-This feature allows you to build advanced, resilient LLM applications that can leverage multiple providers transparently.
+This feature allows you to build advanced, resilient LLM applications that can
+leverage multiple providers transparently.
+
+## MCP (Model Context Protocol) Server Support
+
+dartantic_ai supports connecting to MCP servers to extend Agent capabilities
+with external tools. MCP servers can run locally (via stdio) or remotely (via
+HTTP), providing access to file systems, databases, web APIs, and other external
+resources.
+
+### MCP Server Features
+
+- **Dual Transport Support**: Connect to local servers via stdio or remote
+  servers via HTTP
+- **Lazy Connection**: Servers connect automatically when first accessed
+- **Tool Discovery**: Automatically discover and convert MCP tools to Agent
+  Tools
+- **Type Safety**: MCP tools integrate seamlessly with local tools, returning
+  `Map<String, dynamic>`
+- **Resource Management**: Proper cleanup with `disconnect()` method
+
+
+### Basic MCP Usage
+
+Connect to remote MCP servers and use their tools with your Agent:
+
+```dart
+import 'package:dartantic_ai/dartantic_ai.dart';
+
+void main() async {
+  // Connect to a remote MCP server
+  final mcpServer = McpServer.remote(
+    'huggingface',
+    url: 'https://huggingface.co/mcp',
+  );
+
+  // Create local tools
+  final localTool = Tool(
+    name: 'local_time',
+    description: 'Returns the current local time',
+    onCall: (args) async => {'result': DateTime.now().toIso8601String()},
+  );
+
+  try {
+    // Discover tools from the MCP server
+    final mcpTools = await mcpServer.getTools();
+    print('Found ${mcpTools.length} tools from MCP server');
+
+    // Combine MCP tools with local tools
+    final allTools = [localTool, ...mcpTools];
+
+    // Create agent with combined tools
+    final agent = Agent(
+      'openai',
+      systemPrompt: 'You are a helpful assistant with access to various tools.',
+      tools: allTools,
+    );
+
+    // Use the agent - it can call both local and MCP tools
+    final response = await agent.run(
+      'What time is it and can you help me with some information from Hugging Face?'
+    );
+    print(response.output);
+  } finally {
+    // Clean up MCP server connection
+    await mcpServer.disconnect();
+  }
+}
+```
+
 
 ### Example: Switching Providers in a Conversation
 

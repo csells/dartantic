@@ -1,4 +1,6 @@
-## TODO
+## 0.6.0
+
+- MCP (Model Context Protocol) Server Support
 - Message construction convenience methods:
   - Added `Content` type alias for `List<Part>` to improve readability
   - Added convenience constructors for `Message`: `Message.system()`,
@@ -10,17 +12,11 @@
   stand to look at `inputType` and `outputType` in the code anymore!
 
 ## 0.5.0
-- Embedding generation: Add methods to generate vector embeddings for text:
-  - `Future<Float64List> createEmbedding(String text, {EmbeddingType type})`
-  - Introduce `EmbeddingType` enum (document, query).
-  - `Agent.cosineSimilarity()` static method for comparing embeddings.
-  - Updated `main.dart` with examples for embedding generation and similarity
-    checks.
-  - Updated `main.dart` with examples for streaming, multi-turn chat, and
-    provider switching from the previous release (which I forgot to do in that
-    release!)
+
+- Embedding generation: Add methods to generate vector embeddings for text
 
 ## 0.4.0
+
 - Streaming responses via `Agent.runStream` and related methods.
 - Multi-turn chat support
 - Provider switching: seamlessly alternate between multiple providers in a

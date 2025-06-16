@@ -10,6 +10,7 @@
     `ToolPart.result()`
 - Breaking change: inputType/outputType to inputSchema/outputSchema; I couldn't
   stand to look at `inputType` and `outputType` in the code anymore!
+- Add logging support (defaults to off) and a logging example
 
 ## 0.5.0
 

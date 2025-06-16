@@ -49,15 +49,15 @@ class Message {
 
   /// Creates a system message with the given [content].
   Message.system(Content content)
-      : this(role: MessageRole.system, content: content);
+    : this(role: MessageRole.system, content: content);
 
   /// Creates a user message with the given [content].
   Message.user(Content content)
-      : this(role: MessageRole.user, content: content);
+    : this(role: MessageRole.user, content: content);
 
   /// Creates a model message with the given [content].
   Message.model(Content content)
-      : this(role: MessageRole.model, content: content);
+    : this(role: MessageRole.model, content: content);
 
   /// The role of the message (system, user, or model).
   final MessageRole role;
@@ -201,31 +201,21 @@ class ToolPart extends Part {
     );
   }
 
-  /// Creates a tool call [ToolPart] with the given [id], [name], and 
+  /// Creates a tool call [ToolPart] with the given [id], [name], and
   /// [arguments].
   ToolPart.call({
     required String id,
     required String name,
     Map<String, dynamic> arguments = const {},
-  }) : this(
-          kind: ToolPartKind.call,
-          id: id,
-          name: name,
-          arguments: arguments,
-        );
+  }) : this(kind: ToolPartKind.call, id: id, name: name, arguments: arguments);
 
-  /// Creates a tool result [ToolPart] with the given [id], [name], and 
+  /// Creates a tool result [ToolPart] with the given [id], [name], and
   /// [result].
   ToolPart.result({
     required String id,
     required String name,
     Map<String, dynamic> result = const {},
-  }) : this(
-          kind: ToolPartKind.result,
-          id: id,
-          name: name,
-          result: result,
-        );
+  }) : this(kind: ToolPartKind.result, id: id, name: name, result: result);
 
   /// The kind of tool part: call or result.
   final ToolPartKind kind;

@@ -185,6 +185,34 @@ void main() {
         expect(result['result'], contains('Result: 8'));
         await localServer.disconnect();
       });
+
+      test('can use local MCP server via Agent with prompt', () async {
+        final localServer = McpServer.local(
+          'test-mcp-server',
+          command: 'dart',
+          args: ['test/test_mcp_server/bin/test_mcp_server.dart'],
+        );
+
+        // Get tools from the local server
+        final mcpTools = await localServer.getTools();
+        expect(mcpTools, isNotEmpty);
+
+        // Create an Agent with the local MCP server tools
+        final agent = Agent(
+          'openai:gpt-4o-mini',
+          tools: mcpTools,
+          systemPrompt:
+              'You are a helpful calculator. '
+              'Use the available tools to perform calculations.',
+        );
+
+        // Test that the Agent can use the local MCP server tool via prompt
+        final response = await agent.run('Calculate 15 + 27 for me');
+
+        // Verify the agent used the MCP tool and got the right result
+        expect(response.output, contains('42')); // 15 + 27 = 42
+        await localServer.disconnect();
+      });
     });
 
     group('integration with Agent', () {

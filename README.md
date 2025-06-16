@@ -608,7 +608,7 @@ resources.
 - **Resource Management**: Proper cleanup with `disconnect()` method
 
 
-### Basic MCP Usage
+### Remote MCP Server Usage
 
 Connect to remote MCP servers and use their tools with your Agent:
 
@@ -634,6 +634,37 @@ void main() async {
     await agent.runStream(query).map((r) => stdout.write(r.output)).drain();
   } finally {
     await huggingFace.disconnect();
+  }
+}
+```
+
+### Local MCP Server Usage
+
+Connect to local MCP servers running as separate processes:
+
+```dart
+import 'package:dartantic_ai/dartantic_ai.dart';
+
+void main() async {
+  // Connect to a local MCP server (e.g., a calculator server)
+  final calculatorServer = McpServer.local(
+    'calculator',
+    command: 'dart',
+    args: ['run', 'calculator_mcp_server.dart'],
+  );
+
+  final agent = Agent(
+    'openai',
+    systemPrompt: 'You are a helpful calculator assistant. '
+        'Use the available tools to perform calculations.',
+    tools: [...await calculatorServer.getTools()],
+  );
+
+  try {
+    final result = await agent.run('What is 15 multiplied by 27?');
+    print(result.output); // The agent will use the calculator tool and provide the answer
+  } finally {
+    await calculatorServer.disconnect();
   }
 }
 ```

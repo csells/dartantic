@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'dart:developer' as dev;
 import 'dart:typed_data';
 
 import 'package:json_schema/json_schema.dart';
 import 'package:openai_dart/openai_dart.dart' as openai;
 
 import '../../../dartantic_ai.dart';
+import '../../utils.dart';
 import '../interface/model.dart';
 
 /// Implementation of [Model] that uses OpenAI's API.
@@ -101,14 +101,14 @@ class OpenAiModel extends Model {
           isFinished = true;
         }
 
-        dev.log(
+        log.fine(
           '[OpenAiModel] Raw delta: $delta, '
           'finishReason: ${choice.finishReason}',
         );
 
         // Handle content streaming
         if (delta.content != null) {
-          dev.log('[OpenAiModel] Yielding content: ${delta.content!}');
+          log.fine('[OpenAiModel] Yielding content: ${delta.content!}');
           assistantBuffer.write(delta.content);
           yield AgentResponse(
             output: delta.content!,
@@ -136,7 +136,7 @@ class OpenAiModel extends Model {
             final currentId = toolCallIdByIndex[index];
             if (currentId != null && args != null) {
               toolCallBuffers[currentId]!.args.write(args);
-              dev.log(
+              log.fine(
                 '[OpenAiModel] Tool call received: index=$index, '
                 'id=$currentId, name=${toolCallBuffers[currentId]!.name}, '
                 'args=$args',
@@ -171,7 +171,7 @@ class OpenAiModel extends Model {
 
       // If the model has finished its turn and there are no tool calls, break.
       if (isFinished && toolCallBuffers.isEmpty) {
-        dev.log('[OpenAiModel] Finished and no tool calls, breaking loop.');
+        log.fine('[OpenAiModel] Finished and no tool calls, breaking loop.');
         break;
       }
 
@@ -210,7 +210,7 @@ class OpenAiModel extends Model {
         final toolCallName = entry.value.name;
         final toolCallArgs = entry.value.args.toString();
         if (toolCallArgs.trim().isEmpty) continue; // skip empty args
-        dev.log(
+        log.fine(
           '[OpenAiModel] Calling tool: id=$toolCallId, name=$toolCallName, '
           'args=$toolCallArgs',
         );
@@ -218,7 +218,7 @@ class OpenAiModel extends Model {
         final result = await _callTool(toolCallName, args);
 
         // Add the tool response to the messages
-        dev.log(
+        log.fine(
           '[OpenAiModel] Adding tool response to messages: id=$toolCallId, '
           'result=${jsonEncode(result)}',
         );
@@ -276,7 +276,7 @@ class OpenAiModel extends Model {
       result = {'error': ex.toString()};
     }
 
-    dev.log('Tool: $name($args)= $result');
+    log.fine('Tool: $name($args)= $result');
     return result;
   }
 

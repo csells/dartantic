@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:developer' as dev;
 import 'dart:typed_data';
 
 import 'package:google_generative_ai/google_generative_ai.dart' as gemini;
@@ -10,6 +9,7 @@ import '../../agent/agent_response.dart';
 import '../../agent/embedding_type.dart';
 import '../../agent/tool.dart';
 import '../../json_schema_extension.dart';
+import '../../utils.dart';
 import '../interface/model.dart';
 import '../message.dart';
 
@@ -149,7 +149,7 @@ class GeminiModel extends Model {
       result = {'error': ex.toString()};
     }
 
-    dev.log('Tool: $name($args)= $result');
+    log.fine('Tool: $name($args)= $result');
     return result;
   }
 

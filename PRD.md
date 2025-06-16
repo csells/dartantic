@@ -29,12 +29,13 @@ tools.
 - Easy tool definition with typed input/output.
 - Automatic LLM-specific tool/output schema generation.
 - Custom provider support (bring your own provider).
+- Logging support using the standard Dart `logging` package with configurable
+  levels.
 - (Planned) Tool execution with validated inputs.
 - (Planned) Chains and sequential execution.
 - (Planned) JSON mode, functions mode, flexible decoding.
 - (Planned) Assistant/agent loop utilities.
 - (Planned) Per-call usage statistics.
-- (Planned) Instrumentation with dev.log or logging package.
 
 ## User Stories
 - As a developer, I want to create an agent with a system prompt and run a
@@ -199,16 +200,29 @@ tools.
     verify connection, tool discovery, execution, error handling, and Agent
     integration
 
-### Milestone 6: Dartantic provider for Flutter AI Toolkit
+### Milestone 6: Logging and Instrumentation
+- [x] **Logging Support**: Implemented structured logging using the
+  standard Dart `logging` package for debugging and monitoring:
+  - Users can configure logging by setting up listeners:
+    ```dart
+    import 'package:logging/logging.dart';
+    
+    // Configure logging to see dartantic_ai internal operations
+    Logger.root.level = Level.FINE;
+    Logger.root.onRecord.listen((record) {
+      print('${record.level.name}: ${record.time}: ${record.message}');
+    });
+
+### Milestone 7: Dartantic provider for Flutter AI Toolkit
 - [ ] Implement the `LlmProvider` interface in terms of `Agent`
 
-### Milestone 7: Multi-media input
+### Milestone 8: Multi-media input
 - [ ] `Model.runStream` should take a `Message` as a prompt, so that it can
   include media parts
 - [ ] `Agent.runXxx()` should be updated to support a prompt message, including
   multi-media parts
 
-### Milestone 8: Typed Response + Tools + Simple Agent Loop
+### Milestone 9: Typed Response + Tools + Simple Agent Loop
 - [ ] e.g. two tools, typed response and we keep looping till the LLM is done
 - Just like pydantic-ai can do!
 

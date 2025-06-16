@@ -21,3 +21,6 @@ dev_dependencies:
   all_lint_rules_community: ^0.0.43
   build_runner: ^2.4.15
   json_serializable: ^6.9.0
+
+pubspec_extract:
+  format: true

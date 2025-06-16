@@ -60,6 +60,11 @@ class GeminiModel extends Model {
     required String prompt,
     required List<Message> messages,
   }) async* {
+    log.fine(
+      '[GeminiModel] Starting stream with ${messages.length} messages, '
+      'prompt length: ${prompt.length}',
+    );
+    
     final history = _geminiHistoryFrom(messages);
     final chat = _model.startChat(history: history.isEmpty ? null : history);
     final stream = chat.sendMessageStream(gemini.Content.text(prompt));
@@ -71,10 +76,17 @@ class GeminiModel extends Model {
       final text = chunk.text ?? '';
       if (text.isNotEmpty) {
         chunks.add(text);
+        log.fine('[GeminiModel] Yielding content: $text');
         yield AgentResponse(output: text, messages: []);
       }
 
       // Collect function calls
+      if (chunk.functionCalls.isNotEmpty) {
+        final callsDesc = chunk.functionCalls
+            .map((fc) => '${fc.name}(${fc.args})')
+            .join(', ');
+        log.fine('[GeminiModel] Function calls received: $callsDesc');
+      }
       functionCalls.addAll(chunk.functionCalls);
     }
 
@@ -84,14 +96,25 @@ class GeminiModel extends Model {
 
     // If there are function calls, handle them
     if (functionCalls.isNotEmpty) {
+      log.fine(
+        '[GeminiModel] Processing ${functionCalls.length} function calls',
+      );
       final responses = <gemini.FunctionResponse>[];
 
       for (final functionCall in functionCalls) {
+        log.fine(
+          '[GeminiModel] Calling tool: '
+          '${functionCall.name}(${functionCall.args})',
+        );
         final result = await _callTool(functionCall.name, functionCall.args);
         responses.add(gemini.FunctionResponse(functionCall.name, result));
+        log.fine(
+          '[GeminiModel] Tool response: ${functionCall.name} = $result',
+        );
       }
 
       // Send function responses back to the model
+      log.fine('[GeminiModel] Sending function responses back to model');
       final result = await chat.sendMessage(
         gemini.Content.multi([
           gemini.TextPart(''), // Gemini requires a text part
@@ -100,6 +123,7 @@ class GeminiModel extends Model {
       );
 
       if (result.text != null && result.text!.isNotEmpty) {
+        log.fine('[GeminiModel] Final response after tools: ${result.text!}');
         yield AgentResponse(
           output: result.text!,
           messages: _messagesFrom(chat.history),
@@ -113,6 +137,11 @@ class GeminiModel extends Model {
     String text, {
     EmbeddingType type = EmbeddingType.document,
   }) async {
+    log.fine(
+      '[GeminiModel] Creating embedding for text (length: ${text.length}, '
+      'type: $type)',
+    );
+    
     final taskType = switch (type) {
       EmbeddingType.document => gemini.TaskType.retrievalDocument,
       EmbeddingType.query => gemini.TaskType.retrievalQuery,
@@ -129,7 +158,12 @@ class GeminiModel extends Model {
       taskType: taskType,
     );
 
-    return Float64List.fromList(response.embedding.values);
+    final embedding = Float64List.fromList(response.embedding.values);
+    log.fine(
+      '[GeminiModel] Created embedding with ${embedding.length} dimensions',
+    );
+    
+    return embedding;
   }
 
   Future<Map<String, dynamic>?> _callTool(

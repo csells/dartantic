@@ -26,7 +26,7 @@ The following are the target features for this package:
   utilities
 - [x] MCP (Model Context Protocol) server support for integrating external tools
   from local and remote servers
-- [ ] Logging control via dev.log or logging package levels
+- [x] Logging support using the standard Dart `logging` package
 - [ ] Chains and Sequential Execution
 - [ ] JSON Mode, Functions Mode, Flexible Decoding
 - [ ] Simple Assistant/Agent loop utilities
@@ -546,6 +546,56 @@ single chat.
 
 This feature allows you to build advanced, resilient LLM applications that can
 leverage multiple providers transparently.
+
+## Logging and Debugging
+
+dartantic_ai provides logging support using the standard Dart `logging` package.
+This allows you to see detailed information about internal operations, including
+LLM requests/responses, tool execution, and provider operations.
+
+### Enabling Logging
+
+To enable logging for dartantic_ai operations, configure the logging package:
+
+```dart
+import 'package:dartantic_ai/dartantic_ai.dart';
+import 'package:logging/logging.dart';
+
+void main() async {
+  // Configure logging to see dartantic_ai internal operations
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((record) {
+    print('${record.level.name}: ${record.time}: ${record.message}');
+  });
+
+  final agent = Agent('openai');
+  final result = await agent.run('Hello world!');
+  print(result.output);
+}
+```
+
+### Filtering dartantic_ai Logs Only
+
+To filter dartantic_ai logs specifically:
+
+```dart
+import 'package:logging/logging.dart';
+
+void main() async {
+  // Configure logging for dartantic_ai specifically
+  hierarchicalLoggingEnabled = true;
+  final dartanticLogger = Logger('dartantic_ai');
+  dartanticLogger.level = Level.ALL;
+  dartanticLogger.onRecord.listen((record) {
+    print('[dartantic_ai] ${record.level.name}: ${record.message}');
+  });
+
+  // Your agent code here...
+}
+```
+
+This is particularly useful for debugging tool execution, understanding provider
+behavior, or troubleshooting unexpected responses.
 
 ## MCP (Model Context Protocol) Server Support
 

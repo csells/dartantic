@@ -6,14 +6,17 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:logging/logging.dart';
 
 void main() async {
-  // turn on all logging
-  Logger.root.level = Level.ALL; // defaults to Level.INFO
-  Logger.root.onRecord.listen(
-    (record) => print('[${record.level.name}] ${record.message}'),
-  );
+  // Configure logging for dartantic_ai specifically
+  hierarchicalLoggingEnabled = true;
+  final dartanticLogger = Logger('dartantic_ai');
+  dartanticLogger.level = Level.ALL;
+  dartanticLogger.onRecord.listen((record) {
+    assert(record.loggerName == 'dartantic_ai');
+    print('[${record.loggerName}.${record.level.name}] ${record.message}');
+  });
 
   final agent = Agent(
-    'openai',
+    'gemini',
     systemPrompt: 'Be concise, reply with one sentence.',
   );
 

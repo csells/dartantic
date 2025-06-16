@@ -1,14 +1,10 @@
 // ignore_for_file: avoid_print
 
+import 'dart:io';
+
 import 'package:dartantic_ai/dartantic_ai.dart';
 
 void main() async {
-  await multiTurnChatExample();
-}
-
-Future<void> multiTurnChatExample() async {
-  print('multiTurnChatExample');
-
   final agent = Agent(
     'openai',
     systemPrompt: 'You are a helpful assistant. Keep responses concise.',
@@ -37,4 +33,5 @@ Future<void> multiTurnChatExample() async {
   print('Assistant: ${response2.output}');
 
   print('\nMessage history contains ${response2.messages.length} messages');
+  exit(0);
 }

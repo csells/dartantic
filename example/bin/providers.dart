@@ -1,15 +1,11 @@
 // ignore_for_file: avoid_print
 
+import 'dart:io';
+
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:example/time_tool_call.dart';
 
 void main() async {
-  await providerSwitchingExample();
-}
-
-Future<void> providerSwitchingExample() async {
-  print('providerSwitchingExample');
-
   // Start with OpenAI agent
   final openaiAgent = Agent(
     'openai',
@@ -50,4 +46,5 @@ Future<void> providerSwitchingExample() async {
   print('Gemini response: ${response2.output}');
 
   print('\nTool calls work seamlessly across providers!');
+  exit(0);
 }

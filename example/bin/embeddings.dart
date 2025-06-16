@@ -1,14 +1,10 @@
 // ignore_for_file: avoid_print
 
+import 'dart:io';
+
 import 'package:dartantic_ai/dartantic_ai.dart';
 
 void main() async {
-  await embeddingExample();
-}
-
-Future<void> embeddingExample() async {
-  print('embeddingExample');
-
   final agent = Agent('openai');
 
   // Generate embeddings for different types of content
@@ -86,4 +82,6 @@ Future<void> embeddingExample() async {
     geminiQueryEmbedding,
   );
   print('Gemini similarity: ${geminiSimilarity.toStringAsFixed(4)}');
+
+  exit(0);
 }

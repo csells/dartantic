@@ -9,6 +9,7 @@ void main() async {
   await outputTypeExampleWithJsonSchemaAndStringOutput();
   await outputTypeExampleWithJsonSchemaAndObjectOutput();
   await outputTypeExampleWithSotiSchema();
+  exit(0);
 }
 
 Future<void> outputTypeExampleWithJsonSchemaAndStringOutput() async {

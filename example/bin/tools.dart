@@ -9,6 +9,7 @@ import 'package:example/time_tool_call.dart';
 void main() async {
   await toolExample();
   await toolExampleWithTypedOutput();
+  exit(0);
 }
 
 Future<void> toolExample() async {

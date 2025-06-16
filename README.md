@@ -4,6 +4,16 @@ inspired by [the pydantic-ai package for Python](https://ai.pydantic.dev/) to
 provide easy, typed access to LLM outputs and tool/function calls across
 multiple LLMs.
 
+# Table of Contents
+- [Alpha](#alpha)
+- [Features](#features)
+- [Usage](#usage)
+- [Typed Tool Calling](#typed-tool-calling)
+- [Embedding Generation](#embedding-generation)
+- [Logging and Debugging](#logging-and-debugging)
+- [MCP (Model Context Protocol) Server Support](#mcp-model-context-protocol-server-support)
+- [Provider Switching](#provider-switching)
+
 ## Alpha
 Only supporting Gemini and OpenAI models via API keys in this limited release.
 
@@ -137,14 +147,14 @@ hand-written `fromJson` method and a hand-written `schemaMap` property.
 class TownAndCountry {
   final String town;
   final String country;
-  
+
   TownAndCountry({required this.town, required this.country});
-  
+
   factory TownAndCountry.fromJson(Map<String, dynamic> json) => TownAndCountry(
       town: json['town'],
       country: json['country'],
     );
-  
+
   static Map<String, dynamic> get schemaMap => {
     'type': 'object',
     'properties': {
@@ -154,13 +164,13 @@ class TownAndCountry {
     'required': ['town', 'country'],
     'additionalProperties': false,
   };
-  
+
   @override
   String toString() => 'TownAndCountry(town: $town, country: $country)';
 }
 
 void main() async {
-  // Use runFor with a type parameter for automatic conversion 
+  // Use runFor with a type parameter for automatic conversion
   final agent = Agent(
     'openai',
     outputSchema: TownAndCountry.schemaMap.toSchema(),
@@ -205,7 +215,7 @@ class TownAndCountry {
 }
 
 void main() async {
-  // Use runFor with a type parameter for automatic conversion 
+  // Use runFor with a type parameter for automatic conversion
   final agent = Agent(
     'openai',
     outputSchema: TownAndCountry.schemaMap.toSchema(),
@@ -231,7 +241,7 @@ parameters. You can define the parameters to your tool with a Dart class:
 @JsonSerializable()
 class TimeFunctionInput {
   TimeFunctionInput({required this.timeZoneName});
-  
+
   /// The name of the time zone to get the time in (e.g. "America/New_York")
   final String timeZoneName;
 
@@ -387,7 +397,7 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 void main() async {
   // Create text content easily
   final textContent = Content.text('Hello, how can I help you?');
-  
+
   // Equivalent to: [TextPart('Hello, how can I help you?')]
   print(textContent); // Output: [TextPart(text: "Hello, how can I help you?")]
 }
@@ -404,10 +414,10 @@ void main() async {
   // Create messages using convenience constructors
   final userMessage = Message.user(Content.text('What is 2 + 2?'));
   final modelMessage = Message.model(Content.text('2 + 2 equals 4.'));
-  
+
   // Use them in a conversation
   final messages = [userMessage, modelMessage];
-  
+
   final agent = Agent('openai');
   final response = await agent.run('What about 3 + 3?', messages: messages);
   print(response.output); // Output: 3 + 3 equals 6.
@@ -529,24 +539,6 @@ void main() async {
 }
 ```
 
-## Provider Switching
-
-dartantic_ai supports seamless switching between OpenAI and Gemini providers
-within a single conversation. You can alternate between providers (e.g., OpenAI
-→ Gemini → OpenAI) and the message history—including tool calls and tool
-results—remains compatible and threaded correctly. This enables robust
-multi-provider workflows, such as starting a conversation with one provider and
-continuing it with another, or leveraging provider-specific strengths in a
-single chat.
-
-- Message history is serialized and deserialized in a provider-agnostic way.
-- Tool call and result IDs are stable and compatible across providers.
-- Integration tests verify that tool calls and results are preserved and
-  threaded correctly when switching providers.
-
-This feature allows you to build advanced, resilient LLM applications that can
-leverage multiple providers transparently.
-
 ## Logging and Debugging
 
 dartantic_ai provides logging support using the standard Dart `logging` package.
@@ -624,46 +616,45 @@ Connect to remote MCP servers and use their tools with your Agent:
 import 'package:dartantic_ai/dartantic_ai.dart';
 
 void main() async {
-  // Connect to a remote MCP server
-  final mcpServer = McpServer.remote(
+  final huggingFace = McpServer.remote(
     'huggingface',
     url: 'https://huggingface.co/mcp',
   );
 
-  // Create local tools
-  final localTool = Tool(
-    name: 'local_time',
-    description: 'Returns the current local time',
-    onCall: (args) async => {'result': DateTime.now().toIso8601String()},
+  final agent = Agent(
+    'google',
+    systemPrompt:
+        'You are a helpful assistant with access to various tools; '
+        'use the right one for the right job!',
+    tools: [...await huggingFace.getTools()],
   );
 
   try {
-    // Discover tools from the MCP server
-    final mcpTools = await mcpServer.getTools();
-    print('Found ${mcpTools.length} tools from MCP server');
-
-    // Combine MCP tools with local tools
-    final allTools = [localTool, ...mcpTools];
-
-    // Create agent with combined tools
-    final agent = Agent(
-      'openai',
-      systemPrompt: 'You are a helpful assistant with access to various tools.',
-      tools: allTools,
-    );
-
-    // Use the agent - it can call both local and MCP tools
-    final response = await agent.run(
-      'What time is it and can you help me with some information from Hugging Face?'
-    );
-    print(response.output);
+    const query = 'Who is hugging face?';
+    await agent.runStream(query).map((r) => stdout.write(r.output)).drain();
   } finally {
-    // Clean up MCP server connection
-    await mcpServer.disconnect();
+    await huggingFace.disconnect();
   }
 }
 ```
 
+## Provider Switching
+
+dartantic_ai supports seamless switching between OpenAI and Gemini providers
+within a single conversation. You can alternate between providers (e.g., OpenAI
+→ Gemini → OpenAI) and the message history—including tool calls and tool
+results—remains compatible and threaded correctly. This enables robust
+multi-provider workflows, such as starting a conversation with one provider and
+continuing it with another, or leveraging provider-specific strengths in a
+single chat.
+
+- Message history is serialized and deserialized in a provider-agnostic way.
+- Tool call and result IDs are stable and compatible across providers.
+- Integration tests verify that tool calls and results are preserved and
+  threaded correctly when switching providers.
+
+This feature allows you to build advanced, resilient LLM applications that can
+leverage multiple providers transparently.
 
 ### Example: Switching Providers in a Conversation
 

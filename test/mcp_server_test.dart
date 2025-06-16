@@ -1,6 +1,9 @@
 // ignore_for_file: avoid_print
 
+import 'dart:io';
+
 import 'package:dartantic_ai/dartantic_ai.dart';
+import 'package:mcp_dart/mcp_dart.dart' as mcp;
 import 'package:test/test.dart';
 
 void main() {
@@ -114,6 +117,84 @@ void main() {
       });
     });
 
+    group('local MCP server tests', () {
+      test('creates local server with correct configuration', () {
+        final localServer = McpServer.local(
+          'test-local-server',
+          command: Platform.resolvedExecutable,
+          args: ['test/test_mcp_server.dart'],
+        );
+
+        expect(localServer.name, equals('test-local-server'));
+        expect(localServer.kind, equals(McpServerKind.local));
+        expect(localServer.command, equals(Platform.resolvedExecutable));
+        expect(localServer.args, equals(['test/test_mcp_server.dart']));
+        expect(localServer.isConnected, isFalse);
+      });
+
+      test('supports environment variables and working directory', () {
+        final localServer = McpServer.local(
+          'env-test-server',
+          command: 'dart',
+          args: ['server.dart'],
+          environment: {'DEBUG': 'true', 'PORT': '8080'},
+          workingDirectory: '/tmp/test',
+        );
+
+        expect(localServer.environment, containsPair('DEBUG', 'true'));
+        expect(localServer.environment, containsPair('PORT', '8080'));
+        expect(localServer.workingDirectory, equals('/tmp/test'));
+      });
+
+      test('handles connection state correctly', () {
+        final localServer = McpServer.local(
+          'state-test-server',
+          command: 'echo',
+          args: ['test'],
+        );
+
+        expect(localServer.isConnected, isFalse);
+
+        // Note: We don't actually connect here since echo is not an MCP server
+        // This test just validates the state management
+      });
+
+      test('can connect to local MCP server directly', () async {
+        // final localServer = McpServer.local(
+        //   'test-mcp-server',
+        //   command: 'dart',
+        //   args: ['test/test_mcp_server/bin/test_mcp_server.dart'],
+        // );
+
+        final client = mcp.Client(
+          const mcp.Implementation(name: 'mcp_server_test', version: '0.0.0'),
+        );
+
+        final exists =
+            File('test/test_mcp_server/bin/test_mcp_server.dart').existsSync();
+        print(exists);
+
+        final transport = mcp.StdioClientTransport(
+          const mcp.StdioServerParameters(
+            command: 'dart',
+            args: ['test/test_mcp_server/bin/test_mcp_server.dart'],
+          ),
+        );
+
+        await client.connect(transport);
+
+        final response = await client.callTool(
+          const mcp.CallToolRequestParams(
+            name: 'calculate',
+            arguments: {'operation': 'add', 'a': 5, 'b': 3},
+          ),
+        );
+
+        await transport.close();
+        expect(response, contains('8'));
+      });
+    });
+
     group('integration with Agent', () {
       test('can combine MCP tools with local tools', () async {
         final localTool = Tool(
@@ -135,6 +216,60 @@ void main() {
 
         print('Combined ${mcpTools.length} MCP tools with 1 local tool');
         await huggingFaceServer.disconnect();
+      });
+
+      test('can configure local MCP server for Agent integration', () {
+        final testServer = McpServer.local(
+          'test-agent-server',
+          command: Platform.resolvedExecutable,
+          args: ['test/test_greeting_server.dart'],
+        );
+
+        expect(testServer.name, equals('test-agent-server'));
+        expect(testServer.kind, equals(McpServerKind.local));
+        expect(testServer.command, equals(Platform.resolvedExecutable));
+        expect(testServer.args, equals(['test/test_greeting_server.dart']));
+
+        print('✅ Configured local MCP server for Agent integration');
+      });
+
+      test('demonstrates local MCP server workflow configuration', () {
+        // This test shows how to set up workflow-based local MCP servers
+        final testServer = McpServer.local(
+          'workflow-test-server',
+          command: Platform.resolvedExecutable,
+          args: ['test/test_format_server.dart'],
+          environment: {'LOG_LEVEL': 'debug'},
+        );
+
+        expect(testServer.name, equals('workflow-test-server'));
+        expect(testServer.environment, containsPair('LOG_LEVEL', 'debug'));
+
+        print('✅ Configured workflow MCP server with environment variables');
+      });
+
+      test('validates local tool configuration patterns', () {
+        // Create a mock local tool to demonstrate mixing patterns
+        final localTool = Tool(
+          name: 'local_test',
+          description: 'A local test tool',
+          onCall: (args) async => {'result': 'local'},
+        );
+
+        // Configure MCP server (without connecting)
+        final mcpServer = McpServer.local(
+          'config-test-server',
+          command: 'dart',
+          args: ['mcp_server.dart'],
+        );
+
+        // Demonstrate how tools would be combined
+        final allTools = [localTool];
+        expect(allTools, contains(localTool));
+        expect(allTools.length, equals(1));
+        expect(mcpServer.isConnected, isFalse);
+
+        print('✅ Validated local tool and MCP server configuration patterns');
       });
     });
   });

@@ -1,9 +1,13 @@
 ## TODO
 - Message construction convenience methods:
   - Added `Content` type alias for `List<Part>` to improve readability
-  - Added convenience constructors for `Message`: `Message.system()`, `Message.user()`, `Message.model()`
+  - Added convenience constructors for `Message`: `Message.system()`,
+    `Message.user()`, `Message.model()`
   - Added `Content.text()` extension method for easy text content creation
-  - Added convenience constructors for `ToolPart`: `ToolPart.call()` and `ToolPart.result()`
+  - Added convenience constructors for `ToolPart`: `ToolPart.call()` and
+    `ToolPart.result()`
+- Breaking change: inputType/outputType to inputSchema/outputSchema; I couldn't
+  stand to look at `inputType` and `outputType` in the code anymore!
 
 ## 0.5.0
 - Embedding generation: Add methods to generate vector embeddings for text:

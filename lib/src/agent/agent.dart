@@ -35,7 +35,7 @@ class Agent {
   ///   "providerName:modelName", or "providerName/modelName" format.
   /// - [systemPrompt]: (Optional) A system prompt to guide the agent's
   ///   behavior.
-  /// - [outputType]: (Optional) A [JsonSchema] defining the expected output
+  /// - [outputSchema]: (Optional) A [JsonSchema] defining the expected output
   ///   type.
   /// - [outputFromJson]: (Optional) A function to convert JSON output to a
   ///   typed object.
@@ -45,14 +45,14 @@ class Agent {
   factory Agent(
     String model, {
     String? systemPrompt,
-    JsonSchema? outputType,
+    JsonSchema? outputSchema,
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     Iterable<Tool>? tools,
     String? embeddingModel,
   }) => Agent.provider(
     providerFor(model, embeddingModel: embeddingModel),
     systemPrompt: systemPrompt,
-    outputType: outputType,
+    outputSchema: outputSchema,
     outputFromJson: outputFromJson,
     tools: tools,
   );
@@ -61,21 +61,22 @@ class Agent {
   ///
   /// - [provider]: The [Provider] to use for the agent.
   /// - [systemPrompt]: (Optional) The system prompt to use for the agent.
-  /// - [outputType]: (Optional) The [JsonSchema] for the expected output type.
+  /// - [outputSchema]: (Optional) The [JsonSchema] for the expected output
+  ///   type.
   /// - [outputFromJson]: (Optional) A function to convert JSON output to a
   ///   typed object.
   /// - [tools]: (Optional) A collection of [Tool]s the agent can use.
   Agent.provider(
     Provider provider, {
     String? systemPrompt,
-    JsonSchema? outputType,
+    JsonSchema? outputSchema,
     this.outputFromJson,
     Iterable<Tool>? tools,
   }) : _systemPrompt = systemPrompt,
        _model = provider.createModel(
          ModelSettings(
            systemPrompt: systemPrompt,
-           outputType: outputType,
+           outputSchema: outputSchema,
            tools: tools,
          ),
        );
@@ -161,8 +162,8 @@ class Agent {
   }) async {
     final response = await run(prompt, messages: messages);
     final outputJson = jsonDecode(response.output);
-    final outputTyped = outputFromJson?.call(outputJson) ?? outputJson;
-    return AgentResponseFor(output: outputTyped, messages: response.messages);
+    final typedOutput = outputFromJson?.call(outputJson) ?? outputJson;
+    return AgentResponseFor(output: typedOutput, messages: response.messages);
   }
 
   /// Executes a given [DotPrompt] and returns the complete response.
@@ -174,7 +175,7 @@ class Agent {
   /// - [prompt]: The [DotPrompt] to be executed.
   /// - [systemPrompt]: (Optional) A system prompt to guide the agent's
   ///   behavior.
-  /// - [outputType]: (Optional) A [JsonSchema] defining the expected output
+  /// - [outputSchema]: (Optional) A [JsonSchema] defining the expected output
   ///   type.
   /// - [outputFromJson]: (Optional) A function to convert JSON output to a
   ///   typed object.
@@ -187,7 +188,7 @@ class Agent {
   static Future<AgentResponse> runPrompt(
     DotPrompt prompt, {
     String? systemPrompt,
-    JsonSchema? outputType,
+    JsonSchema? outputSchema,
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     Iterable<Tool>? tools,
     Map<String, dynamic> input = const {},
@@ -195,7 +196,7 @@ class Agent {
   }) => Agent(
     prompt.frontMatter.model ?? 'google',
     systemPrompt: systemPrompt,
-    outputType: outputType,
+    outputSchema: outputSchema,
     outputFromJson: outputFromJson,
     tools: tools,
   ).run(prompt.render(input), messages: messages);
@@ -211,7 +212,7 @@ class Agent {
   /// - [prompt]: The [DotPrompt] to execute.
   /// - [systemPrompt]: (Optional) A system prompt to guide the agent's
   ///   behavior.
-  /// - [outputType]: (Optional) A [JsonSchema] defining the expected output
+  /// - [outputSchema]: (Optional) A [JsonSchema] defining the expected output
   ///   type.
   /// - [outputFromJson]: (Optional) A function to convert JSON output to a
   ///   typed object.
@@ -224,7 +225,7 @@ class Agent {
   static Future<AgentResponseFor<T>> runPromptFor<T>(
     DotPrompt prompt, {
     String? systemPrompt,
-    JsonSchema? outputType,
+    JsonSchema? outputSchema,
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     Iterable<Tool>? tools,
     Map<String, dynamic> input = const {},
@@ -232,7 +233,7 @@ class Agent {
   }) => Agent(
     prompt.frontMatter.model ?? 'google',
     systemPrompt: systemPrompt,
-    outputType: outputType,
+    outputSchema: outputSchema,
     outputFromJson: outputFromJson,
     tools: tools,
   ).runFor<T>(prompt.render(input), messages: messages);
@@ -243,7 +244,7 @@ class Agent {
   /// - [prompt]: The [DotPrompt] to be executed.
   /// - [systemPrompt]: (Optional) A system prompt to guide the agent's
   ///   behavior.
-  /// - [outputType]: (Optional) A [JsonSchema] defining the expected output
+  /// - [outputSchema]: (Optional) A [JsonSchema] defining the expected output
   ///   type.
   /// - [outputFromJson]: (Optional) A function to convert JSON output to a
   ///   typed object.
@@ -256,7 +257,7 @@ class Agent {
   static Stream<AgentResponse> runPromptStream(
     DotPrompt prompt, {
     String? systemPrompt,
-    JsonSchema? outputType,
+    JsonSchema? outputSchema,
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     Iterable<Tool>? tools,
     Map<String, dynamic> input = const {},
@@ -264,7 +265,7 @@ class Agent {
   }) => Agent(
     prompt.frontMatter.model ?? 'google',
     systemPrompt: systemPrompt,
-    outputType: outputType,
+    outputSchema: outputSchema,
     outputFromJson: outputFromJson,
     tools: tools,
   ).runStream(prompt.render(input), messages: messages);

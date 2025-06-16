@@ -43,7 +43,7 @@ void main() {
           'additionalProperties': false,
         };
 
-        final agent = Agent('openai', outputType: outputSchema.toSchema());
+        final agent = Agent('openai', outputSchema: outputSchema.toSchema());
         final output = StringBuffer();
         await for (final chunk in agent.runStream(
           'The windy city in the US of A.',
@@ -68,7 +68,7 @@ void main() {
 
         final agent = Agent(
           'openai',
-          outputType: tncSchema.toSchema(),
+          outputSchema: tncSchema.toSchema(),
           outputFromJson:
               (json) => {
                 'town': json['town'] as String,
@@ -101,7 +101,7 @@ void main() {
             Tool(
               name: 'time',
               description: 'Get the current time in a given time zone',
-              inputType:
+              inputSchema:
                   {
                     'type': 'object',
                     'properties': {
@@ -119,7 +119,7 @@ void main() {
             Tool(
               name: 'temp',
               description: 'Get the current temperature in a given location',
-              inputType:
+              inputSchema:
                   {
                     'type': 'object',
                     'properties': {
@@ -149,7 +149,7 @@ void main() {
       test('Gemini Integration', () async {
         final agent = Agent(
           'google:gemini-2.0-flash',
-          outputType:
+          outputSchema:
               {
                 'type': 'object',
                 'properties': {
@@ -181,7 +181,7 @@ void main() {
       test('OpenAI Integration', () async {
         final agent = Agent(
           'openai/gpt-4o',
-          outputType:
+          outputSchema:
               {
                 'type': 'object',
                 'properties': {
@@ -253,7 +253,7 @@ Summarize this in {{length}} words: {{text}}
       test('OpenAI Provider with Schema', () async {
         final agent = Agent.provider(
           OpenAiProvider(),
-          outputType:
+          outputSchema:
               {
                 'type': 'object',
                 'properties': {
@@ -302,7 +302,7 @@ Summarize this in {{length}} words: {{text}}
       test('Gemini Provider with Schema', () async {
         final agent = Agent.provider(
           GeminiProvider(),
-          outputType:
+          outputSchema:
               {
                 'type': 'object',
                 'properties': {
@@ -342,7 +342,7 @@ Summarize this in {{length}} words: {{text}}
             Tool(
               name: 'time',
               description: 'Get the current time in a given time zone',
-              inputType:
+              inputSchema:
                   {
                     'type': 'object',
                     'properties': {
@@ -360,7 +360,7 @@ Summarize this in {{length}} words: {{text}}
             Tool(
               name: 'temp',
               description: 'Get the current temperature in a given location',
-              inputType:
+              inputSchema:
                   {
                     'type': 'object',
                     'properties': {
@@ -399,7 +399,7 @@ Summarize this in {{length}} words: {{text}}
             Tool(
               name: 'time',
               description: 'Get the current time in a given time zone',
-              inputType:
+              inputSchema:
                   {
                     'type': 'object',
                     'properties': {
@@ -417,7 +417,7 @@ Summarize this in {{length}} words: {{text}}
             Tool(
               name: 'temp',
               description: 'Get the current temperature in a given location',
-              inputType:
+              inputSchema:
                   {
                     'type': 'object',
                     'properties': {

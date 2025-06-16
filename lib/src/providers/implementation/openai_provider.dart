@@ -56,7 +56,7 @@ class OpenAiProvider extends Provider {
     modelName: modelName,
     embeddingModelName: embeddingModelName,
     apiKey: apiKey,
-    outputType: settings.outputType,
+    outputSchema: settings.outputSchema,
     systemPrompt: settings.systemPrompt,
     tools: settings.tools,
   );

@@ -47,7 +47,7 @@ Future<void> outputTypeExampleWithJsonSchemaAndStringOutput() async {
     'additionalProperties': false,
   };
 
-  final agent = Agent('openai', outputType: tncSchema.toSchema());
+  final agent = Agent('openai', outputSchema: tncSchema.toSchema());
   await agent
       .runStream('The windy city in the US of A.')
       .map((result) => stdout.write(result.output))
@@ -70,7 +70,7 @@ Future<void> outputTypeExampleWithJsonSchemaAndOutjectOutput() async {
 
   final agent = Agent(
     'openai',
-    outputType: tncSchema.toSchema(),
+    outputSchema: tncSchema.toSchema(),
     outputFromJson: TownAndCountry.fromJson,
   );
 
@@ -86,7 +86,7 @@ Future<void> outputTypeExampleWithSotiSchema() async {
 
   final agent = Agent(
     'openai',
-    outputType: TownAndCountry.schemaMap.toSchema(),
+    outputSchema: TownAndCountry.schemaMap.toSchema(),
     outputFromJson: TownAndCountry.fromJson,
   );
   final result = await agent.runFor<TownAndCountry>(
@@ -107,13 +107,13 @@ Future<void> toolExample() async {
       Tool(
         name: 'time',
         description: 'Get the current time in a given time zone',
-        inputType: TimeFunctionInput.schemaMap.toSchema(),
+        inputSchema: TimeFunctionInput.schemaMap.toSchema(),
         onCall: onTimeCall,
       ),
       Tool(
         name: 'temp',
         description: 'Get the current temperature in a given location',
-        inputType: TempFunctionInput.schemaMap.toSchema(),
+        inputSchema: TempFunctionInput.schemaMap.toSchema(),
         onCall: onTempCall,
       ),
     ],
@@ -140,13 +140,13 @@ Future<void> toolExampleWithTypedOutput() async {
       Tool(
         name: 'time',
         description: 'Get the current time in a given time zone',
-        inputType: TimeFunctionInput.schemaMap.toSchema(),
+        inputSchema: TimeFunctionInput.schemaMap.toSchema(),
         onCall: onTimeCall,
       ),
       Tool(
         name: 'temp',
         description: 'Get the current temperature in a given location',
-        inputType: TempFunctionInput.schemaMap.toSchema(),
+        inputSchema: TempFunctionInput.schemaMap.toSchema(),
         onCall: onTempCall,
       ),
     ],
@@ -238,7 +238,7 @@ Future<void> providerSwitchingExample() async {
       Tool(
         name: 'time',
         description: 'Get the current time in a given time zone',
-        inputType: TimeFunctionInput.schemaMap.toSchema(),
+        inputSchema: TimeFunctionInput.schemaMap.toSchema(),
         onCall: onTimeCall,
       ),
     ],
@@ -256,7 +256,7 @@ Future<void> providerSwitchingExample() async {
       Tool(
         name: 'time',
         description: 'Get the current time in a given time zone',
-        inputType: TimeFunctionInput.schemaMap.toSchema(),
+        inputSchema: TimeFunctionInput.schemaMap.toSchema(),
         onCall: onTimeCall,
       ),
     ],

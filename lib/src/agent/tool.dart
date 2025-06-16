@@ -18,14 +18,14 @@ class Tool {
   ///
   /// [name] - The unique identifier for this tool. [onCall] - The function that
   /// will be executed when this tool is called. [description] - Optional
-  /// human-readable description of what the tool does. [inputType] - Optional
+  /// human-readable description of what the tool does. [inputSchema] - Optional
   /// schema definition for the expected input parameters.
   Tool({
     required this.name,
     required this.onCall,
     String? description,
-    this.inputType,
-  }) : description = description ?? inputType?.description;
+    this.inputSchema,
+  }) : description = description ?? inputSchema?.description;
 
   /// The unique identifier for this tool.
   final String name;
@@ -34,7 +34,7 @@ class Tool {
   final String? description;
 
   /// Schema definition for the expected input parameters.
-  final JsonSchema? inputType;
+  final JsonSchema? inputSchema;
 
   /// The function that will be executed when this tool is called.
   final ToolCallHandler onCall;

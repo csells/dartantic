@@ -23,13 +23,13 @@ class GeminiModel extends Model {
   /// The [modelName] is the name of the Gemini model to use.
   /// The [embeddingModelName] is the name of the Gemini embedding model to use.
   /// The [apiKey] is the API key to use for authentication.
-  /// The [outputType] is an optional JSON schema for structured outputs.
+  /// The [outputSchema] is an optional JSON schema for structured outputs.
   /// The [systemPrompt] is an optional system prompt to use.
   GeminiModel({
     required String modelName,
     required String embeddingModelName,
     required String apiKey,
-    JsonSchema? outputType,
+    JsonSchema? outputSchema,
     String? systemPrompt,
     Iterable<Tool>? tools,
   }) : _embeddingModelName = embeddingModelName,
@@ -39,11 +39,11 @@ class GeminiModel extends Model {
          apiKey: apiKey,
          model: modelName,
          generationConfig:
-             outputType == null
+             outputSchema == null
                  ? null
                  : gemini.GenerationConfig(
                    responseMimeType: 'application/json',
-                   responseSchema: _geminiSchemaFrom(outputType),
+                   responseSchema: _geminiSchemaFrom(outputSchema),
                  ),
          systemInstruction:
              systemPrompt != null ? gemini.Content.text(systemPrompt) : null,
@@ -250,10 +250,10 @@ class GeminiModel extends Model {
     final result = <gemini.Tool>[];
 
     for (final tool in tools) {
-      // Convert inputType to a Schema object using the existing method
+      // Convert inputSchema to a Schema object using the existing method
       final parameters =
-          tool.inputType != null
-              ? _geminiSchemaFrom(tool.inputType!)
+          tool.inputSchema != null
+              ? _geminiSchemaFrom(tool.inputSchema!)
               : gemini.Schema.object(properties: {});
 
       // Create a function declaration for the tool

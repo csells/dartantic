@@ -157,7 +157,7 @@ tools.
   - `Agent.cosineSimilarity()` static method for comparing embeddings.
   - Comprehensive integration tests covering both OpenAI and Gemini providers.
 
-### Milestone 3.1: Message API Convenience Methods
+### Milestone 4: Message API Convenience Methods
 - [x] **Enhanced Message Construction**: Added convenience methods to simplify message and content creation:
   - `Content` type alias for `List<Part>` to improve readability and semantic clarity.
   - Convenience constructors for `Message` class:
@@ -170,16 +170,41 @@ tools.
     - `ToolPart.result({required String id, required String name, Map<String, dynamic> result})` - Creates tool results
   - These methods significantly reduce boilerplate when working with messages, making the API more ergonomic for common use cases like creating simple text messages or tool interactions.
 
-### Milestone 4: Dartantic provider for Flutter AI Toolkit
+### Milestone 5: MCP Server Support
+- [x] **MCP (Model Context Protocol) Server Integration**: Add support for
+  connecting to MCP servers to extend Agent capabilities with external tools:
+  - `McpServer` class with factory constructors for local and remote servers:
+    - `McpServer.local()` - Connect to local MCP servers via stdio
+    - `McpServer.remote()` - Connect to remote MCP servers via HTTP
+  - `Future<List<Tool>> getTools()` method to discover and convert MCP tools to
+    Agent Tools
+  - Lazy connection pattern - servers connect automatically on first tool use
+  - Support for both stdio transport (local processes) and HTTP transport
+    (remote servers)
+  - Users combine MCP tools with local tools before creating Agent:
+    ```dart
+    final mcpServer = McpServer.local(
+      'filesystem-server',
+      command: 'filesystem-server',
+    );
+    final mcpTools = await mcpServer.getTools();
+    final agent = Agent('google', tools: [...localTools, ...mcpTools]);
+    ```
+  - Proper resource management with `disconnect()` method for cleanup
+  - Type-safe tool execution - MCP tools return `Map<String, dynamic>` like
+    local tools
+  - Agent initialization remains synchronous while MCP tool discovery is async
+
+### Milestone 6: Dartantic provider for Flutter AI Toolkit
 - [ ] Implement the `LlmProvider` interface in terms of `Agent`
 
-### Milestone 5: Multi-media input
+### Milestone 7: Multi-media input
 - [ ] `Model.runStream` should take a `Message` as a prompt, so that it can
   include media parts
 - [ ] `Agent.runXxx()` should be updated to support a prompt message, including
   multi-media parts
 
-### Milestone 6: Typed Response + Tools + Simple Agent Loop
+### Milestone 8: Typed Response + Tools + Simple Agent Loop
 - [ ] e.g. two tools, typed response and we keep looping till the LLM is done
 - Just like pydantic-ai can do!
 

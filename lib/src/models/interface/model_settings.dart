@@ -10,10 +10,10 @@ class ModelSettings {
   /// Creates a new [ModelSettings] instance.
   ///
   /// The [systemPrompt] is the system prompt to use for the model.
-  /// The [outputType] is an optional JSON schema for structured outputs.
+  /// The [outputSchema] is an optional JSON schema for structured outputs.
   ModelSettings({
     required this.systemPrompt,
-    required this.outputType,
+    required this.outputSchema,
     required this.tools,
   });
 
@@ -26,7 +26,7 @@ class ModelSettings {
   ///
   /// When provided, configures the model to return responses in JSON format
   /// that match this schema.
-  final JsonSchema? outputType;
+  final JsonSchema? outputSchema;
 
   /// The tools to use for the model.
   final Iterable<Tool>? tools;

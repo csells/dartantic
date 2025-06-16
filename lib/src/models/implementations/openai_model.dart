@@ -18,13 +18,13 @@ class OpenAiModel extends Model {
   /// The [apiKey] is the API key to use for authentication.
   /// The [modelName] is the name of the OpenAI model to use.
   /// The [embeddingModelName] is the name of the OpenAI embedding model to use.
-  /// The [outputType] is an optional JSON schema for structured outputs.
+  /// The [outputSchema] is an optional JSON schema for structured outputs.
   /// The [systemPrompt] is an optional system prompt to use.
   OpenAiModel({
     required String apiKey,
     required String modelName,
     required String embeddingModelName,
-    JsonSchema? outputType,
+    JsonSchema? outputSchema,
     String? systemPrompt,
     Iterable<Tool>? tools,
   }) : _embeddingModelName = embeddingModelName,
@@ -33,9 +33,9 @@ class OpenAiModel extends Model {
        _modelName = modelName,
        _client = openai.OpenAIClient(apiKey: apiKey),
        _responseFormat =
-           outputType != null
+           outputSchema != null
                ? openai.ResponseFormat.jsonSchema(
-                 jsonSchema: _openaiSchemaFrom(outputType),
+                 jsonSchema: _openaiSchemaFrom(outputSchema),
                )
                : null;
 
@@ -77,7 +77,7 @@ class OpenAiModel extends Model {
                       function: openai.FunctionObject(
                         name: tool.name,
                         description: tool.description,
-                        parameters: tool.inputType?.toMap(),
+                        parameters: tool.inputSchema?.toMap(),
                       ),
                     ),
                   )

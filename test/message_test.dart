@@ -308,7 +308,7 @@ void main() {
       };
       final agent = Agent.provider(
         provider,
-        outputType: schema.toSchema(),
+        outputSchema: schema.toSchema(),
         outputFromJson:
             (json) => {'animal': json['animal'], 'sound': json['sound']},
       );
@@ -352,7 +352,7 @@ void main() {
       final tool = Tool(
         name: 'animal_sound_lookup',
         description: 'Maps animal sounds to animal names.',
-        inputType:
+        inputSchema:
             {
               'type': 'object',
               'properties': {
@@ -480,7 +480,7 @@ void main() {
       final tool = Tool(
         name: 'animal_sound_lookup',
         description: 'Maps animal sounds to animal names.',
-        inputType:
+        inputSchema:
             {
               'type': 'object',
               'properties': {
@@ -604,7 +604,7 @@ Do not answer directly; always call the tool with the sound in question and retu
       final tool = Tool(
         name: 'animal_sound_lookup',
         description: 'Maps animal sounds to animal names.',
-        inputType:
+        inputSchema:
             {
               'type': 'object',
               'properties': {

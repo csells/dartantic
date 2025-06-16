@@ -113,7 +113,7 @@ void main() async {
   // Create an agent with the schema
   final agent = Agent(
     'openai',
-    outputType: townCountrySchema.toSchema(),
+    outputSchema: townCountrySchema.toSchema(),
   );
 
   // Get structured output as a JSON object
@@ -159,7 +159,7 @@ void main() async {
   // Use runFor with a type parameter for automatic conversion 
   final agent = Agent(
     'openai',
-    outputType: TownAndCountry.schemaMap.toSchema(),
+    outputSchema: TownAndCountry.schemaMap.toSchema(),
     outputFromJson: TownAndCountry.fromJson,
   );
 
@@ -204,7 +204,7 @@ void main() async {
   // Use runFor with a type parameter for automatic conversion 
   final agent = Agent(
     'openai',
-    outputType: TownAndCountry.schemaMap.toSchema(),
+    outputSchema: TownAndCountry.schemaMap.toSchema(),
     outputFromJson: TownAndCountry.fromJson,
   );
 
@@ -251,7 +251,7 @@ Future<void> toolExample() async {
       Tool(
         name: 'time',
         description: 'Get the current time in a given time zone',
-        inputType: TimeFunctionInput.schemaMap.toSchema(),
+        inputSchema: TimeFunctionInput.schemaMap.toSchema(),
         onCall: onTimeCall,
       ),
     ],

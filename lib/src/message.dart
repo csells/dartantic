@@ -1,9 +1,20 @@
 // ignore_for_file: avoid_dynamic_calls
 
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:http/http.dart' as http;
+import 'package:mime/mime.dart';
 
 /// Type alias for a list of content parts.
 typedef Content = List<Part>;
+
+/// Extension methods for [Content].
+extension ContentExtension on Content {
+  /// Creates a [Content] with a single [TextPart] containing the given [text].
+  static Content text(String text) => [TextPart(text)];
+}
 
 /// Enum representing the role of a message in a conversation.
 enum MessageRole {
@@ -81,8 +92,8 @@ class Message {
 
 /// An abstract base class for a part of a message's content.
 ///
-/// Subclasses include [TextPart], [MediaPart], and [ToolPart].
-abstract class Part {
+/// Subclasses include [TextPart], [DataPart], and [ToolPart].
+sealed class Part {
   /// Base constructor for [Part].
   const Part();
 
@@ -92,8 +103,8 @@ abstract class Part {
   factory Part.fromJson(Map<String, dynamic> json) {
     if (json.containsKey('text')) {
       return TextPart.fromJson(json);
-    } else if (json.containsKey('media')) {
-      return MediaPart.fromJson(json);
+    } else if (json.containsKey('data')) {
+      return DataPart.fromJson(json);
     } else if (json.containsKey('tool')) {
       return ToolPart.fromJson(json);
     } else {
@@ -121,42 +132,78 @@ class TextPart extends Part {
   Map<String, dynamic> toJson() => {'text': text};
 
   @override
-  String toString() => 'TextPart(text: "$text")';
+  String toString() => 'TextPart($text)';
 }
 
-/// A media part of a message's content, such as an image or video.
-class MediaPart extends Part {
-  /// Creates a [MediaPart] with the given [contentType] and [url].
-  MediaPart({required this.contentType, required this.url})
-    : assert(contentType.isNotEmpty, 'MediaPart contentType must not be empty'),
-      assert(url.isNotEmpty, 'MediaPart url must not be empty');
+const _defaultMimeType = 'application/octet-stream';
+String _mimeType(String path) => lookupMimeType(path) ?? _defaultMimeType;
 
-  /// Creates a [MediaPart] from a JSON map.
-  factory MediaPart.fromJson(Map<String, dynamic> json) {
-    final media = json['media'] as Map<String, dynamic>?;
-    final contentType = media?['contentType'] as String? ?? '';
-    final url = media?['url'] as String? ?? '';
-    assert(
-      contentType.isNotEmpty,
-      'MediaPart contentType must not be empty (fromJson)',
-    );
-    assert(url.isNotEmpty, 'MediaPart url must not be empty (fromJson)');
-    return MediaPart(contentType: contentType, url: url);
+/// A data part of a message's content, such as an image or video.
+class DataPart extends Part {
+  /// Creates a [DataPart] with the given [mimeType] and [url].
+  DataPart(this.bytes, {required this.mimeType})
+    : assert(mimeType.isNotEmpty, 'DataPart mimeType must not be empty'),
+      assert(bytes.isNotEmpty, 'DataPart bytes must not be empty');
+
+  /// Creates a [DataPart] from a JSON map.
+  factory DataPart.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] as Map<String, dynamic>?;
+    final mimeType = data?['mimeType'] as String? ?? _defaultMimeType;
+    final bytes = base64Decode((data?['bytes'] as String?) ?? '');
+    return DataPart(bytes, mimeType: mimeType);
+  }
+
+  /// Creates a [DataPart] from a URL.
+  static Future<DataPart> url(Uri url) async {
+    final data = url.data;
+    final mimeType = data != null ? data.mimeType : _mimeType(url.toString());
+    final bytes = data?.contentAsBytes() ?? (await http.get(url)).bodyBytes;
+    return DataPart(bytes, mimeType: mimeType);
   }
 
   /// The MIME type of the media (e.g., 'image/jpeg').
-  final String contentType;
+  final String mimeType;
 
-  /// The URL or data URI of the media.
-  final String url;
+  /// The data of the media.
+  final Uint8List bytes;
 
   @override
   Map<String, dynamic> toJson() => {
-    'media': {'contentType': contentType, 'url': url},
+    'data': {'mimeType': mimeType, 'data': base64Encode(bytes)},
   };
 
   @override
-  String toString() => 'MediaPart(contentType: $contentType, url: $url)';
+  String toString() => 'DataPart($mimeType, ${bytes.take(32)}...)';
+
+  /// Creates a [DataPart] from a file.
+  static Future<DataPart> file(File file) async {
+    final mimeType = _mimeType(file.path);
+    final bytes = await file.readAsBytes();
+    return DataPart(bytes, mimeType: mimeType);
+  }
+}
+
+/// A link part of a message's content, representing a URL.
+class LinkPart extends Part {
+  /// Creates a [LinkPart] with the given [url].
+  LinkPart(this.url, {String? mimeType})
+    : assert(url.isAbsolute, 'LinkPart url must be absolute'),
+      mimeType = mimeType ?? _mimeType(url.toString());
+
+  /// The URL of the link.
+  final Uri url;
+
+  /// The MIME type of the content at the URL.
+  final String mimeType;
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'url': url.toString(),
+    'mimeType': mimeType,
+  };
+
+  @override
+  String toString() => 'LinkPart($url)';
 }
 
 /// A tool call part of a message's content, representing a call to an external
@@ -246,15 +293,8 @@ class ToolPart extends Part {
   @override
   String toString() => switch (kind) {
     ToolPartKind.call =>
-      'ToolPart(kind: call, id: $id, name: $name, '
-          'arguments: $arguments)',
+      'ToolPart.call(id: $id, name: $name, args: $arguments)',
     ToolPartKind.result =>
-      'ToolPart(kind: result, id: $id, name: $name, result: $result)',
+      'ToolPart.result(id: $id, name: $name, result: $result)',
   };
-}
-
-/// Extension methods for [Content].
-extension ContentExtension on Content {
-  /// Creates a [Content] with a single [TextPart] containing the given [text].
-  static Content text(String text) => [TextPart(text)];
 }

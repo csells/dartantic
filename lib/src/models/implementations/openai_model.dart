@@ -67,14 +67,14 @@ class OpenAiModel extends Model {
   Stream<AgentResponse> runStream({
     required String prompt,
     required List<Message> messages,
+    required Content attachments,
   }) async* {
+    final message = Message.user([TextPart(prompt), ...attachments]);
     final oiaMessages = <openai.ChatCompletionMessage>[
       if (_systemPrompt != null && _systemPrompt.isNotEmpty && messages.isEmpty)
         openai.ChatCompletionMessage.system(content: _systemPrompt),
       ..._openaiMessagesFrom(messages),
-      openai.ChatCompletionMessage.user(
-        content: openai.ChatCompletionUserMessageContent.string(prompt),
-      ),
+      _openaiMessagesFrom([message]).first,
     ];
 
     // Track the last assistant message with tool_calls
@@ -384,26 +384,33 @@ class OpenAiModel extends Model {
       for (final part in message.content) {
         if (part is TextPart) {
           textParts.add(part.text);
-        } else if (part is MediaPart) {
-          textParts.add('[media: ${part.contentType}] ${part.url}');
+        } else if (part is LinkPart) {
+          textParts.add('[media: ${part.mimeType}] ${part.url}');
+        } else if (part is DataPart) {
+          final base64 = base64Encode(part.bytes);
+          final mimeType = part.mimeType;
+          textParts.add('[media: $mimeType] data:$mimeType;base64,$base64');
         } else if (part is ToolPart) {
-          if (part.kind == ToolPartKind.call) {
-            toolCalls.add(
-              openai.ChatCompletionMessageToolCall(
-                id: part.id,
-                type: openai.ChatCompletionMessageToolCallType.function,
-                function: openai.ChatCompletionMessageFunctionCall(
-                  name: part.name,
-                  arguments: jsonEncode(part.arguments),
+          switch (part.kind) {
+            case ToolPartKind.call:
+              toolCalls.add(
+                openai.ChatCompletionMessageToolCall(
+                  id: part.id,
+                  type: openai.ChatCompletionMessageToolCallType.function,
+                  function: openai.ChatCompletionMessageFunctionCall(
+                    name: part.name,
+                    arguments: jsonEncode(part.arguments),
+                  ),
                 ),
-              ),
-            );
-          } else if (part.kind == ToolPartKind.result) {
-            toolResult = part;
+              );
+            case ToolPartKind.result:
+              toolResult = part;
           }
         }
       }
+
       final contentString = textParts.join(' ');
+
       if (toolResult != null) {
         // Tool result: emit a tool role message
         result.add(
@@ -442,6 +449,7 @@ class OpenAiModel extends Model {
         }
       }
     }
+
     return result;
   }
 

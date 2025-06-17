@@ -143,14 +143,21 @@ class Agent {
   Future<AgentResponse> run(
     String prompt, {
     List<Message> messages = const [],
+    Content attachments = const [],
   }) async {
-    final stream = runStream(prompt, messages: messages);
+    final stream = runStream(
+      prompt,
+      messages: messages,
+      attachments: attachments,
+    );
+
     final output = StringBuffer();
     var outputMessages = <Message>[];
     await for (final chunk in stream) {
       output.write(chunk.output);
       outputMessages = chunk.messages;
     }
+
     return AgentResponse(output: output.toString(), messages: outputMessages);
   }
 
@@ -161,10 +168,12 @@ class Agent {
   Stream<AgentResponse> runStream(
     String prompt, {
     List<Message> messages = const [],
+    Content attachments = const [],
   }) async* {
     await for (final chunk in _model.runStream(
       prompt: prompt,
       messages: messages,
+      attachments: attachments,
     )) {
       yield AgentResponse(
         output: chunk.output,
@@ -181,8 +190,14 @@ class Agent {
   Future<AgentResponseFor<T>> runFor<T>(
     String prompt, {
     List<Message> messages = const [],
+    Content attachments = const [],
   }) async {
-    final response = await run(prompt, messages: messages);
+    final response = await run(
+      prompt,
+      messages: messages,
+      attachments: attachments,
+    );
+
     final outputJson = jsonDecode(response.output);
     final typedOutput = outputFromJson?.call(outputJson) ?? outputJson;
     return AgentResponseFor(output: typedOutput, messages: response.messages);
@@ -215,13 +230,14 @@ class Agent {
     Iterable<Tool>? tools,
     Map<String, dynamic> input = const {},
     List<Message> messages = const [],
+    Content attachments = const [],
   }) => Agent(
     prompt.frontMatter.model ?? 'google',
     systemPrompt: systemPrompt,
     outputSchema: outputSchema,
     outputFromJson: outputFromJson,
     tools: tools,
-  ).run(prompt.render(input), messages: messages);
+  ).run(prompt.render(input), messages: messages, attachments: attachments);
 
   /// Executes a [DotPrompt] and returns a typed response.
   ///
@@ -252,13 +268,18 @@ class Agent {
     Iterable<Tool>? tools,
     Map<String, dynamic> input = const {},
     List<Message> messages = const [],
+    Content attachments = const [],
   }) => Agent(
     prompt.frontMatter.model ?? 'google',
     systemPrompt: systemPrompt,
     outputSchema: outputSchema,
     outputFromJson: outputFromJson,
     tools: tools,
-  ).runFor<T>(prompt.render(input), messages: messages);
+  ).runFor<T>(
+    prompt.render(input),
+    messages: messages,
+    attachments: attachments,
+  );
 
   /// Executes a given [DotPrompt] using the specified parameters and returns
   /// the response as a [Stream] of [AgentResponse].
@@ -284,13 +305,18 @@ class Agent {
     Iterable<Tool>? tools,
     Map<String, dynamic> input = const {},
     List<Message> messages = const [],
+    Content attachments = const [],
   }) => Agent(
     prompt.frontMatter.model ?? 'google',
     systemPrompt: systemPrompt,
     outputSchema: outputSchema,
     outputFromJson: outputFromJson,
     tools: tools,
-  ).runStream(prompt.render(input), messages: messages);
+  ).runStream(
+    prompt.render(input),
+    messages: messages,
+    attachments: attachments,
+  );
 
   /// Generates vector embeddings for the given text.
   ///

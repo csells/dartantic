@@ -20,6 +20,7 @@ abstract class Model {
   Stream<AgentResponse> runStream({
     required String prompt,
     required List<Message> messages,
+    required Content attachments,
   });
 
   /// Generates an embedding vector for the given [text].

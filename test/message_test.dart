@@ -43,8 +43,8 @@ void main() {
           "content": [
             {"text": "Can you analyze this image and tell me what you see?"},
             {
-              "media": {
-                "contentType": "image/jpeg",
+              "data": {
+                "mimeType": "image/jpeg",
                 "url": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAg..."
               }
             }

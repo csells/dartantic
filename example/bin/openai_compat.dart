@@ -16,9 +16,9 @@ final provider = OpenAiProvider(
 );
 
 void main() async {
-  // await textGeneration();
-  // await embeddings();
-  // await chat();
+  await textGeneration();
+  await embeddings();
+  await chat();
   await tools();
   await fileUploads();
   exit(0);

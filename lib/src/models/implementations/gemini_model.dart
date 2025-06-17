@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:google_generative_ai/google_generative_ai.dart' as gemini;
@@ -74,6 +73,7 @@ class GeminiModel extends Model {
   Stream<AgentResponse> runStream({
     required String prompt,
     required List<Message> messages,
+    required Content attachments,
   }) async* {
     log.fine(
       '[GeminiModel] Starting stream with ${messages.length} messages, '
@@ -82,7 +82,8 @@ class GeminiModel extends Model {
 
     final history = _geminiHistoryFrom(messages);
     final chat = _model.startChat(history: history.isEmpty ? null : history);
-    final stream = chat.sendMessageStream(gemini.Content.text(prompt));
+    final message = Message.user([TextPart(prompt), ...attachments]);
+    final stream = chat.sendMessageStream(message.geminiContent);
 
     final chunks = <String>[];
     final functionCalls = <gemini.FunctionCall>[];
@@ -438,9 +439,9 @@ extension on gemini.Content {
       } else if (part is gemini.TextPart) {
         parts.add(TextPart(part.text));
       } else if (part is gemini.DataPart) {
-        final base64 = base64Encode(part.bytes);
-        final dataUri = 'data:${part.mimeType};base64,$base64';
-        parts.add(MediaPart(contentType: part.mimeType, url: dataUri));
+        parts.add(DataPart(part.bytes, mimeType: part.mimeType));
+      } else if (part is gemini.FilePart) {
+        parts.add(LinkPart(part.uri));
       } else {
         assert(false, 'Unhandled part type: ${part.runtimeType}, value: $part');
       }
@@ -460,29 +461,15 @@ extension on Message {
   gemini.Content get geminiContent {
     final parts = [
       for (final p in content)
-        if (p is TextPart)
-          gemini.TextPart(p.text)
-        else if (p is MediaPart)
-          ...() {
-            final url = p.url;
-            final contentType = p.contentType;
-            Uint8List bytes;
-            if (url.startsWith('data:')) {
-              final base64Str = url.split(',').last;
-              bytes = Uint8List.fromList(
-                const Base64Decoder().convert(base64Str),
-              );
-            } else {
-              bytes = Uint8List(0);
-            }
-            return [gemini.DataPart(contentType, bytes)];
-          }()
-        else if (p is ToolPart && p.kind == ToolPartKind.call)
-          gemini.FunctionCall(p.name, p.arguments)
-        else if (p is ToolPart && p.kind == ToolPartKind.result)
-          gemini.FunctionResponse(p.name, p.result)
-        else
-          throw UnsupportedError('Unknown part type: \\${p.runtimeType}'),
+        switch (p) {
+          TextPart() => gemini.TextPart(p.text),
+          DataPart() => gemini.DataPart(p.mimeType, p.bytes),
+          ToolPart() => switch (p.kind) {
+            ToolPartKind.call => gemini.FunctionCall(p.name, p.arguments),
+            ToolPartKind.result => gemini.FunctionResponse(p.name, p.result),
+          },
+          LinkPart() => gemini.FilePart(p.url),
+        },
     ];
 
     assert(

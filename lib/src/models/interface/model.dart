@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../../agent/agent.dart';
+import '../../providers/interface/provider_caps.dart';
 
 /// Abstract interface for AI model implementations.
 ///
@@ -33,4 +34,7 @@ abstract class Model {
     String text, {
     EmbeddingType type = EmbeddingType.document,
   });
+
+  /// The capabilities of this model.
+  Iterable<ProviderCaps> get caps;
 }

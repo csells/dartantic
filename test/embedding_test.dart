@@ -3,7 +3,6 @@
 import 'dart:typed_data';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:dartantic_ai/src/providers/implementation/provider_table.dart';
 import 'package:test/test.dart';
 
 // NOTE: these tests require environment variables to be set.
@@ -70,8 +69,7 @@ void main() {
       expect(
         documentEmbedding.length,
         equals(queryEmbedding.length),
-        reason:
-            '${agent.displayName}: embeddings should have same dimensions',
+        reason: '${agent.displayName}: embeddings should have same dimensions',
       );
 
       // Test that embeddings contain meaningful values (not all zeros)
@@ -184,8 +182,7 @@ void main() {
       expect(
         documentEmbedding.length,
         equals(queryEmbedding.length),
-        reason:
-            '${agent.displayName}: embeddings should have same dimensions',
+        reason: '${agent.displayName}: embeddings should have same dimensions',
       );
 
       // Calculate similarity between the two embeddings of the same text
@@ -226,8 +223,7 @@ void main() {
         expect(
           e,
           isNotNull,
-          reason:
-              '${agent.displayName}: should handle empty text gracefully',
+          reason: '${agent.displayName}: should handle empty text gracefully',
         );
         print(
           '${agent.displayName} correctly handled empty text with error: $e',
@@ -248,6 +244,12 @@ void main() {
         for (final providerName in ProviderTable.primaryProviders.keys)
           Agent.providerFor(providerName),
       ];
+
+      expect(
+        allProviders,
+        isNotEmpty,
+        reason: 'At least one provider should be available',
+      );
 
       for (final provider in allProviders) {
         final agent = Agent.provider(provider);

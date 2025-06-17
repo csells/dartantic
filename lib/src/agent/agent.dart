@@ -10,6 +10,7 @@ import '../models/interface/model_settings.dart';
 import '../models/message.dart';
 import '../providers/implementation/provider_table.dart';
 import '../providers/interface/provider.dart';
+import '../providers/interface/provider_caps.dart';
 import '../providers/interface/provider_settings.dart';
 import 'agent_response.dart';
 import 'embedding_type.dart';
@@ -89,6 +90,7 @@ class Agent {
            systemPrompt: systemPrompt,
            outputSchema: outputSchema,
            tools: tools,
+           caps: provider.caps,
          ),
        ) {
     displayName =
@@ -483,4 +485,7 @@ class Agent {
 
     return sqrt(sum); // Return the square root to get the magnitude
   }
+
+  /// The capabilities of this agent's model.
+  Iterable<ProviderCaps> get caps => _model.caps;
 }

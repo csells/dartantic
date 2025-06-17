@@ -1,5 +1,6 @@
 import '../../models/interface/model.dart';
 import '../../models/interface/model_settings.dart';
+import 'provider_caps.dart';
 
 /// Abstract interface for AI model providers.
 ///
@@ -17,4 +18,7 @@ abstract class Provider {
   /// Uses the provider's configuration along with the given [settings]
   /// to instantiate and configure a model implementation.
   Model createModel(ModelSettings settings);
+
+  /// The capabilities of this provider.
+  Iterable<ProviderCaps> get caps;
 }

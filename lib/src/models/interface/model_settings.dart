@@ -1,6 +1,7 @@
 import 'package:json_schema/json_schema.dart';
 
 import '../../agent/tool.dart';
+import '../../providers/interface/provider_caps.dart';
 
 /// Settings used to configure a model.
 ///
@@ -15,6 +16,7 @@ class ModelSettings {
     required this.systemPrompt,
     required this.outputSchema,
     required this.tools,
+    required this.caps,
   });
 
   /// The system prompt to use for the model.
@@ -30,4 +32,7 @@ class ModelSettings {
 
   /// The tools to use for the model.
   final Iterable<Tool>? tools;
+
+  /// The capabilities of the model.
+  final Iterable<ProviderCaps> caps;
 }

@@ -24,6 +24,7 @@ class OpenAiModel extends Model {
     required String apiKey,
     required String modelName,
     required String embeddingModelName,
+    required this.caps,
     Uri? baseUrl,
     JsonSchema? outputSchema,
     String? systemPrompt,
@@ -248,6 +249,10 @@ class OpenAiModel extends Model {
     String text, {
     EmbeddingType type = EmbeddingType.document,
   }) async {
+    if (!caps.contains(ProviderCaps.embeddings)) {
+      throw Exception('Embeddings are not supported by this provider.');
+    }
+
     final request = openai.CreateEmbeddingRequest(
       model: openai.EmbeddingModel.modelId(_embeddingModelName),
       input: openai.EmbeddingInput.string(text),
@@ -518,6 +523,10 @@ class OpenAiModel extends Model {
 
     return result;
   }
+
+  /// The capabilities of the model.
+  @override
+  final Iterable<ProviderCaps> caps;
 }
 
 extension on openai.ChatCompletionMessageRole {

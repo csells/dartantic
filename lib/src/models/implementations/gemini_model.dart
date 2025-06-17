@@ -9,6 +9,7 @@ import '../../agent/agent_response.dart';
 import '../../agent/embedding_type.dart';
 import '../../agent/tool.dart';
 import '../../json_schema_extension.dart';
+import '../../providers/interface/provider_caps.dart';
 import '../../utils.dart';
 import '../interface/model.dart';
 import '../message.dart';
@@ -349,6 +350,9 @@ class GeminiModel extends Model {
     );
     return messages;
   }
+
+  @override
+  final Iterable<ProviderCaps> caps = ProviderCaps.all;
 }
 
 extension on String? {

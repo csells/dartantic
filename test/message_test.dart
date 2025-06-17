@@ -3,7 +3,6 @@
 import 'dart:convert';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:dartantic_ai/src/providers/implementation/provider_table.dart';
 import 'package:test/test.dart';
 
 // NOTE: some of these tests require environment variables to be set.

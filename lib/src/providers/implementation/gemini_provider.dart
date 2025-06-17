@@ -3,6 +3,7 @@ import '../../models/interface/model.dart';
 import '../../models/interface/model_settings.dart';
 import '../../platform/platform.dart' as platform;
 import '../interface/provider.dart';
+import '../interface/provider_caps.dart';
 
 /// Provider for Google's Gemini AI models.
 ///
@@ -68,4 +69,7 @@ class GeminiProvider extends Provider {
     tools: settings.tools,
     temperature: temperature,
   );
+
+  @override
+  final caps = ProviderCaps.all;
 }

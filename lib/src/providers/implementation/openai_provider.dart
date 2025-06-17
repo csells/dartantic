@@ -3,6 +3,7 @@ import '../../models/interface/model.dart';
 import '../../models/interface/model_settings.dart';
 import '../../platform/platform.dart' as platform;
 import '../interface/provider.dart';
+import '../interface/provider_caps.dart';
 
 /// Provider for OpenAI models.
 ///
@@ -24,6 +25,7 @@ class OpenAiProvider extends Provider {
     String? apiKey,
     this.baseUrl,
     this.temperature,
+    this.caps = ProviderCaps.all,
   }) : modelName = modelName ?? defaultModelName,
        embeddingModelName = embeddingModelName ?? defaultEmbeddingModelName,
        apiKey = apiKey ?? platform.getEnv(apiKeyName);
@@ -72,5 +74,9 @@ class OpenAiProvider extends Provider {
     tools: settings.tools,
     baseUrl: baseUrl,
     temperature: temperature,
+    caps: caps,
   );
+
+  @override
+  final Iterable<ProviderCaps> caps;
 }

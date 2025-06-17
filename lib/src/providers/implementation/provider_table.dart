@@ -18,6 +18,7 @@ class ProviderTable {
           apiKey: settings.apiKey,
           baseUrl: settings.baseUrl,
           temperature: settings.temperature,
+          caps: ProviderCaps.all,
         ),
     'openrouter':
         (settings) => OpenAiProvider(
@@ -28,6 +29,7 @@ class ProviderTable {
           baseUrl:
               settings.baseUrl ?? Uri.parse('https://openrouter.ai/api/v1'),
           temperature: settings.temperature,
+          caps: ProviderCaps.allExcept([ProviderCaps.embeddings]),
         ),
     // waiting on https://github.com/davidmigloz/langchain_dart/issues/726
     // 'gemini-compat':
@@ -47,6 +49,7 @@ class ProviderTable {
     //             'https://generativelanguage.googleapis.com/v1beta/openai',
     //           ),
     //       temperature: settings.temperature,
+    //       caps: ProviderCaps.all,
     //     ),
     'google': (settings) {
       if (settings.baseUrl != null) {

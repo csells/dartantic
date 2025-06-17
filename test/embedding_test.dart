@@ -31,16 +31,16 @@ void main() {
       expect(
         documentEmbedding,
         isA<Float64List>(),
-        reason: '${agent.displayName}: should return Float64List',
+        reason: '${agent.model}: should return Float64List',
       );
       expect(
         documentEmbedding.length,
         greaterThan(0),
-        reason: '${agent.displayName}: embedding should not be empty',
+        reason: '${agent.model}: embedding should not be empty',
       );
 
       print(
-        '${agent.displayName} document embedding length: ${documentEmbedding.length}',
+        '${agent.model} document embedding length: ${documentEmbedding.length}',
       );
 
       // Test query embedding
@@ -53,23 +53,21 @@ void main() {
       expect(
         queryEmbedding,
         isA<Float64List>(),
-        reason: '${agent.displayName}: should return Float64List',
+        reason: '${agent.model}: should return Float64List',
       );
       expect(
         queryEmbedding.length,
         greaterThan(0),
-        reason: '${agent.displayName}: embedding should not be empty',
+        reason: '${agent.model}: embedding should not be empty',
       );
 
-      print(
-        '${agent.displayName} query embedding length: ${queryEmbedding.length}',
-      );
+      print('${agent.model} query embedding length: ${queryEmbedding.length}');
 
       // Verify embedding dimensions are consistent
       expect(
         documentEmbedding.length,
         equals(queryEmbedding.length),
-        reason: '${agent.displayName}: embeddings should have same dimensions',
+        reason: '${agent.model}: embeddings should have same dimensions',
       );
 
       // Test that embeddings contain meaningful values (not all zeros)
@@ -86,17 +84,17 @@ void main() {
         documentSum,
         greaterThan(0.0),
         reason:
-            '${agent.displayName}: document embedding should contain non-zero values',
+            '${agent.model}: document embedding should contain non-zero values',
       );
       expect(
         querySum,
         greaterThan(0.0),
         reason:
-            '${agent.displayName}: query embedding should contain non-zero values',
+            '${agent.model}: query embedding should contain non-zero values',
       );
 
-      print('${agent.displayName} document embedding sum: $documentSum');
-      print('${agent.displayName} query embedding sum: $querySum');
+      print('${agent.model} document embedding sum: $documentSum');
+      print('${agent.model} query embedding sum: $querySum');
     }
 
     test('createEmbedding: OpenAI', () async {
@@ -132,26 +130,23 @@ void main() {
       final similarity1vs2 = Agent.cosineSimilarity(embedding1, embedding2);
       final similarity1vs3 = Agent.cosineSimilarity(embedding1, embedding3);
 
+      print('${agent.model} similarity between similar texts: $similarity1vs2');
       print(
-        '${agent.displayName} similarity between similar texts: $similarity1vs2',
-      );
-      print(
-        '${agent.displayName} similarity between different texts: $similarity1vs3',
+        '${agent.model} similarity between different texts: $similarity1vs3',
       );
 
       // Similar texts should have higher similarity than different texts
       expect(
         similarity1vs2,
         greaterThan(similarity1vs3),
-        reason:
-            '${agent.displayName}: similar texts should have higher similarity',
+        reason: '${agent.model}: similar texts should have higher similarity',
       );
 
       // Both similarities should be positive
       expect(
         similarity1vs2,
         greaterThan(0.0),
-        reason: '${agent.displayName}: similarity should be positive',
+        reason: '${agent.model}: similarity should be positive',
       );
     }
 
@@ -182,7 +177,7 @@ void main() {
       expect(
         documentEmbedding.length,
         equals(queryEmbedding.length),
-        reason: '${agent.displayName}: embeddings should have same dimensions',
+        reason: '${agent.model}: embeddings should have same dimensions',
       );
 
       // Calculate similarity between the two embeddings of the same text
@@ -192,7 +187,7 @@ void main() {
       );
 
       print(
-        '${agent.displayName} similarity between document and query embeddings of same text: $similarity',
+        '${agent.model} similarity between document and query embeddings of same text: $similarity',
       );
 
       // The embeddings should be similar but may not be identical due to different optimization
@@ -200,7 +195,7 @@ void main() {
         similarity,
         greaterThan(0.5),
         reason:
-            '${agent.displayName}: same text with different types should still be similar',
+            '${agent.model}: same text with different types should still be similar',
       );
     }
 
@@ -217,17 +212,15 @@ void main() {
 
       try {
         await agent.createEmbedding('', type: EmbeddingType.document);
-        fail('${agent.displayName}: should throw exception for empty text');
+        fail('${agent.model}: should throw exception for empty text');
       } on Exception catch (e) {
         // Expected to throw an exception
         expect(
           e,
           isNotNull,
-          reason: '${agent.displayName}: should handle empty text gracefully',
+          reason: '${agent.model}: should handle empty text gracefully',
         );
-        print(
-          '${agent.displayName} correctly handled empty text with error: $e',
-        );
+        print('${agent.model} correctly handled empty text with error: $e');
       }
     }
 
@@ -241,7 +234,7 @@ void main() {
 
     test('createEmbedding with all primary providers', () async {
       final allProviders = [
-        for (final providerName in ProviderTable.primaryProviders.keys)
+        for (final providerName in ProviderTable.providers.keys)
           Agent.providerFor(providerName),
       ];
 
@@ -251,7 +244,9 @@ void main() {
         reason: 'At least one provider should be available',
       );
 
-      for (final provider in allProviders) {
+      for (final provider in allProviders.where(
+        (p) => p.caps.contains(ProviderCaps.embeddings),
+      )) {
         final agent = Agent.provider(provider);
         final embedding = await agent.createEmbedding(
           'Test embedding generation',
@@ -261,16 +256,16 @@ void main() {
         expect(
           embedding,
           isA<Float64List>(),
-          reason: '${agent.displayName}: should return Float64List',
+          reason: '${agent.model}: should return Float64List',
         );
         expect(
           embedding.length,
           greaterThan(0),
-          reason: '${agent.displayName}: embedding should not be empty',
+          reason: '${agent.model}: embedding should not be empty',
         );
 
         print(
-          '${agent.displayName}: Successfully generated embedding with ${embedding.length} dimensions',
+          '${agent.model}: Successfully generated embedding with ${embedding.length} dimensions',
         );
       }
     });

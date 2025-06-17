@@ -27,20 +27,20 @@ class GeminiModel extends Model {
   /// The [outputSchema] is an optional JSON schema for structured outputs.
   /// The [systemPrompt] is an optional system prompt to use.
   GeminiModel({
-    required String modelName,
-    required String embeddingModelName,
     required String apiKey,
+    String? modelName,
+    String? embeddingModelName,
     JsonSchema? outputSchema,
     String? systemPrompt,
     Iterable<Tool>? tools,
     double? temperature,
-  }) : _modelName = modelName,
-       _embeddingModelName = embeddingModelName,
+  }) : generativeModelName = modelName ?? defaultModelName,
+       embeddingModelName = embeddingModelName ?? defaultEmbeddingModelName,
        _apiKey = apiKey,
        _tools = tools,
        _model = gemini.GenerativeModel(
          apiKey: apiKey,
-         model: modelName,
+         model: modelName ?? defaultModelName,
          generationConfig:
              outputSchema == null
                  ? null
@@ -54,14 +54,21 @@ class GeminiModel extends Model {
          tools: tools != null ? _toolsFrom(tools) : null,
        );
 
-  @override
-  String get displayName => 'google:$_modelName;$_embeddingModelName';
+  /// The default model name to use if none is provided.
+  static const defaultModelName = 'gemini-2.0-flash';
+
+  /// The default embedding model name to use if none is provided.
+  static const defaultEmbeddingModelName = 'text-embedding-004';
 
   late final gemini.GenerativeModel _model;
-  final String _modelName;
-  final String _embeddingModelName;
   final String _apiKey;
   final Iterable<Tool>? _tools;
+
+  @override
+  final String generativeModelName;
+
+  @override
+  final String embeddingModelName;
 
   @override
   Stream<AgentResponse> runStream({
@@ -165,7 +172,7 @@ class GeminiModel extends Model {
     // Create a model instance specifically for embeddings
     final embeddingModel = gemini.GenerativeModel(
       apiKey: _apiKey,
-      model: _embeddingModelName,
+      model: embeddingModelName,
     );
 
     final response = await embeddingModel.embedContent(
@@ -352,7 +359,7 @@ class GeminiModel extends Model {
   }
 
   @override
-  final Iterable<ProviderCaps> caps = ProviderCaps.all;
+  final Set<ProviderCaps> caps = ProviderCaps.all;
 }
 
 extension on String? {

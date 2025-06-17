@@ -7,10 +7,10 @@ import 'provider_caps.dart';
 /// Providers are responsible for creating model instances with appropriate
 /// configuration and serving as a factory for specific model implementations.
 abstract class Provider {
-  /// The display name for this provider.
-  String get displayName;
+  /// The provider name for this provider, e.g. "openai"
+  String get name;
 
-  /// The alias for this provider.
+  /// The alias for this provider, e.g. "openrouter"
   String? get alias;
 
   /// Creates a model instance with the specified settings.
@@ -20,5 +20,5 @@ abstract class Provider {
   Model createModel(ModelSettings settings);
 
   /// The capabilities of this provider.
-  Iterable<ProviderCaps> get caps;
+  Set<ProviderCaps> get caps;
 }

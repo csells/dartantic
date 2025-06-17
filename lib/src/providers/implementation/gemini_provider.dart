@@ -13,41 +13,33 @@ class GeminiProvider extends Provider {
   /// Creates a new [GeminiProvider] with the given parameters.
   ///
   /// The [modelName] is the name of the Gemini model to use.
-  /// If not provided, [defaultModelName] is used.
+  /// If not provided, [GeminiModel.defaultModelName] is used.
   /// The [embeddingModelName] is the name of the Gemini embedding model to use.
-  /// If not provided, [defaultEmbeddingModelName] is used.
+  /// If not provided, [GeminiModel.defaultEmbeddingModelName] is used.
   /// The [apiKey] is the API key to use for authentication.
   /// If not provided, it's retrieved from the environment.
   GeminiProvider({
     this.alias,
-    String? modelName,
-    String? embeddingModelName,
+    this.modelName,
+    this.embeddingModelName,
     String? apiKey,
     this.temperature,
-  }) : modelName = modelName ?? defaultModelName,
-       embeddingModelName = embeddingModelName ?? defaultEmbeddingModelName,
-       apiKey = apiKey ?? platform.getEnv(apiKeyName);
-
-  /// The default model name to use if none is provided.
-  static const defaultModelName = 'gemini-2.0-flash';
-
-  /// The default embedding model name to use if none is provided.
-  static const defaultEmbeddingModelName = 'text-embedding-004';
+  }) : apiKey = apiKey ?? platform.getEnv(apiKeyName);
 
   /// The name of the environment variable that contains the API key.
   static const apiKeyName = 'GEMINI_API_KEY';
 
   @override
-  final String displayName = 'google';
+  String get name => 'google';
 
   @override
   final String? alias;
 
   /// The name of the Gemini model to use.
-  final String modelName;
+  final String? modelName;
 
   /// The name of the Gemini embedding model to use.
-  final String embeddingModelName;
+  final String? embeddingModelName;
 
   /// The API key to use for authentication with the Gemini API.
   final String apiKey;

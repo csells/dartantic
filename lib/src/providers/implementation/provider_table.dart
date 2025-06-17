@@ -9,7 +9,7 @@ class ProviderTable {
   /// Map of provider family names to provider factory functions.
   ///
   /// Used to look up the appropriate provider factory when creating providers.
-  static final primaryProviders = <String, ProviderFactory>{
+  static final providers = <String, ProviderFactory>{
     'openai':
         (settings) => OpenAiProvider(
           alias: settings.providerAlias,
@@ -29,7 +29,7 @@ class ProviderTable {
           baseUrl:
               settings.baseUrl ?? Uri.parse('https://openrouter.ai/api/v1'),
           temperature: settings.temperature,
-          caps: ProviderCaps.allExcept([ProviderCaps.embeddings]),
+          caps: ProviderCaps.allExcept({ProviderCaps.embeddings}),
         ),
     // waiting on https://github.com/davidmigloz/langchain_dart/issues/726
     // 'gemini-compat':
@@ -76,13 +76,13 @@ class ProviderTable {
   /// Creates a provider instance for the given settings.
   ///
   /// Uses the [settings providerName] to look up the appropriate provider
-  /// factory in the [primaryProviders] map and creates a provider with the
+  /// factory in the [providers] map and creates a provider with the
   /// specified settings. Throws an [ArgumentError] if the provider family is
   /// not supported.
   static Provider providerFor(ProviderSettings settings) {
     final providerName =
         providerAliases[settings.providerName] ?? settings.providerName;
-    final providerFactory = primaryProviders[providerName];
+    final providerFactory = providers[providerName];
     if (providerFactory != null) return providerFactory(settings);
     throw ArgumentError('Unsupported provider: $settings.providerName');
   }

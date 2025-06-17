@@ -12,6 +12,7 @@ multiple LLMs.
 - [Embedding Generation](#embedding-generation)
 - [Logging and Debugging](#logging-and-debugging)
 - [MCP (Model Context Protocol) Server Support](#mcp-model-context-protocol-server-support)
+- [Provider Capabilities](#provider-capabilities)
 - [Provider Switching](#provider-switching)
 
 ## Alpha
@@ -37,6 +38,7 @@ The following are the target features for this package:
 - [x] MCP (Model Context Protocol) server support for integrating external tools
   from local and remote servers
 - [x] Logging support using the standard Dart `logging` package
+- [x] Capabilities capture and reporting
 - [ ] Chains and Sequential Execution
 - [ ] JSON Mode, Functions Mode, Flexible Decoding
 - [ ] Simple Assistant/Agent loop utilities
@@ -665,6 +667,68 @@ void main() async {
     print(result.output); // The agent will use the calculator tool and provide the answer
   } finally {
     await calculatorServer.disconnect();
+  }
+}
+```
+
+## Provider Capabilities
+
+dartantic_ai includes a capabilities system that allows you to check what features each provider supports. Different providers have different capabilities - for example, OpenRouter doesn't support embedding generation while OpenAI and Gemini do.
+
+### Checking Provider Capabilities
+
+You can check what capabilities a provider supports using the `caps` property:
+
+```dart
+import 'package:dartantic_ai/dartantic_ai.dart';
+
+void main() async {
+  final openaiAgent = Agent('openai');
+  final openrouterAgent = Agent('openrouter');
+  
+  // Check capabilities
+  print('OpenAI capabilities: ${openaiAgent.caps}');
+  // Output: (textGeneration, embeddings, chat, fileUploads, tools)
+  
+  print('OpenRouter capabilities: ${openrouterAgent.caps}');
+  // Output: (textGeneration, chat, fileUploads, tools)
+  
+  // Check specific capabilities
+  final openaiSupportsEmbeddings = openaiAgent.caps.contains(ProviderCaps.embeddings);
+  final openrouterSupportsEmbeddings = openrouterAgent.caps.contains(ProviderCaps.embeddings);
+  
+  print('OpenAI supports embeddings: $openaiSupportsEmbeddings'); // Output: true
+  print('OpenRouter supports embeddings: $openrouterSupportsEmbeddings'); // Output: false
+}
+```
+
+### Capability Types
+
+The `ProviderCaps` enum defines the following capability types:
+
+- **`textGeneration`** - Provider supports text generation and completion
+- **`embeddings`** - Provider supports vector embedding generation
+- **`chat`** - Provider supports conversational/chat interactions
+- **`fileUploads`** - Provider supports file and media uploads
+- **`tools`** - Provider supports tool/function calling
+
+### Graceful Capability Handling
+
+Check capabilities before attempting operations to handle unsupported features gracefully:
+
+```dart
+import 'package:dartantic_ai/dartantic_ai.dart';
+
+void main() async {
+  final agent = Agent('openrouter'); // OpenRouter doesn't support embeddings
+  
+  if (agent.caps.contains(ProviderCaps.embeddings)) {
+    // Safe to use embeddings
+    final embedding = await agent.createEmbedding('test text');
+    print('Embedding generated: ${embedding.length} dimensions');
+  } else {
+    print('Provider ${agent.displayName} does not support embeddings');
+    // Use alternative approach or different provider
   }
 }
 ```

@@ -1,3 +1,13 @@
+## 0.8.0
+
+- Provider Capabilities System: Add support for providers to declare their
+  capabilities
+- Breaking change: Renamed model interface properties for clarity:
+  - `Model.modelName` → `Model.generativeModelName`
+  - Also added `Model.embeddingModelName`
+- Breaking change: Provider capabilities API naming:
+  - `Provider.caps` returns `Set<ProviderCaps>` instead of `Iterable<ProviderCaps>`
+
 ## 0.7.0
 
 - baseUrl support to enable OpenAI-compatibility.

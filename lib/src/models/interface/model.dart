@@ -8,11 +8,11 @@ import '../../providers/interface/provider_caps.dart';
 /// Defines the contract that all model implementations must follow to
 /// support running prompts and receiving responses.
 abstract class Model {
-  /// The display name of this model.
-  ///
-  /// Usually includes the provider family and model name (e.g.,
-  /// "openai:gpt-4").
-  String get displayName;
+  /// The model name of this model, e.g. "gpt-4".
+  String get generativeModelName;
+
+  /// The embedding model name of this model, e.g. "text-embedding-3-small".
+  String get embeddingModelName;
 
   /// Runs the given [prompt] through the model and returns the response.
   ///
@@ -36,5 +36,5 @@ abstract class Model {
   });
 
   /// The capabilities of this model.
-  Iterable<ProviderCaps> get caps;
+  Set<ProviderCaps> get caps;
 }

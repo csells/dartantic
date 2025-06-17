@@ -76,13 +76,13 @@ void main() {
       expect(
         messages,
         isNotEmpty,
-        reason: '${agent.displayName}: messages should not be empty',
+        reason: '${agent.model}: messages should not be empty',
       );
 
       expect(
         messages.first.role,
         MessageRole.user,
-        reason: '${agent.displayName}: first message should be user',
+        reason: '${agent.model}: first message should be user',
       );
 
       expect(
@@ -91,13 +91,13 @@ void main() {
         ),
         isTrue,
         reason:
-            '${agent.displayName}: prompt should be present in first user '
+            '${agent.model}: prompt should be present in first user '
             'message',
       );
       expect(
         messages.any((m) => m.role == MessageRole.model),
         isTrue,
-        reason: '${agent.displayName}: should contain a model response',
+        reason: '${agent.model}: should contain a model response',
       );
     }
 
@@ -129,7 +129,7 @@ void main() {
       final messages = response.messages;
 
       // dump the messages to the console
-      print('# ${agent.displayName} messages:');
+      print('# ${agent.model} messages:');
       for (var i = 0; i < messages.length; i++) {
         final m = messages[i];
         print('- ${m.role}: ${m.content.map((p) => p.toJson()).join(' | ')}');
@@ -138,7 +138,7 @@ void main() {
       expect(
         messages,
         isNotEmpty,
-        reason: '${agent.displayName}: messages should not be empty',
+        reason: '${agent.model}: messages should not be empty',
       );
       final systemPrompt =
           initialMessages.isNotEmpty &&
@@ -149,57 +149,57 @@ void main() {
         expect(
           messages.first.role,
           MessageRole.system,
-          reason: '${agent.displayName}: first message should be system',
+          reason: '${agent.model}: first message should be system',
         );
         expect(
           (messages.first.content.first as TextPart).text,
           systemPrompt,
-          reason: '${agent.displayName}: system prompt text should match',
+          reason: '${agent.model}: system prompt text should match',
         );
         expect(
           messages[1].role,
           MessageRole.user,
-          reason: '${agent.displayName}: second message should be user',
+          reason: '${agent.model}: second message should be user',
         );
         expect(
           messages[2].role,
           MessageRole.model,
-          reason: '${agent.displayName}: third message should be model',
+          reason: '${agent.model}: third message should be model',
         );
         expect(
           messages[3].role,
           MessageRole.user,
-          reason: '${agent.displayName}: fourth message should be user',
+          reason: '${agent.model}: fourth message should be user',
         );
       } else {
         expect(
           messages.first.role,
           isNot(MessageRole.system),
-          reason: '${agent.displayName}: no system prompt should be present',
+          reason: '${agent.model}: no system prompt should be present',
         );
         expect(
           messages.first.role,
           MessageRole.user,
           reason:
-              '${agent.displayName}: first message should be user '
+              '${agent.model}: first message should be user '
               '(no system message)',
         );
         expect(
           messages[1].role,
           MessageRole.model,
-          reason: '${agent.displayName}: second message should be model',
+          reason: '${agent.model}: second message should be model',
         );
         expect(
           messages[2].role,
           MessageRole.user,
-          reason: '${agent.displayName}: third message should be user',
+          reason: '${agent.model}: third message should be user',
         );
       }
       expect(
         messages.last.role,
         MessageRole.model,
         reason:
-            '${agent.displayName}: last message should be model '
+            '${agent.model}: last message should be model '
             '(response to Italy)',
       );
       expect(
@@ -209,7 +209,7 @@ void main() {
           ),
         ),
         isTrue,
-        reason: '${agent.displayName}: should mention Italy in response',
+        reason: '${agent.model}: should mention Italy in response',
       );
     }
 
@@ -383,7 +383,7 @@ void main() {
           responses.isNotEmpty ? responses.last.messages : <Message>[];
 
       // Dump the messages for inspection
-      print('--- Dumping messages for provider: ${agent.displayName} ---');
+      print('--- Dumping messages for provider: ${agent.model} ---');
       for (var i = 0; i < messages.length; i++) {
         final m = messages[i];
         print('Message #$i: role=${m.role}, content:');
@@ -514,7 +514,7 @@ Do not answer directly; always call the tool with the sound in question and retu
         );
         final result = await agent.run(prompt, messages: history);
         history = result.messages;
-        print('Provider: ${agent.displayName}, output: ${result.output}');
+        print('Provider: ${agent.model}, output: ${result.output}');
         // Change the prompt for the next round
         prompt = 'What animal says "quack"?';
       }
@@ -593,7 +593,7 @@ Do not answer directly; always call the tool with the sound in question and retu
     // use this to ensure that all new providers are history compatible
     test('growing history with all primary providers', () async {
       final allProviders = [
-        for (final providerName in ProviderTable.primaryProviders.keys)
+        for (final providerName in ProviderTable.providers.keys)
           Agent.providerFor(providerName),
       ];
 
@@ -636,7 +636,7 @@ Do not answer directly; always call the tool with the sound in question and retu
       final history = responses1.messages;
       // Debug: Print message history after first run
       print(
-        '--- Debug: Message history after first agent run (provider: \\${agent1.displayName}) ---',
+        '--- Debug: Message history after first agent run (provider: \\${agent1.model}) ---',
       );
       for (var i = 0; i < history.length; i++) {
         final m = history[i];
@@ -655,9 +655,7 @@ Do not answer directly; always call the tool with the sound in question and retu
       final responses2 = await agent2.run(followup, messages: history);
       final output = responses2.output;
       // Debug: Print follow-up output and message content
-      print(
-        '--- Debug: Follow-up output (provider: \\${agent2.displayName}) ---',
-      );
+      print('--- Debug: Follow-up output (provider: \\${agent2.model}) ---');
       print('Follow-up prompt: \\$followup');
       print('Follow-up output: \\$output');
       final followupMessages = responses2.messages;

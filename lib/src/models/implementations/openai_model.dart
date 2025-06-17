@@ -22,18 +22,18 @@ class OpenAiModel extends Model {
   /// The [systemPrompt] is an optional system prompt to use.
   OpenAiModel({
     required String apiKey,
-    required String modelName,
-    required String embeddingModelName,
     required this.caps,
+    String? modelName,
+    String? embeddingModelName,
     Uri? baseUrl,
     JsonSchema? outputSchema,
     String? systemPrompt,
     Iterable<Tool>? tools,
     double? temperature,
-  }) : _embeddingModelName = embeddingModelName,
+  }) : generativeModelName = modelName ?? defaultModelName,
+       embeddingModelName = embeddingModelName ?? defaultEmbeddingModelName,
        _tools = tools,
        _systemPrompt = systemPrompt,
-       _modelName = modelName,
        _client = openai.OpenAIClient(
          apiKey: apiKey,
          baseUrl: baseUrl?.toString(),
@@ -46,16 +46,23 @@ class OpenAiModel extends Model {
                : null,
        _temperature = temperature;
 
+  /// The default model name to use if none is provided.
+  static const defaultModelName = 'gpt-4o';
+
+  /// The default embedding model name to use if none is provided.
+  static const defaultEmbeddingModelName = 'text-embedding-3-small';
+
   final openai.OpenAIClient _client;
-  final String _modelName;
-  final String _embeddingModelName;
   final openai.ResponseFormat? _responseFormat;
   final String? _systemPrompt;
   final Iterable<Tool>? _tools;
   final double? _temperature;
 
   @override
-  String get displayName => 'openai:$_modelName;$_embeddingModelName';
+  final String generativeModelName;
+
+  @override
+  final String embeddingModelName;
 
   @override
   Stream<AgentResponse> runStream({
@@ -77,7 +84,7 @@ class OpenAiModel extends Model {
     while (true) {
       final stream = _client.createChatCompletionStream(
         request: openai.CreateChatCompletionRequest(
-          model: openai.ChatCompletionModel.modelId(_modelName),
+          model: openai.ChatCompletionModel.modelId(generativeModelName),
           responseFormat: _responseFormat,
           messages: oiaMessages,
           tools:
@@ -254,7 +261,7 @@ class OpenAiModel extends Model {
     }
 
     final request = openai.CreateEmbeddingRequest(
-      model: openai.EmbeddingModel.modelId(_embeddingModelName),
+      model: openai.EmbeddingModel.modelId(embeddingModelName),
       input: openai.EmbeddingInput.string(text),
     );
 
@@ -526,7 +533,7 @@ class OpenAiModel extends Model {
 
   /// The capabilities of the model.
   @override
-  final Iterable<ProviderCaps> caps;
+  final Set<ProviderCaps> caps;
 }
 
 extension on openai.ChatCompletionMessageRole {

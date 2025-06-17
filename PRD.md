@@ -212,17 +212,42 @@ tools.
     Logger.root.onRecord.listen((record) {
       print('${record.level.name}: ${record.time}: ${record.message}');
     });
+    ```
 
-### Milestone 7: Dartantic provider for Flutter AI Toolkit
+### Milestone 7: Provider Capabilities System
+- [x] **Provider Capability Declaration and Reporting**: Add support for
+  providers to declare their capabilities and allow the system to query what
+  features are available:
+  - `ProviderCaps` enum defining capability types:
+    - `textGeneration` - Provider supports text generation/chat
+    - `embeddings` - Provider supports embedding generation  
+    - `chat` - Provider supports conversational interactions
+    - `fileUploads` - Provider supports file/media uploads
+    - `tools` - Provider supports tool calls
+  - `Provider` interface extended with `caps` property returning
+    `Iterable<ProviderCaps>`
+  - `Agent` property to check capabilities:
+    - `Iterable<ProviderCaps> caps` - Get all capabilities of current
+      provider
+  - Graceful degradation when operations aren't supported:
+    - Clear error messages indicating which capabilities are missing
+    - Ability to test for capabilities before attempting operations
+    - Provider-specific capability documentation
+  - Integration tests verify capability reporting across all providers (OpenAI,
+    Gemini, OpenRouter, etc.)
+  - Examples showing how to check capabilities and handle unsupported operations
+    gracefully
+
+### Milestone 8: Dartantic provider for Flutter AI Toolkit
 - [ ] Implement the `LlmProvider` interface in terms of `Agent`
 
-### Milestone 8: Multi-media input
+### Milestone 9: Multi-media input
 - [ ] `Model.runStream` should take a `Message` as a prompt, so that it can
   include media parts
 - [ ] `Agent.runXxx()` should be updated to support a prompt message, including
   multi-media parts
 
-### Milestone 9: Typed Response + Tools + Simple Agent Loop
+### Milestone 10: Typed Response + Tools + Simple Agent Loop
 - [ ] e.g. two tools, typed response and we keep looping till the LLM is done
 - Just like pydantic-ai can do!
 

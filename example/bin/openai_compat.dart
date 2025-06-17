@@ -4,45 +4,96 @@ import 'dart:io';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 
-final provider = Agent.providerFor('openrouter'); // 'gemini-compat'
+// OpenRouter via OpenAI compatibility
+final provider = Agent.providerFor('openrouter');
 
 void main() async {
-  await simpleAgent();
-  await simpleEmbedding();
+  await textGeneration();
+  await embeddings();
+  await chat();
+  await tools();
+  await fileUploads();
   exit(0);
 }
 
-Future<void> simpleAgent() async {
-  print('\nsimpleAgent()');
+Future<void> textGeneration() async {
+  print('# Text Generation');
+  if (!provider.supports(ProviderCaps.textGeneration)) return;
 
-  final agent = Agent.provider(
-    provider,
-    systemPrompt: 'Be concise, reply with one sentence.',
-  );
+  final agent = Agent.provider(provider);
+  print('## Agent: ${agent.model}');
 
-  print('# Agent: ${agent.displayName}');
-  final response = await agent.run('Where does "hello world" come from?');
+  final response = await agent.run('Write a haiku about code.');
   print(response.output);
 }
 
-Future<void> simpleEmbedding() async {
-  print('\nsimpleEmbedding()');
+Future<void> embeddings() async {
+  print('\n# Embeddings');
+  if (!provider.supports(ProviderCaps.embeddings)) return;
 
   final agent = Agent.provider(provider);
-  if (!agent.caps.contains(ProviderCaps.embeddings)) {
-    print('Provider ${agent.displayName} does not support embeddings.');
-    return;
+  print('## Agent: ${agent.model}');
+
+  final embedding = await agent.createEmbedding('Hello world');
+  print('✓ Generated ${embedding.length}-dimensional embedding');
+}
+
+Future<void> chat() async {
+  print('\n# Chat');
+  if (!provider.supports(ProviderCaps.chat)) return;
+
+  final agent = Agent.provider(provider);
+  print('## Agent: ${agent.model}');
+
+  var messages = <Message>[];
+  var response = await agent.run('My name is Alice', messages: messages);
+  print('User: My name is Alice');
+  print('AI: ${response.output}');
+
+  messages = response.messages;
+  response = await agent.run('What is my name?', messages: messages);
+  print('User: What is my name?');
+  print('AI: ${response.output}');
+}
+
+Future<void> tools() async {
+  print('\n# Tools');
+  if (!provider.supports(ProviderCaps.tools)) return;
+
+  final agent = Agent.provider(
+    provider,
+    tools: [
+      Tool(
+        name: 'get_time',
+        description: 'Get current time',
+        inputSchema: {'type': 'object', 'properties': {}}.toSchema(),
+        onCall: (input) async => {'time': DateTime.now().toString()},
+      ),
+    ],
+  );
+  print('## Agent: ${agent.model}');
+
+  final response = await agent.run('What time is it?');
+  print(response.output);
+}
+
+Future<void> fileUploads() async {
+  print('\n# File Uploads');
+
+  if (!provider.supports(ProviderCaps.fileUploads)) return;
+
+  // TODO: upload a file
+  // final agent = Agent.provider(provider);
+  // print('## Agent: ${agent.model}');
+}
+
+extension on Provider {
+  bool supports(ProviderCaps cap) {
+    final supports = provider.caps.contains(cap);
+    if (!supports) {
+      final displayName = provider.alias ?? provider.name;
+      print('❌ $displayName does NOT support ${cap.name}');
+    }
+    return supports;
   }
-
-  final embedding = await agent.createEmbedding(
-    'Test embedding generation',
-    type: EmbeddingType.document,
-  );
-
-  assert(embedding.isNotEmpty);
-
-  print(
-    '${agent.displayName}: Successfully generated embedding with '
-    '${embedding.length} dimensions',
-  );
 }

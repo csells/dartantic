@@ -93,19 +93,18 @@ class Agent {
            caps: provider.caps,
          ),
        ) {
-    displayName =
-        '${provider.displayName}:${_model.displayName}'
-        '${provider.alias != null ? ' (${provider.alias})' : ''}';
+    model = '${provider.alias ?? provider.name}:${_model.generativeModelName}';
   }
 
   final Model _model;
   final String? _systemPrompt;
 
   /// Returns the model used by this agent in the format:
-  ///   providerName:modelName;embeddingModelName (alias), e.g.
-  ///   openai:gpt-4o;text-embedding-3-small
-  ///   google:gemini-2.0-flash;text-embedding-004 (openrouter)
-  late String displayName;
+  ///   (providerName|alias):modelName, e.g.
+  ///   openai:gpt-4o
+  ///   google:gemini-2.0-flash
+  ///   openrouter:gpt-4o
+  late String model;
 
   /// Function to convert JSON output to a typed object.
   ///
@@ -340,7 +339,7 @@ class Agent {
     final modelName = parts.length != 1 ? parts[1] : null;
     final providerAlias =
         alias ??
-        (ProviderTable.primaryProviders.containsKey(providerName)
+        (ProviderTable.providers.containsKey(providerName)
             ? null
             : providerName);
 
@@ -487,5 +486,5 @@ class Agent {
   }
 
   /// The capabilities of this agent's model.
-  Iterable<ProviderCaps> get caps => _model.caps;
+  Set<ProviderCaps> get caps => _model.caps;
 }

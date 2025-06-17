@@ -18,6 +18,7 @@ class OpenAiProvider extends Provider {
   /// The [apiKey] is the API key to use for authentication.
   /// If not provided, it's retrieved from the environment.
   OpenAiProvider({
+    this.alias,
     String? modelName,
     String? embeddingModelName,
     String? apiKey,
@@ -36,9 +37,11 @@ class OpenAiProvider extends Provider {
   /// The name of the environment variable that contains the API key.
   static const apiKeyName = 'OPENAI_API_KEY';
 
-  /// The display name for this provider, in the format "openai:modelName".
   @override
-  String get displayName => 'openai:$modelName';
+  final String displayName = 'openai';
+
+  @override
+  final String? alias;
 
   /// The name of the OpenAI model to use.
   final String modelName;

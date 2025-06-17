@@ -7,6 +7,12 @@ import '../../agent/agent.dart';
 /// Defines the contract that all model implementations must follow to
 /// support running prompts and receiving responses.
 abstract class Model {
+  /// The display name of this model.
+  ///
+  /// Usually includes the provider family and model name (e.g.,
+  /// "openai:gpt-4").
+  String get displayName;
+
   /// Runs the given [prompt] through the model and returns the response.
   ///
   /// Returns an [AgentResponse] containing the model's output.

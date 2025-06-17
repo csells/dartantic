@@ -1,3 +1,4 @@
+import '../../platform/platform.dart' as platform;
 import '../providers.dart';
 
 /// Manages the mapping between provider family names and provider factories.
@@ -11,23 +12,35 @@ class ProviderTable {
   static final primaryProviders = <String, ProviderFactory>{
     'openai':
         (settings) => OpenAiProvider(
+          alias: settings.providerAlias,
           modelName: settings.modelName,
           embeddingModelName: settings.embeddingModelName,
           apiKey: settings.apiKey,
           baseUrl: settings.baseUrl,
           temperature: settings.temperature,
         ),
-
+    'openrouter':
+        (settings) => OpenAiProvider(
+          alias: settings.providerAlias ?? 'openrouter',
+          modelName: settings.modelName,
+          embeddingModelName: settings.embeddingModelName,
+          apiKey: settings.apiKey ?? platform.getEnv('OPENROUTER_API_KEY'),
+          baseUrl:
+              settings.baseUrl ?? Uri.parse('https://openrouter.ai/api/v1'),
+          temperature: settings.temperature,
+        ),
     // waiting on https://github.com/davidmigloz/langchain_dart/issues/726
     // 'gemini-compat':
     //     // we're using the OpenAI-compatible Gemini API, but we still have to
     //     // use Google model names and API keys
     //     (settings) => OpenAiProvider(
+    //       alias: settings.providerAlias,
     //       modelName: settings.modelName ?? GeminiProvider.defaultModelName,
     //       embeddingModelName:
     //           settings.embeddingModelName ??
     //           GeminiProvider.defaultEmbeddingModelName,
-    //       apiKey: settings.apiKey ?? platform.getEnv(GeminiProvider.apiKeyName),
+    //       apiKey: settings.apiKey ??
+    //                platform.getEnv(GeminiProvider.apiKeyName),
     //       baseUrl:
     //           settings.baseUrl ??
     //           Uri.parse(
@@ -35,13 +48,13 @@ class ProviderTable {
     //           ),
     //       temperature: settings.temperature,
     //     ),
-    
     'google': (settings) {
       if (settings.baseUrl != null) {
         throw ArgumentError('Google provider does not support baseUrl');
       }
 
       return GeminiProvider(
+        alias: settings.providerAlias,
         modelName: settings.modelName,
         embeddingModelName: settings.embeddingModelName,
         apiKey: settings.apiKey,

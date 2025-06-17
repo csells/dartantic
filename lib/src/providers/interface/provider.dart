@@ -6,18 +6,15 @@ import '../../models/interface/model_settings.dart';
 /// Providers are responsible for creating model instances with appropriate
 /// configuration and serving as a factory for specific model implementations.
 abstract class Provider {
-  /// The display name of this provider.
-  ///
-  /// Usually includes the provider family and model name (e.g.,
-  /// "openai:gpt-4").
+  /// The display name for this provider.
   String get displayName;
+
+  /// The alias for this provider.
+  String? get alias;
 
   /// Creates a model instance with the specified settings.
   ///
   /// Uses the provider's configuration along with the given [settings]
   /// to instantiate and configure a model implementation.
   Model createModel(ModelSettings settings);
-
-  @override
-  String toString() => displayName;
 }

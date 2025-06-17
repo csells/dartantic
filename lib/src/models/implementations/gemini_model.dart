@@ -33,7 +33,8 @@ class GeminiModel extends Model {
     String? systemPrompt,
     Iterable<Tool>? tools,
     double? temperature,
-  }) : _embeddingModelName = embeddingModelName,
+  }) : _modelName = modelName,
+       _embeddingModelName = embeddingModelName,
        _apiKey = apiKey,
        _tools = tools,
        _model = gemini.GenerativeModel(
@@ -52,7 +53,11 @@ class GeminiModel extends Model {
          tools: tools != null ? _toolsFrom(tools) : null,
        );
 
+  @override
+  String get displayName => 'google:$_modelName;$_embeddingModelName';
+
   late final gemini.GenerativeModel _model;
+  final String _modelName;
   final String _embeddingModelName;
   final String _apiKey;
   final Iterable<Tool>? _tools;

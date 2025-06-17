@@ -44,6 +44,7 @@ class Agent {
   ///   not provided, uses the provider's default embedding model.
   factory Agent(
     String model, {
+    String? alias,
     String? embeddingModel,
     String? apiKey,
     Uri? baseUrl,
@@ -55,6 +56,7 @@ class Agent {
   }) => Agent.provider(
     providerFor(
       model,
+      alias: alias,
       embeddingModel: embeddingModel,
       apiKey: apiKey,
       baseUrl: baseUrl,
@@ -88,10 +90,20 @@ class Agent {
            outputSchema: outputSchema,
            tools: tools,
          ),
-       );
+       ) {
+    displayName =
+        '${provider.displayName}:${_model.displayName}'
+        '${provider.alias != null ? ' (${provider.alias})' : ''}';
+  }
 
   final Model _model;
   final String? _systemPrompt;
+
+  /// Returns the model used by this agent in the format:
+  ///   providerName:modelName;embeddingModelName (alias), e.g.
+  ///   openai:gpt-4o;text-embedding-3-small
+  ///   google:gemini-2.0-flash;text-embedding-004 (openrouter)
+  late String displayName;
 
   /// Function to convert JSON output to a typed object.
   ///
@@ -313,20 +325,27 @@ class Agent {
   /// Throws [ArgumentError] if [model] is empty.
   static Provider providerFor(
     String model, {
+    String? alias,
     String? embeddingModel,
     String? apiKey,
     Uri? baseUrl,
     double? temperature,
   }) {
-    if (model.isEmpty) throw ArgumentError('Model must be provided');
+    if (model.isEmpty) throw ArgumentError('Model must not be empty');
 
-    final modelParts = model.split(RegExp('[:/]'));
-    final providerName = modelParts[0];
-    final modelName = modelParts.length != 1 ? modelParts[1] : null;
+    final parts = model.split(RegExp('[:/]'));
+    final providerName = parts[0];
+    final modelName = parts.length != 1 ? parts[1] : null;
+    final providerAlias =
+        alias ??
+        (ProviderTable.primaryProviders.containsKey(providerName)
+            ? null
+            : providerName);
 
     return ProviderTable.providerFor(
       ProviderSettings(
         providerName: providerName,
+        providerAlias: providerAlias,
         modelName: modelName,
         embeddingModelName: embeddingModel,
         apiKey: apiKey,

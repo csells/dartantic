@@ -54,6 +54,9 @@ class OpenAiModel extends Model {
   final double? _temperature;
 
   @override
+  String get displayName => 'openai:$_modelName;$_embeddingModelName';
+
+  @override
   Stream<AgentResponse> runStream({
     required String prompt,
     required List<Message> messages,

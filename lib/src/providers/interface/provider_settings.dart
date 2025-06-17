@@ -12,6 +12,7 @@ class ProviderSettings {
   /// optional API key for authentication with the provider.
   ProviderSettings({
     required this.providerName,
+    required this.providerAlias,
     required this.modelName,
     required this.embeddingModelName,
     required this.apiKey,
@@ -19,8 +20,11 @@ class ProviderSettings {
     required this.temperature,
   });
 
-  /// The provider family name (e.g., "openai", "google-gla").
+  /// The provider name, e.g., "openai", "google-gla".
   final String providerName;
+
+  /// The provider alias, e.g., "openrouter", "togetherai".
+  final String? providerAlias;
 
   /// The specific model name to use within the provider family for text
   /// generation.

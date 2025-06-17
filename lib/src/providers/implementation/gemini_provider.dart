@@ -18,6 +18,7 @@ class GeminiProvider extends Provider {
   /// The [apiKey] is the API key to use for authentication.
   /// If not provided, it's retrieved from the environment.
   GeminiProvider({
+    this.alias,
     String? modelName,
     String? embeddingModelName,
     String? apiKey,
@@ -35,9 +36,11 @@ class GeminiProvider extends Provider {
   /// The name of the environment variable that contains the API key.
   static const apiKeyName = 'GEMINI_API_KEY';
 
-  /// The display name for this provider, in the format "google:modelName".
   @override
-  String get displayName => 'google:$modelName';
+  final String displayName = 'google';
+
+  @override
+  final String? alias;
 
   /// The name of the Gemini model to use.
   final String modelName;

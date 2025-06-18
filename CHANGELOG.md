@@ -1,3 +1,11 @@
+## 0.8.0
+
+- Multimedia Input Support: Added `attachments` parameter to Agent and Model
+  interfaces for including files, data and links.
+- Improvided OpenAI compatibiliy for tool calls
+- Added the 'gemini-compat' provider for access to Gemini models via the
+  OpenAI endpoint.
+
 ## 0.7.0
 
 - Provider Capabilities System: Add support for providers to declare their

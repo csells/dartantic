@@ -142,7 +142,7 @@ class Agent {
   /// model.
   Future<AgentResponse> run(
     String prompt, {
-    List<Message> messages = const [],
+    Iterable<Message> messages = const [],
     Content attachments = const [],
   }) async {
     final stream = runStream(
@@ -167,7 +167,7 @@ class Agent {
   /// Returns a [Stream] of [AgentResponse] containing the raw string output.
   Stream<AgentResponse> runStream(
     String prompt, {
-    List<Message> messages = const [],
+    Iterable<Message> messages = const [],
     Content attachments = const [],
   }) async* {
     await for (final chunk in _model.runStream(
@@ -189,7 +189,7 @@ class Agent {
   /// otherwise returns the decoded JSON.
   Future<AgentResponseFor<T>> runFor<T>(
     String prompt, {
-    List<Message> messages = const [],
+    Iterable<Message> messages = const [],
     Content attachments = const [],
   }) async {
     final response = await run(
@@ -229,7 +229,7 @@ class Agent {
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     Iterable<Tool>? tools,
     Map<String, dynamic> input = const {},
-    List<Message> messages = const [],
+    Iterable<Message> messages = const [],
     Content attachments = const [],
   }) => Agent(
     prompt.frontMatter.model ?? 'google',
@@ -267,7 +267,7 @@ class Agent {
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     Iterable<Tool>? tools,
     Map<String, dynamic> input = const {},
-    List<Message> messages = const [],
+    Iterable<Message> messages = const [],
     Content attachments = const [],
   }) => Agent(
     prompt.frontMatter.model ?? 'google',
@@ -304,7 +304,7 @@ class Agent {
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     Iterable<Tool>? tools,
     Map<String, dynamic> input = const {},
-    List<Message> messages = const [],
+    Iterable<Message> messages = const [],
     Content attachments = const [],
   }) => Agent(
     prompt.frontMatter.model ?? 'google',

@@ -67,7 +67,7 @@ class OpenAiModel extends Model {
   @override
   Stream<AgentResponse> runStream({
     required String prompt,
-    required List<Message> messages,
+    required Iterable<Message> messages,
     required Content attachments,
   }) async* {
     log.fine(
@@ -398,7 +398,7 @@ class OpenAiModel extends Model {
   }
 
   static List<openai.ChatCompletionMessage> _openaiMessagesFrom(
-    List<Message> messages,
+    Iterable<Message> messages,
   ) {
     final result = <openai.ChatCompletionMessage>[];
     for (final message in messages) {

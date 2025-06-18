@@ -72,7 +72,7 @@ class GeminiModel extends Model {
   @override
   Stream<AgentResponse> runStream({
     required String prompt,
-    required List<Message> messages,
+    required Iterable<Message> messages,
     required Content attachments,
   }) async* {
     log.fine(
@@ -327,12 +327,12 @@ class GeminiModel extends Model {
     return result;
   }
 
-  static List<gemini.Content> _geminiHistoryFrom(List<Message> messages) {
+  static List<gemini.Content> _geminiHistoryFrom(Iterable<Message> messages) {
     // Gemini Content with system role is not supported; remove initial system
     // message if present.
     final filtered =
         messages.isNotEmpty && messages.first.role == MessageRole.system
-            ? messages.sublist(1)
+            ? messages.skip(1)
             : messages;
     final history = [for (final m in filtered) m.geminiContent];
 

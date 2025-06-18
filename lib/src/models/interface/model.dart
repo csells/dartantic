@@ -19,7 +19,7 @@ abstract class Model {
   /// Returns an [AgentResponse] containing the model's output.
   Stream<AgentResponse> runStream({
     required String prompt,
-    required List<Message> messages,
+    required Iterable<Message> messages,
     required Content attachments,
   });
 

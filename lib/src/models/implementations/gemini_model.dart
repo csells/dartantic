@@ -75,7 +75,7 @@ class GeminiModel extends Model {
     required Iterable<Message> messages,
     required Iterable<Part> attachments,
   }) async* {
-    log.fine(
+    log.finer(
       '[GeminiModel] Starting stream with ${messages.length} messages, '
       'prompt length: ${prompt.length}',
     );
@@ -126,7 +126,7 @@ class GeminiModel extends Model {
         try {
           final result = await _callTool(functionCall.name, functionCall.args);
           responses.add(gemini.FunctionResponse(functionCall.name, result));
-          log.fine(
+          log.finer(
             '[GeminiModel] Tool response: ${functionCall.name} = $result',
           );
         } on Exception catch (ex) {
@@ -140,13 +140,13 @@ class GeminiModel extends Model {
       }
 
       // Send function responses back to the model
-      log.fine('[GeminiModel] Sending function responses back to model');
+      log.finest('[GeminiModel] Sending function responses back to model');
       final result = await chat.sendMessage(
         gemini.Content.functionResponses(responses),
       );
 
       if (result.text != null && result.text!.isNotEmpty) {
-        log.fine('[GeminiModel] Final response after tools: ${result.text!}');
+        log.finer('[GeminiModel] Final response after tools: ${result.text!}');
         yield AgentResponse(
           output: result.text!,
           messages: _messagesFrom(chat.history),

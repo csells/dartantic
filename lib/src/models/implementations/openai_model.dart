@@ -70,7 +70,7 @@ class OpenAiModel extends Model {
     required Iterable<Message> messages,
     required Iterable<Part> attachments,
   }) async* {
-    log.fine(
+    log.finer(
       '[OpenAiModel] Starting stream with ${messages.length} messages, '
       'prompt length: ${prompt.length}',
     );
@@ -117,7 +117,7 @@ class OpenAiModel extends Model {
       final choice = chunk.choices.first;
       final delta = choice.delta;
 
-      log.fine(
+      log.finest(
         '[OpenAiModel] Raw delta: $delta, '
         'finishReason: ${choice.finishReason}',
       );
@@ -134,6 +134,16 @@ class OpenAiModel extends Model {
 
       // Handle tool calls during streaming
       if (delta.toolCalls != null && delta.toolCalls!.isNotEmpty) {
+        final callsDesc = delta.toolCalls!
+            .where((tc) => tc.function?.name != null)
+            .map(
+              (tc) => '${tc.function!.name}(${tc.function?.arguments ?? ''})',
+            )
+            .join(', ');
+        if (callsDesc.isNotEmpty) {
+          log.finer('[OpenAiModel] Tool calls received: $callsDesc');
+        }
+
         for (final toolCall in delta.toolCalls!) {
           final index = toolCall.index ?? syntheticIndex++;
           final id = toolCall.id;
@@ -154,7 +164,7 @@ class OpenAiModel extends Model {
           final currentId = toolCallIdByIndex[index];
           if (currentId != null && args != null) {
             toolCallBuffers[currentId]!.args.write(args);
-            log.fine(
+            log.finer(
               '[OpenAiModel] Tool call received: index=$index, '
               'id=$currentId, name=${toolCallBuffers[currentId]!.name}, '
               'args=$args',
@@ -207,7 +217,7 @@ class OpenAiModel extends Model {
 
     // If there are tool calls, handle them
     if (toolCalls.isNotEmpty) {
-      log.finest('[OpenAiModel] Processing ${toolCalls.length} tool calls');
+      log.finer('[OpenAiModel] Processing ${toolCalls.length} tool calls');
 
       // Add assistant message with tool calls
       oiaMessages.add(
@@ -220,7 +230,7 @@ class OpenAiModel extends Model {
       // Execute all tool calls and collect responses
       for (final toolCall in toolCalls) {
         log.fine(
-          '[OpenAiModel] Calling tool: id=${toolCall.id}, '
+          '[OpenAiModel] Calling tool: '
           'name=${toolCall.function.name}, args=${toolCall.function.arguments}',
         );
 
@@ -230,7 +240,7 @@ class OpenAiModel extends Model {
           final result = await _callTool(toolCall.function.name, args);
 
           // Add tool response to messages
-          log.fine(
+          log.finer(
             '[OpenAiModel] Tool response: ${toolCall.function.name} = $result',
           );
           oiaMessages.add(
@@ -263,7 +273,7 @@ class OpenAiModel extends Model {
 
       final finalMessage = response.choices.first.message;
       if (finalMessage.content != null && finalMessage.content!.isNotEmpty) {
-        log.fine(
+        log.finer(
           '[OpenAiModel] Final response after tools: ${finalMessage.content!}',
         );
 

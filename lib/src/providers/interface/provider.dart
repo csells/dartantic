@@ -73,7 +73,7 @@ class ModelInfo {
     required this.providerName,
     required this.name,
     required this.kinds,
-    required this.stable,  
+    required this.stable,
   });
 
   /// The name of the provider that offers this model.

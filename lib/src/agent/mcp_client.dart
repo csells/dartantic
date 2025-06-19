@@ -135,6 +135,14 @@ class McpClient {
   /// Gets all tools from this MCP server as Agent Tool objects.
   /// Automatically connects if not already connected.
   Future<Iterable<Tool>> listTools() async {
+    // NOTE: waiting on a fix for this issue:
+    // https://github.com/leehack/mcp_dart/issues/11
+
+    // Restore this one line of code, perform the appropriate mapping, including
+    // the required parmaters in the inputSchema as before, and remove the rest
+    // of the gunk when/if that happens. mcp_dart does it all better anyway!
+    // final result = await _client!.listTools();
+
     if (kind == McpServerKind.remote) {
       return _getToolsViaHttp();
     } else {

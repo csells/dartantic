@@ -479,8 +479,9 @@ void main() {
           // Verify we got the expected DeepWiki tools
           expect(tools.length, equals(3));
 
-          // Verify this actually used the SSE code path by checking tool descriptions
-          // DeepWiki tools should have [deepwiki] prefix added by our system
+          // Verify this actually used the SSE code path by checking tool
+          // descriptions DeepWiki tools should have [deepwiki] prefix added by
+          // our system
           for (final tool in tools) {
             expect(tool.description, startsWith('[deepwiki]'));
           }

@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, unreachable_from_main
 
 import 'dart:io';
 
@@ -6,9 +6,9 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:logging/logging.dart';
 
 void main() async {
-  Logger.root.level = Level.ALL;
+  Logger.root.level = Level.FINE;
   Logger.root.onRecord.listen(
-    (record) => print('[${record.level.name}]: ${record.message}'),
+    (record) => print('\n[${record.level.name}]: ${record.message}\n'),
   );
 
   await singleMcpServer();
@@ -19,7 +19,7 @@ void main() async {
 Future<void> singleMcpServer() async {
   print('\nSingle MCP Server');
 
-  final huggingFace = McpServer.remote(
+  final huggingFace = McpClient.remote(
     'huggingface',
     url: Uri.parse('https://huggingface.co/mcp'),
   );
@@ -29,7 +29,7 @@ Future<void> singleMcpServer() async {
     systemPrompt:
         'You are a helpful assistant with access to various tools; '
         'use the right one for the right job!',
-    tools: [...await huggingFace.getTools()],
+    tools: [...await huggingFace.listTools()],
   );
 
   try {
@@ -57,12 +57,12 @@ Future<void> multipleToolsAndMcpServers() async {
     onCall: (args) async => {'result': 'Portland, OR'},
   );
 
-  final deepwiki = McpServer.remote(
+  final deepwiki = McpClient.remote(
     'deepwiki',
     url: Uri.parse('https://mcp.deepwiki.com/mcp'),
   );
 
-  final huggingFace = McpServer.remote(
+  final huggingFace = McpClient.remote(
     'huggingface',
     url: Uri.parse('https://huggingface.co/mcp'),
   );
@@ -75,8 +75,8 @@ Future<void> multipleToolsAndMcpServers() async {
     tools: [
       localTime,
       location,
-      ...await deepwiki.getTools(),
-      ...await huggingFace.getTools(),
+      ...await deepwiki.listTools(),
+      ...await huggingFace.listTools(),
     ],
   );
 

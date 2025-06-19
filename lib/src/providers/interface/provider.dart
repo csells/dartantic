@@ -73,6 +73,7 @@ class ModelInfo {
     required this.providerName,
     required this.name,
     required this.kinds,
+    required this.stable,  
   });
 
   /// The name of the provider that offers this model.
@@ -83,4 +84,7 @@ class ModelInfo {
 
   /// The type of model based on its primary capability.
   final Set<ModelKind> kinds;
+
+  /// Whether this model is stable or preview/experimental.
+  final bool stable;
 }

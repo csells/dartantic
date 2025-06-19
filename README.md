@@ -704,7 +704,8 @@ behavior, or troubleshooting unexpected responses.
 
 dartantic_ai supports discovering available models from providers using the
 `listModels()` method. This returns information about each model including its
-name and what kinds of operations it supports.
+name, what kinds of operations it supports, and whether it's a stable production
+model or a preview/experimental model.
 
 ```dart
 import 'package:dartantic_ai/dartantic_ai.dart';
@@ -714,10 +715,23 @@ void main() async {
   final models = await provider.listModels();
 
   for (final model in models) {
-    print('${model.providerName}:${model.name} (${model.kinds})');
+    final status = model.stable ? 'stable' : 'preview';
+    print('${model.providerName}:${model.name} [$status] (${model.kinds})');
   }
 }
 ```
+
+### Model Stability Detection
+
+The `stable` field helps you distinguish between production-ready models and
+experimental ones:
+
+- **Stable models**: `gpt-4o`, `gemini-2.5-pro`, `text-embedding-3-large`
+- **Preview/experimental models**: `gpt-4-turbo-preview`, `gemini-2.5-pro-exp-03-25`, `o1-preview`
+
+Until there's an API from the model providers (I'm looking at you, Google and OpenAI),
+models are classified using heuristics based on their names, looking for patterns
+like "preview", "experimental", "latest", version numbers, and date suffixes.
 
 ## MCP (Model Context Protocol) Server Support
 

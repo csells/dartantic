@@ -2,12 +2,16 @@
 
 - Model discovery: Added `Provider.listModels()` to enumerate available models
   and the kinds of operations they support
+- Model stability detection: Added `stable` field to `ModelInfo` to distinguish
+  between stable production models and preview/experimental models using 
+  name-based heuristics
 - Breaking Change: made aliases an implementation detail of providers -- the
   Dart type is available to understand what endpoint you're calling, e.g. Gemini
   vs OpenAI. I got tired of checking for provider name vs. alias vs. handle. I
   just made it be the same thing it is in the provider table so that you can
   programmatically create a fully-qualified model string.
 - fixed a nasty fully-qualified model naming bug
+- simplifying provider names (again!)
 - Better docs!
 
 ## 0.8.2

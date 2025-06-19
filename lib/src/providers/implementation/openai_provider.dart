@@ -21,21 +21,20 @@ class OpenAiProvider extends Provider {
   /// The [apiKey] is the API key to use for authentication.
   /// If not provided, it's retrieved from the environment.
   OpenAiProvider({
-    String? alias,
+    this.name = 'openai',
     this.modelName,
     this.embeddingModelName,
     String? apiKey,
     this.baseUrl,
     this.temperature,
     this.caps = ProviderCaps.all,
-  }) : apiKey = apiKey ?? platform.getEnv(apiKeyName),
-       _alias = alias;
+  }) : apiKey = apiKey ?? platform.getEnv(apiKeyName);
 
   /// The name of the environment variable that contains the API key.
   static const apiKeyName = 'OPENAI_API_KEY';
 
   @override
-  String get name => _alias ?? 'openai';
+  final String name;
 
   /// The name of the OpenAI model to use.
   final String? modelName;
@@ -51,8 +50,6 @@ class OpenAiProvider extends Provider {
 
   /// The temperature to use for the OpenAI API.
   final double? temperature;
-
-  final String? _alias;
 
   /// Creates a [Model] instance using this provider's configuration.
   ///
@@ -95,10 +92,45 @@ class OpenAiProvider extends Provider {
           return ModelKind.chat; // default assumption
         }();
 
-        return ModelInfo(name: id, providerName: name, kinds: {kind});
+        return ModelInfo(
+          name: id,
+          providerName: name,
+          kinds: {kind},
+          stable: _isStable(id),
+        );
       }).toList();
     } finally {
       client.endSession();
     }
+  }
+
+  static bool _isStable(String modelName) {
+    final lowerName = modelName.toLowerCase();
+
+    // Check for explicit preview/experimental markers
+    final unstableMarkers = [
+      'preview',
+      'beta',
+      'alpha',
+      'experimental',
+      'latest',
+    ];
+    for (final marker in unstableMarkers) {
+      if (lowerName.contains(marker)) return false;
+    }
+
+    // Check for date patterns:
+    // - MMDD format (e.g. -0914, -1106, -0125)
+    // - YYYY-MM-DD format (e.g. -2024-05-13, -2025-01-31)
+    final datePatterns = [
+      RegExp(r'-\d{4}$'), // -MMDD at end
+      RegExp(r'-\d{4}-\d{2}-\d{2}$'), // -YYYY-MM-DD at end
+    ];
+
+    for (final pattern in datePatterns) {
+      if (pattern.hasMatch(modelName)) return false;
+    }
+
+    return true;
   }
 }

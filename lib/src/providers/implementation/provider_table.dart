@@ -13,7 +13,6 @@ class ProviderTable {
   static final providers = <String, ProviderFactory>{
     'openai':
         (settings) => OpenAiProvider(
-          alias: settings.providerAlias,
           modelName: settings.modelName,
           embeddingModelName: settings.embeddingModelName,
           apiKey: settings.apiKey,
@@ -23,7 +22,7 @@ class ProviderTable {
         ),
     'openrouter':
         (settings) => OpenAiProvider(
-          alias: settings.providerAlias ?? 'openrouter',
+          name: 'openrouter',
           modelName: settings.modelName,
           embeddingModelName: settings.embeddingModelName,
           apiKey: settings.apiKey ?? platform.getEnv('OPENROUTER_API_KEY'),
@@ -36,7 +35,7 @@ class ProviderTable {
         // we're using the OpenAI-compatible Gemini API, but we still have to
         // use Google model names and API keys
         (settings) => OpenAiProvider(
-          alias: settings.providerAlias ?? 'gemini-compat',
+          name: 'gemini-compat',
           modelName: settings.modelName ?? GeminiModel.defaultModelName,
           embeddingModelName:
               settings.embeddingModelName ??
@@ -56,7 +55,6 @@ class ProviderTable {
       }
 
       return GeminiProvider(
-        alias: settings.providerAlias,
         modelName: settings.modelName,
         embeddingModelName: settings.embeddingModelName,
         apiKey: settings.apiKey,
@@ -78,11 +76,13 @@ class ProviderTable {
   /// factory in the [providers] map and creates a provider with the
   /// specified settings. Throws an [ArgumentError] if the provider family is
   /// not supported.
-  static Provider providerFor(ProviderSettings settings) {
-    final providerName =
-        providerAliases[settings.providerName] ?? settings.providerName;
+  static Provider providerFor(
+    String name, {
+    required ProviderSettings settings,
+  }) {
+    final providerName = providerAliases[name] ?? name;
     final providerFactory = providers[providerName];
     if (providerFactory != null) return providerFactory(settings);
-    throw ArgumentError('Unsupported provider: $settings.providerName');
+    throw ArgumentError('Unsupported provider: $name');
   }
 }

@@ -98,7 +98,7 @@ class Agent {
   final String? _systemPrompt;
 
   /// Returns the model used by this agent in the format:
-  ///   (providerName|alias):generativeModelName, e.g.
+  ///   providerName:generativeModelName, e.g.
   ///   openai:gpt-4o
   ///   google:gemini-2.0-flash
   ///   openrouter:gpt-4o
@@ -357,15 +357,10 @@ class Agent {
     final index = model.indexOf(RegExp('[:/]'));
     final providerName = index == -1 ? model : model.substring(0, index);
     final modelName = index == -1 ? null : model.substring(index + 1);
-    final providerAlias =
-        (ProviderTable.providers.containsKey(providerName)
-            ? null
-            : providerName);
 
     return ProviderTable.providerFor(
-      ProviderSettings(
-        providerName: providerName,
-        providerAlias: providerAlias,
+      providerName,
+      settings: ProviderSettings(
         modelName: modelName,
         embeddingModelName: embeddingModel,
         apiKey: apiKey,

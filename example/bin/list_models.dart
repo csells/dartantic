@@ -9,7 +9,11 @@ void main() async {
     final models = await provider.listModels();
     for (final model in models) {
       final kinds = model.kinds.map((k) => k.name).join(', ');
-      print('- ${model.providerName}:${model.name} ($kinds)');
+      print(
+        '- ${model.providerName}:${model.name} '
+        '${model.stable ? '' : '[pre-release] '}'
+        '($kinds) ',
+      );
     }
   }
 }

@@ -24,19 +24,17 @@ class GeminiProvider extends Provider {
   /// The [apiKey] is the API key to use for authentication.
   /// If not provided, it's retrieved from the environment.
   GeminiProvider({
-    String? alias,
     this.modelName,
     this.embeddingModelName,
     String? apiKey,
     this.temperature,
-  }) : apiKey = apiKey ?? platform.getEnv(apiKeyName),
-       _alias = alias;
+  }) : apiKey = apiKey ?? platform.getEnv(apiKeyName);
 
   /// The name of the environment variable that contains the API key.
   static const apiKeyName = 'GEMINI_API_KEY';
 
   @override
-  String get name => _alias ?? 'google';
+  String get name => 'google';
 
   /// The name of the Gemini model to use.
   final String? modelName;
@@ -49,8 +47,6 @@ class GeminiProvider extends Provider {
 
   /// The temperature to use for the Gemini API.
   final double? temperature;
-
-  final String? _alias;
 
   /// Creates a [Model] instance using this provider's configuration.
   ///
@@ -116,10 +112,47 @@ class GeminiProvider extends Provider {
       }
 
       allModels.add(
-        ModelInfo(name: modelName, providerName: name, kinds: kinds),
+        ModelInfo(
+          name: modelName,
+          providerName: name,
+          kinds: kinds,
+          stable: _isStable(modelName),
+        ),
       );
     }
 
     return allModels;
+  }
+
+  static bool _isStable(String modelName) {
+    final lowerName = modelName.toLowerCase();
+
+    // Check for explicit preview/experimental markers
+    final unstableMarkers = ['preview', 'experimental', 'exp', 'latest'];
+    for (final marker in unstableMarkers) {
+      if (lowerName.contains(marker)) return false;
+    }
+
+    // Check for date patterns (MM-DD format at end)
+    final datePattern = RegExp(r'-\d{2}-\d{2}$');
+    if (datePattern.hasMatch(modelName)) return false;
+
+    // Check for version number suffixes on gemini models only
+    // (e.g. gemini-1.5-flash-002, but NOT embedding-001)
+    if (lowerName.startsWith('gemini-')) {
+      final versionPattern = RegExp(r'-\d{3}$');
+      if (versionPattern.hasMatch(modelName)) return false;
+    }
+
+    // Check for variant suffixes
+    final variantPatterns = [
+      RegExp(r'-\d+b$'), // -8b, -16b, etc. (size variants)
+      RegExp(r'-lite-\d{3}$'), // -lite-001, etc. (lite with version)
+    ];
+    for (final pattern in variantPatterns) {
+      if (pattern.hasMatch(modelName)) return false;
+    }
+
+    return true;
   }
 }

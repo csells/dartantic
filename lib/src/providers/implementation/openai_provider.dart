@@ -1,3 +1,5 @@
+import 'package:openai_dart/openai_dart.dart' as oai;
+
 import '../../models/implementations/openai_model.dart';
 import '../../models/interface/model.dart';
 import '../../models/interface/model_settings.dart';
@@ -71,4 +73,32 @@ class OpenAiProvider extends Provider {
 
   @override
   final Set<ProviderCaps> caps;
+
+  @override
+  Future<Iterable<ModelInfo>> listModels() async {
+    final client = oai.OpenAIClient(
+      apiKey: apiKey,
+      baseUrl: baseUrl?.toString(),
+    );
+    try {
+      final res = await client.listModels();
+      return res.data.map<ModelInfo>((m) {
+        final id = m.id;
+
+        final kind = () {
+          if (id.contains('embedding')) return ModelKind.embedding;
+          if (id.startsWith('dall-e') || id.contains('gpt-image')) {
+            return ModelKind.image;
+          }
+          if (id.startsWith('whisper')) return ModelKind.audio;
+          if (id.startsWith('tts-')) return ModelKind.tts;
+          return ModelKind.chat; // default assumption
+        }();
+
+        return ModelInfo(name: id, providerName: handle, kind: kind);
+      }).toList();
+    } finally {
+      client.endSession();
+    }
+  }
 }

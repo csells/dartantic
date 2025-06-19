@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
 import '../../models/implementations/gemini_model.dart' show GeminiModel;
 import '../../models/interface/model.dart';
 import '../../models/interface/model_settings.dart';
@@ -64,4 +68,38 @@ class GeminiProvider extends Provider {
 
   @override
   final caps = ProviderCaps.all;
+
+  @override
+  Future<Iterable<ModelInfo>> listModels() async {
+    final uri = Uri.https(
+      'generativelanguage.googleapis.com',
+      '/v1beta/models',
+      {'key': apiKey},
+    );
+
+    final res = await http.get(uri);
+    if (res.statusCode != 200) {
+      throw Exception('Gemini list failed: ${res.statusCode}');
+    }
+
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    return (body['models'] as List<dynamic>).map<ModelInfo>((model) {
+      final methods =
+          // ignore: avoid_dynamic_calls
+          model['supportedGenerationMethods'] as List<dynamic>;
+      final kind = () {
+        if (methods.contains('embedContent')) return ModelKind.embedding;
+        if (methods.contains('generateImage')) return ModelKind.image;
+        if (methods.contains('generateContent')) return ModelKind.chat;
+        return ModelKind.other;
+      }();
+
+      return ModelInfo(
+        // ignore: avoid_dynamic_calls
+        name: (model['name'] as String).replaceFirst('models/', ''),
+        providerName: handle,
+        kind: kind,
+      );
+    }).toList();
+  }
 }

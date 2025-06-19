@@ -201,4 +201,11 @@ void main() {
       expect(capsWithoutEmbeddings, contains(ProviderCaps.tools));
     });
   });
+
+  test('provider aliases', () {
+    for (final providerName in ProviderTable.providers.keys) {
+      final provider = Agent.providerFor(providerName);
+      expect(provider.handle, providerName);
+    }
+  });
 }

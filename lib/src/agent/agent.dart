@@ -45,7 +45,6 @@ class Agent {
   ///   not provided, uses the provider's default embedding model.
   factory Agent(
     String model, {
-    String? alias,
     String? embeddingModel,
     String? apiKey,
     Uri? baseUrl,
@@ -57,7 +56,6 @@ class Agent {
   }) => Agent.provider(
     providerFor(
       model,
-      alias: alias,
       embeddingModel: embeddingModel,
       apiKey: apiKey,
       baseUrl: baseUrl,
@@ -93,7 +91,7 @@ class Agent {
            caps: provider.caps,
          ),
        ) {
-    model = '${provider.alias ?? provider.name}:${_model.generativeModelName}';
+    model = '${provider.handle}:${_model.generativeModelName}';
   }
 
   final Model _model;
@@ -349,7 +347,6 @@ class Agent {
   /// Throws [ArgumentError] if [model] is empty.
   static Provider providerFor(
     String model, {
-    String? alias,
     String? embeddingModel,
     String? apiKey,
     Uri? baseUrl,
@@ -361,7 +358,6 @@ class Agent {
     final providerName = parts[0];
     final modelName = parts.length != 1 ? parts[1] : null;
     final providerAlias =
-        alias ??
         (ProviderTable.providers.containsKey(providerName)
             ? null
             : providerName);

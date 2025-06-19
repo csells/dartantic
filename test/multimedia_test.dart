@@ -12,9 +12,7 @@ void main() {
     final imageFile = File('test/files/pikachu.webp');
 
     for (final provider in allProviders) {
-      final providerName = provider.alias ?? provider.name;
-
-      group('Provider: $providerName', () {
+      group('Provider: ${provider.handle}', () {
         late Agent agent;
 
         setUp(() {
@@ -87,11 +85,10 @@ development technologies and has written several books about programming.
             } on Exception catch (e) {
               // Some providers (like Gemini) may not support arbitrary web URLs
               // and prefer files uploaded to their file service
-              if (providerName.contains('google') ||
-                  providerName.contains('gemini')) {
+              if (provider.name == 'google') {
                 // This is expected for Gemini - skip the test
                 markTestSkipped(
-                  'Provider $providerName does not support arbitrary web '
+                  'Provider ${provider.name} does not support arbitrary web '
                   'URLs: $e',
                 );
               } else {

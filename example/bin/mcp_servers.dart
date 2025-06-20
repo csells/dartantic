@@ -23,7 +23,7 @@ Future<void> oneRequestMultiTool() async {
   print('\nOne Request, Multi Tool Calls');
 
   final agent = Agent(
-    'google',
+    'openai',
     systemPrompt: '''
 You are a helpful calendar assistant.
 Make sure you use the get-current-date-time tool FIRST to ground yourself.
@@ -61,8 +61,8 @@ Then use the get-calendar-schedule tool to get the schedule for the day.
       stdout.write(r.output);
     },
   ).drain();
-  // print('\nMessages:');
-  // _dumpMessages(messages);
+
+  _dumpMessages(messages);
 }
 
 Future<void> singleMcpServer() async {
@@ -144,9 +144,7 @@ Future<void> multipleToolsAndMcpServers() async {
       messages = r.messages;
     }).drain();
 
-    print('--------------------------------');
     _dumpMessages(messages);
-    print('--------------------------------');
   } finally {
     await Future.wait([deepwiki.disconnect(), huggingFace.disconnect()]);
   }

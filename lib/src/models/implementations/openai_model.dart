@@ -115,22 +115,8 @@ class OpenAiModel extends Model {
     // we're expecting typed output, e.g. a JSON object, it screws up the
     // parsing.
     //
-    // To fix this (and we haven't yet), we need to:
-    // - When we get a text response *after* the probe, we need to check if it's
-    //   the first text response.
-    // - If it is, we need to remove it.
-    // - If it's not, we need to keep it.
-    //
-    // ## Streaming Considerations
-    // This fix would be easy to implement except for the fact that the we're
-    // streaming the text responses as we get them. This means that we need to
-    // buffer the response *after* the probe:
-    // - If all we get is text => we never stream it, we never put it onto the
-    //   history, and we're done as if that last text response never happened.
-    // - If it's a tool call => we stream it, we put it onto the history, and we
-    //   continue.
-    //
-    // TODO: Implement the post-probe dropping-the-last-text-response feature.
+    // When that happens, we drop that last text response and don't stream it.
+    // That requires caching the response after the probe, but it's worth it.
     var isFirstEverTextResponse = true;
     log.finer(
       '[OpenAiModel] Starting stream with ${messages.length} messages, '
@@ -314,33 +300,44 @@ class OpenAiModel extends Model {
             ),
           );
 
+          // For post-probe responses, we need to cache everything without
+          // streaming
           final processor = OpenAiStreamProcessor(
             isFirstEverTextResponseUpdated: isFirstEverTextResponse,
           );
+
+          // Process the stream but don't yield anything yet (cache the
+          // response)
           await for (final chunk in stream) {
-            final text = processor.processDelta(chunk.choices.first.delta!);
-            if (text != null) {
-              yield AgentResponse(output: text, messages: const []);
-            }
+            processor.processDelta(chunk.choices.first.delta!);
+            // Not yielding anything here - we're caching the response
           }
+
           isFirstEverTextResponse = processor.isFirstEverTextResponseUpdated;
           final result = processor.finish();
-
-          // Add the completed assistant message to history
           final newContent = result.content;
           final newToolCalls = result.toolCalls;
-          if (newContent.isNotEmpty || newToolCalls.isNotEmpty) {
-            final sanitizedMessage =
-                (newToolCalls.isEmpty)
-                    ? openai.ChatCompletionMessage.assistant(
-                      content: newContent,
-                      toolCalls: null,
-                    )
-                    : openai.ChatCompletionMessage.assistant(
-                      content: newContent.isNotEmpty ? newContent : null,
-                      toolCalls: newToolCalls,
-                    );
+
+          // Check if the post-probe response contains tool calls
+          if (newToolCalls.isNotEmpty) {
+            // If it has tool calls, stream the cached text (if any)
+            if (newContent.isNotEmpty) {
+              yield AgentResponse(output: newContent, messages: const []);
+            }
+
+            // Add the complete message (with text and tool calls) to history
+            final sanitizedMessage = openai.ChatCompletionMessage.assistant(
+              content: newContent.isNotEmpty ? newContent : null,
+              toolCalls: newToolCalls,
+            );
             oiaMessages.add(sanitizedMessage);
+          } else {
+            // If post-probe response is text-only, discard it completely
+            // Don't stream it, don't add to message history
+            log.fine(
+              '[OpenAiModel] Discarding text-only post-probe response: '
+              '$newContent',
+            );
           }
 
           // If the probe found new tools, add them to the queue and loop.

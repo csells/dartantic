@@ -28,7 +28,8 @@ class OpenAiProvider extends Provider {
     String? apiKey,
     this.baseUrl,
     this.temperature,
-    this.caps = ProviderCaps.all, AgentMode? agentMode,
+    this.caps = ProviderCaps.all,
+    AgentMode? agentMode,
   }) : apiKey = apiKey ?? platform.getEnv(apiKeyName);
 
   /// The name of the environment variable that contains the API key.

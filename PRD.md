@@ -31,8 +31,8 @@ tools.
 - Custom provider support (bring your own provider).
 - Logging support using the standard Dart `logging` package with configurable
   levels.
-- Model discovery via `Provider.listModels()` to enumerate available models,
-  the kinds of operations they support, and their stability status (stable vs 
+- Model discovery via `Provider.listModels()` to enumerate available models, the
+  kinds of operations they support, and their stability status (stable vs
   preview/experimental).
 - (Planned) Tool execution with validated inputs.
 - (Planned) Chains and sequential execution.
@@ -60,7 +60,8 @@ tools.
 ### Functional
 - The system MUST support agent creation via both model string and provider
   instance.
-- The system MUST support running prompts and returning streaming string outputs.
+- The system MUST support running prompts and returning streaming string
+  outputs.
 - The system MUST support running prompts and returning typed outputs, using a
   provided schema and fromJson function.
 - The system MUST support defining tools with typed input (validated via JSON
@@ -87,18 +88,95 @@ tools.
 ## Acceptance Criteria
 - [x] Agents can be created using both model strings and provider instances.
 - [x] Agents can run prompts and return streaming string outputs.
-- [x] Agents can run prompts and return typed outputs, mapped to custom Dart types.
+- [x] Agents can run prompts and return typed outputs, mapped to custom Dart
+  types.
 - [x] Agents can use DotPrompt for structured prompt input.
 - [x] Execute tools with validated inputs
-- [x] The system supports both OpenAI and Gemini providers, with API keys loaded from environment variables.
-- [x] The system provides clear error messages for missing API keys or unsupported providers.
-- [x] Integration tests pass for all major features, including:
-  - Basic agent usage (string and typed output)
-  - JSON schema output
-  - Tool usage (time, temperature, etc.)
-  - Provider switching (OpenAI, Gemini)
-  - DotPrompt usage
-  - MCP server integration (remote connection, tool discovery, execution) 
+- [x] The system supports both OpenAI and Gemini providers, with API keys loaded
+  from environment variables.
+- [x] The system provides clear error messages for missing API keys or
+  unsupported providers.
+- [x] Integration tests pass for all major features
+
+## Implementation Considerations
+### Multi-Turn Tool Calling
+dartantic_ai implements sophisticated multi-turn tool calling that works across
+different LLM providers, despite their different underlying behaviors. This
+feature enables complex reasoning chains where models can:
+
+1. Make multiple tool calls in sequence
+2. Use the results of earlier tool calls to inform later ones
+3. Produce final responses that incorporate all tool results
+
+The implementation handles provider-specific differences:
+
+#### Gemini Implementation
+- **Simple Loop Approach**: Gemini natively supports continuous tool calling
+  without special handling
+- **Process Flow**:
+  - Send history + messages + tools to Gemini
+  - Process streaming response, collecting tool calls
+  - Execute tool calls and add results to conversation
+  - Gemini automatically continues with next tool calls or final response
+  - Loop until no more tool calls are detected
+
+#### OpenAI Implementation
+- **Probe-Based Approach**: OpenAI requires additional handling to achieve
+  multi-turn tool calling
+- **Challenge**: OpenAI models often stop after making initial tool calls
+  instead of continuing the reasoning chain
+- **Process Flow**:
+  - Send history + messages + tools to OpenAI
+  - Process streaming response, collecting tool calls
+  - Execute tool calls and add results to conversation
+      - If model returns text instead of tool calls, use a "probe" technique:
+    - Send an empty user message to prompt for additional tool calls
+    - If probe reveals more tool calls, execute them and continue loop
+    - If probe confirms no more tool calls, we're done
+    - Cache and selectively process post-probe responses:
+      - For tool calls: stream cached text and process normally
+      - For text-only: discard completely (don't stream or add to history)
+
+#### Cross-Provider Compatibility
+- Tool call/result IDs are maintained consistently across providers
+- Message history with tool calls can be transferred between providers
+- FIFO (First-In, First-Out) matching of tool calls and results ensures correct
+  pairing
+
+### Streaming Considerations
+All text responses are streamed out from the Agent as they come in from the LLM.
+For post-probe responses, we implement special buffering logic:
+- The entire response is cached without streaming
+- If the cached response contains tool calls:
+  - Stream the cached text (if any)
+  - Process tool calls normally
+  - Continue the conversation flow
+- If the cached response contains only text:
+  - Discard the text completely
+  - Don't add anything to message history
+  - Exit as if the response never happened
+
+### Future Optimizations
+A future optimization would be to skip the probe message entirely when an Agent has no tools configured. Since there would be no possibility of additional tool calls in this scenario, the probe step would be unnecessary overhead.
+
+This implementation enables complex multi-step reasoning chains like:
+```dart
+// Example: Calendar assistant that needs multiple tool calls
+final agent = Agent(
+  'google',
+  systemPrompt: 'You are a helpful calendar assistant.',
+  tools: [
+    Tool(name: 'get-current-date-time', ...),
+    Tool(name: 'get-calendar-schedule', ...),
+  ],
+);
+
+// With a single prompt, the agent will:
+// 1. Call get-current-date-time to determine today's date
+// 2. Use that result to call get-calendar-schedule with the correct date
+// 3. Return a final response incorporating all information
+final response = await agent.run("What's on my schedule today?");
+```
 
 ## Milestones
 
@@ -113,7 +191,12 @@ tools.
 - [x] Passing system prompts to models.
 
 ### Milestone 2: Multi-turn Chat, Streaming
-- [x] **Streaming responses**: LLM responses can be streamed via `Agent.runStream`, `Agent.runPromptStream`, and similar methods, all of which return a `Stream<AgentResponse>`. This allows real-time consumption of output as it's generated. Streaming is a core, stable feature of the API, and is the primary way to consume real-time output from the agent. Note: `Agent.run` returns a `Future<AgentResponse>` with the full response, not a stream.
+- [x] **Streaming responses**: LLM responses can be streamed via
+  `Agent.runStream`, `Agent.runPromptStream`, and similar methods, all of which
+  return a `Stream<AgentResponse>`. This allows real-time consumption of output
+  as it's generated. Streaming is a core, stable feature of the API, and is the
+  primary way to consume real-time output from the agent. Note: `Agent.run`
+  returns a `Future<AgentResponse>` with the full response, not a stream.
 
   ```dart
   // Example of streaming with Agent.runStream
@@ -128,31 +211,53 @@ tools.
     }
   }
   ```
-- [x] **Multi-turn chat**: The system supports passing a list of `Message` objects (with roles: system, user, model, etc.) to the agent for context-aware, conversational LLM interactions.
-  - The `Message` class supports roles (`system`, `user`, `model`) and content parts (including text and media).
-  - The `Agent.runStream` and related methods accept a `messages` parameter, which is a list of `Message` objects representing the conversation history.
-  - The agent ensures that the prompt and message history are included in the request, and the response includes the updated message history.
-  - Tests verify that when an empty message history is provided, the agent includes both the user prompt and the model response in the resulting message list.
+- [x] **Multi-turn chat**: The system supports passing a list of `Message`
+  objects (with roles: system, user, model, etc.) to the agent for
+  context-aware, conversational LLM interactions.
+  - The `Message` class supports roles (`system`, `user`, `model`) and content
+    parts (including text and media).
+  - The `Agent.runStream` and related methods accept a `messages` parameter,
+    which is a list of `Message` objects representing the conversation history.
+  - The agent ensures that the prompt and message history are included in the
+    request, and the response includes the updated message history.
+  - Tests verify that when an empty message history is provided, the agent
+    includes both the user prompt and the model response in the resulting
+    message list.
 
-- [x] **Tool calls and provider switching**: Tool calls are supported and threaded through message history, including across provider boundaries (OpenAI <-> Gemini). Tool call/result IDs are now stable and compatible, allowing seamless cross-provider chat and tool usage. Tests verify that tool calls and results are present in the message history and that provider switching works as expected.
+- [x] **Tool calls and provider switching**: Tool calls are supported and
+  threaded through message history, including across provider boundaries (OpenAI
+  <-> Gemini). Tool call/result IDs are now stable and compatible, allowing
+  seamless cross-provider chat and tool usage. Tests verify that tool calls and
+  results are present in the message history and that provider switching works
+  as expected.
 
 - [x] **API changes**:
   - `AgentResponse` includes the full message history after each response.
-  - The `Agent` interface supports chat-like workflows by accepting and returning message lists.
-  - The `Message` class supports serialization/deserialization for easy storage and replay of conversations.
+  - The `Agent` interface supports chat-like workflows by accepting and
+    returning message lists.
+  - The `Message` class supports serialization/deserialization for easy storage
+    and replay of conversations.
 
 - [x] **Provider-specific implementations**:
-  - OpenAI: Maps `Message` to OpenAI chat API, supports streaming and tool calls.
-  - Gemini: Maps `Message` to Gemini API, supports streaming and tool calls, with cross-provider message history compatibility.
+  - OpenAI: Maps `Message` to OpenAI chat API, supports streaming and tool
+    calls.
+  - Gemini: Maps `Message` to Gemini API, supports streaming and tool calls,
+    with cross-provider message history compatibility.
 
 - [x] **Testing**:
-  - Integration tests cover streaming, multi-turn chat, tool calls, typed output, and provider switching (including cross-provider tool call/result threading).
+  - Integration tests cover streaming, multi-turn chat, tool calls, typed
+    output, and provider switching (including cross-provider tool call/result
+    threading).
 
 **Summary of current status:**  
-- Multi-turn chat, streaming, message roles, and content types are fully implemented and tested.
-- Tool calls and provider switching (OpenAI <-> Gemini) are implemented and tested, with stable tool call/result IDs across providers.
+- Multi-turn chat, streaming, message roles, and content types are fully
+  implemented and tested.
+- Tool calls and provider switching (OpenAI <-> Gemini) are implemented and
+  tested, with stable tool call/result IDs across providers.
 - Message history serialization/deserialization is provider-agnostic and robust.
-- Remaining gaps: advanced agent loop (auto tool loop until schema is satisfied), multi-media input as prompt, and some advanced error handling.
+- Remaining gaps: advanced agent loop (auto tool loop until schema is
+  satisfied), multi-media input as prompt, and some advanced error handling.
+
 
 ### Milestone 3: RAG and Embedding Support
 - [x] **Embedding generation**: Add methods to generate vector embeddings for
@@ -163,17 +268,24 @@ tools.
   - Comprehensive integration tests covering both OpenAI and Gemini providers.
 
 ### Milestone 4: Message API Convenience Methods
-- [x] **Enhanced Message Construction**: Added convenience methods to simplify message and content creation:
-  - `Content` type alias for `List<Part>` to improve readability and semantic clarity.
+- [x] **Enhanced Message Construction**: Added convenience methods to simplify
+  message and content creation:
+  - `Content` type alias for `List<Part>` to improve readability and semantic
+    clarity.
   - Convenience constructors for `Message` class:
     - `Message.system(Content content)` - Creates system messages
     - `Message.user(Content content)` - Creates user messages  
     - `Message.model(Content content)` - Creates model messages
-  - `Content.text(String text)` extension method to easily create text-only content.
+  - `Content.text(String text)` extension method to easily create text-only
+    content.
   - Convenience constructors for `ToolPart` class:
-    - `ToolPart.call({required String id, required String name, Map<String, dynamic> arguments})` - Creates tool calls
-    - `ToolPart.result({required String id, required String name, Map<String, dynamic> result})` - Creates tool results
-  - These methods significantly reduce boilerplate when working with messages, making the API more ergonomic for common use cases like creating simple text messages or tool interactions.
+    - `ToolPart.call({required String id, required String name, Map<String,
+      dynamic> arguments})` - Creates tool calls
+    - `ToolPart.result({required String id, required String name, Map<String,
+      dynamic> result})` - Creates tool results
+  - These methods significantly reduce boilerplate when working with messages,
+    making the API more ergonomic for common use cases like creating simple text
+    messages or tool interactions.
 
 ### Milestone 5: MCP Server Support
 - [x] **MCP (Model Context Protocol) Server Integration**: Add support for
@@ -204,8 +316,8 @@ tools.
     integration
 
 ### Milestone 6: Logging and Instrumentation
-- [x] **Logging Support**: Implemented structured logging using the
-  standard Dart `logging` package for debugging and monitoring:
+- [x] **Logging Support**: Implemented structured logging using the standard
+  Dart `logging` package for debugging and monitoring:
   - Users can configure logging by setting up listeners:
     ```dart
     import 'package:logging/logging.dart';
@@ -230,8 +342,7 @@ tools.
   - `Provider` interface extended with `caps` property returning
     `Iterable<ProviderCaps>`
   - `Agent` property to check capabilities:
-    - `Iterable<ProviderCaps> caps` - Get all capabilities of current
-      provider
+    - `Iterable<ProviderCaps> caps` - Get all capabilities of current provider
   - Graceful degradation when operations aren't supported:
     - Clear error messages indicating which capabilities are missing
     - Ability to test for capabilities before attempting operations
@@ -245,10 +356,10 @@ tools.
 - [ ] Implement the `LlmProvider` interface in terms of `Agent`
 
 ### Milestone 9: Multi-media input and output
-- [x] **Multi-media input support**: Added `attachments` parameter to
-  Agent and Model interfaces for including files, images, and other media:
-  - `Agent.runStream()`, `Agent.run()`, and related methods accept
-    `attachments: Content` parameter
+- [x] **Multi-media input support**: Added `attachments` parameter to Agent and
+  Model interfaces for including files, images, and other media:
+  - `Agent.runStream()`, `Agent.run()`, and related methods accept `attachments:
+    Content` parameter
   - `Model.runStream()` interface includes `required Content attachments`
   - Support for text files via `DataPart.file(File('path.txt'))`
   - Support for image files via `DataPart.file(File('image.jpg'))`  
@@ -257,7 +368,7 @@ tools.
   - Comprehensive examples in `example/bin/multimedia.dart` demonstrate file
     summaries, image descriptions, and visual content analysis
 
-- [ ] **Multi-media output support**: Enable agents to generate multimedia 
+- [ ] **Multi-media output support**: Enable agents to generate multimedia
   content (images, audio, etc.) in addition to text:
   - Update `AgentResponse` to support multimedia content parts in output
   - Support models that can generate images (e.g., DALL-E, Imagen)

@@ -2,19 +2,67 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:logging/logging.dart';
 
 void main() async {
-  Logger.root.level = Level.INFO;
+  Logger.root.level = Level.INFO; // FINE
   Logger.root.onRecord.listen(
     (record) => print('\n[${record.level.name}]: ${record.message}\n'),
   );
 
-  await singleMcpServer();
-  await multipleToolsAndMcpServers();
+  // await singleMcpServer();
+  // await multipleToolsAndMcpServers();
+  await oneRequestMultiTool(); // simulated calendar MCP server
   exit(0);
+}
+
+Future<void> oneRequestMultiTool() async {
+  print('\nOne Request, Multi Tool Calls');
+
+  final agent = Agent(
+    'google',
+    systemPrompt: '''
+You are a helpful calendar assistant.
+Make sure you use the get-current-date-time tool FIRST to ground yourself.
+Then use the get-calendar-schedule tool to get the schedule for the day.
+''',
+    tools: [
+      Tool(
+        name: 'get-current-date-time',
+        description: 'Get the current local date and time in ISO-8601 format',
+        onCall: (_) async => {'datetime': DateTime.now().toIso8601String()},
+      ),
+      Tool(
+        name: 'get-calendar-schedule',
+        description: 'Get the schedule for the day',
+        inputSchema:
+            {
+              'type': 'object',
+              'properties': {
+                'date': {'type': 'string', 'format': 'date'},
+              },
+              'required': ['date'],
+            }.toSchema(),
+        onCall:
+            (args) async => {
+              'result': '[${args['date']}: You have a meeting at 10:00 AM',
+            },
+      ),
+    ],
+  );
+
+  var messages = <Message>[];
+  await agent.runStream("What's on my schedule today?", messages: messages).map(
+    (r) {
+      messages = r.messages;
+      stdout.write(r.output);
+    },
+  ).drain();
+  // print('\nMessages:');
+  // _dumpMessages(messages);
 }
 
 Future<void> singleMcpServer() async {
@@ -80,7 +128,7 @@ Future<void> multipleToolsAndMcpServers() async {
     'google',
     systemPrompt:
         'You are a helpful assistant with access to various tools; '
-        'use the right one for the right job!',
+        'make sure to use those first before answering questions!',
     tools: [localTime, location, ...dwTools, ...hgTools],
   );
 
@@ -89,7 +137,16 @@ Future<void> multipleToolsAndMcpServers() async {
         'Where am I and what time is it and '
         'who is hugging face and '
         'what model providers does csells/dartantic_ai currently support?';
-    await agent.runStream(query).map((r) => stdout.write(r.output)).drain();
+
+    var messages = <Message>[];
+    await agent.runStream(query).map((r) {
+      stdout.write(r.output);
+      messages = r.messages;
+    }).drain();
+
+    print('--------------------------------');
+    _dumpMessages(messages);
+    print('--------------------------------');
   } finally {
     await Future.wait([deepwiki.disconnect(), huggingFace.disconnect()]);
   }
@@ -113,6 +170,12 @@ void _dumpTools(String name, Iterable<Tool> tools) {
 void _dumpMessages(List<Message> messages) {
   print('Messages:');
   for (final message in messages) {
-    print('  ${message.role}: ${message.parts}');
+    final parts = message.parts
+        .map((p) {
+          final s = p.toString();
+          return s.substring(0, min(s.length, 96)).replaceAll('\n', ' ');
+        })
+        .join('\n                     ');
+    print('  ${message.role}: $parts');
   }
 }

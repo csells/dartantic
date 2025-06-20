@@ -19,6 +19,7 @@ class ProviderTable {
           baseUrl: settings.baseUrl,
           temperature: settings.temperature,
           caps: ProviderCaps.all,
+          agentMode: settings.agentMode,
         ),
     'openrouter':
         (settings) => OpenAiProvider(
@@ -30,6 +31,7 @@ class ProviderTable {
               settings.baseUrl ?? Uri.parse('https://openrouter.ai/api/v1'),
           temperature: settings.temperature,
           caps: ProviderCaps.allExcept({ProviderCaps.embeddings}),
+          agentMode: settings.agentMode,
         ),
     'gemini-compat':
         // we're using the OpenAI-compatible Gemini API, but we still have to
@@ -48,6 +50,7 @@ class ProviderTable {
               ),
           temperature: settings.temperature,
           caps: ProviderCaps.all,
+          agentMode: settings.agentMode,
         ),
     'google': (settings) {
       if (settings.baseUrl != null) {
@@ -59,6 +62,7 @@ class ProviderTable {
         embeddingModelName: settings.embeddingModelName,
         apiKey: settings.apiKey,
         temperature: settings.temperature,
+        agentMode: settings.agentMode,
       );
     },
   };

@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../dartantic_ai.dart';
 import '../../utils.dart';
+import 'openai_stream_processor.dart';
 
 /// Implementation of [Model] that uses OpenAI's API.
 ///
@@ -153,117 +154,24 @@ class OpenAiModel extends Model {
       ),
     );
 
-    final chunks = <String>[];
     final toolCalls = <openai.ChatCompletionMessageToolCall>[];
-
-    // Accumulate tool call data during streaming
-    final toolCallIdByIndex = <int, String?>{};
-    final toolCallBuffers = <String, ({String name, StringBuffer args})>{};
-    var syntheticIndex = 0;
-    var isFirstTextChunk = true;
-
+    final initialProcessor = OpenAiStreamProcessor(
+      isFirstEverTextResponseUpdated: isFirstEverTextResponse,
+    );
     await for (final chunk in stream) {
-      final choice = chunk.choices.first;
-      final delta = choice.delta;
-
-      log.finest(
-        '[OpenAiModel] Raw delta: $delta, '
-        'finishReason: ${choice.finishReason}',
-      );
-
-      // fix for https://github.com/davidmigloz/langchain_dart/issues/726
-      if (delta == null) continue;
-
-      // Handle content streaming
-      if (delta.content != null && delta.content!.isNotEmpty) {
-        var outputText = delta.content!;
-        if (isFirstTextChunk) {
-          if (!isFirstEverTextResponse) {
-            outputText = '\n$outputText';
-          }
-          isFirstEverTextResponse = false;
-          isFirstTextChunk = false;
-        }
-        chunks.add(delta.content!);
-        yield AgentResponse(output: outputText, messages: []);
-      }
-
-      // Handle tool calls during streaming
-      if (delta.toolCalls != null && delta.toolCalls!.isNotEmpty) {
-        final callsDesc = delta.toolCalls!
-            .where((tc) => tc.function?.name != null)
-            .map(
-              (tc) => '${tc.function!.name}(${tc.function?.arguments ?? ''})',
-            )
-            .join(', ');
-        if (callsDesc.isNotEmpty) {
-          log.finer('[OpenAiModel] Tool calls received: $callsDesc');
-        }
-
-        for (final toolCall in delta.toolCalls!) {
-          final index = toolCall.index ?? syntheticIndex++;
-          final id = toolCall.id;
-          final name = toolCall.function?.name;
-          final args = toolCall.function?.arguments;
-
-          // If this chunk starts a new tool call, record its id and name
-          if (id != null && name != null) {
-            // Generate synthetic ID if empty
-            final actualId = id.isEmpty ? const Uuid().v4() : id;
-            toolCallIdByIndex[index] = actualId;
-            toolCallBuffers.putIfAbsent(
-              actualId,
-              () => (name: name, args: StringBuffer()),
-            );
-          }
-          // Use the most recent id for this index
-          final currentId = toolCallIdByIndex[index];
-          if (currentId != null && args != null) {
-            toolCallBuffers[currentId]!.args.write(args);
-            log.finer(
-              '[OpenAiModel] Tool call received: index=$index, '
-              'id=$currentId, name=${toolCallBuffers[currentId]!.name}, '
-              'args=$args',
-            );
-          }
-        }
+      final text = initialProcessor.processDelta(chunk.choices.first.delta!);
+      if (text != null) {
+        yield AgentResponse(output: text, messages: const []);
       }
     }
+    isFirstEverTextResponse = initialProcessor.isFirstEverTextResponseUpdated;
 
-    // Convert tool call buffers to tool calls
-    if (toolCallBuffers.isNotEmpty) {
-      // Remove incomplete tool call buffers (empty or invalid JSON)
-      toolCallBuffers.removeWhere((_, v) {
-        final argsStr = v.args.toString().trim();
-        if (argsStr.isEmpty) return true;
-        try {
-          jsonDecode(argsStr);
-          return false;
-        } on Exception catch (_) {
-          return true;
-        }
-      });
-
-      final validToolCalls =
-          toolCallBuffers.entries
-              .map(
-                (entry) => openai.ChatCompletionMessageToolCall(
-                  id: entry.key,
-                  type: openai.ChatCompletionMessageToolCallType.function,
-                  function: openai.ChatCompletionMessageFunctionCall(
-                    name: entry.value.name,
-                    arguments: entry.value.args.toString(),
-                  ),
-                ),
-              )
-              .toList();
-
-      toolCalls.addAll(validToolCalls);
-    }
+    final initialResult = initialProcessor.finish();
+    toolCalls.addAll(initialResult.toolCalls);
 
     // Add the first assistant message to the history. It may have text, tool
     // calls, or both.
-    final assistantMessageContent = chunks.join();
+    final assistantMessageContent = initialResult.content;
     if (assistantMessageContent.isNotEmpty || toolCalls.isNotEmpty) {
       oiaMessages.add(
         openai.ChatCompletionMessage.assistant(
@@ -331,84 +239,21 @@ class OpenAiModel extends Model {
           ),
         );
 
-        final chunks = <String>[];
-        final toolCallBuffers = <String, ({String name, StringBuffer args})>{};
-        var syntheticIndex = 0;
-        final toolCallIdByIndex = <int, String?>{};
-        var isFirstTextChunk = true;
-
+        final processor = OpenAiStreamProcessor(
+          isFirstEverTextResponseUpdated: isFirstEverTextResponse,
+        );
         await for (final chunk in stream) {
-          final choice = chunk.choices.first;
-          final delta = choice.delta;
-          if (delta == null) continue;
-
-          // Stream text as it arrives
-          if (delta.content != null && delta.content!.isNotEmpty) {
-            var outputText = delta.content!;
-            if (isFirstTextChunk) {
-              if (!isFirstEverTextResponse) {
-                outputText = '\n$outputText';
-              }
-              isFirstEverTextResponse = false;
-              isFirstTextChunk = false;
-            }
-            chunks.add(delta.content!);
-            yield AgentResponse(output: outputText, messages: const []);
-          }
-
-          // Buffer tool calls
-          if (delta.toolCalls != null && delta.toolCalls!.isNotEmpty) {
-            for (final toolCall in delta.toolCalls!) {
-              final index = toolCall.index ?? syntheticIndex++;
-              final id = toolCall.id;
-              final name = toolCall.function?.name;
-              final args = toolCall.function?.arguments;
-
-              if (id != null && name != null) {
-                final actualId = id.isEmpty ? const Uuid().v4() : id;
-                toolCallIdByIndex[index] = actualId;
-                toolCallBuffers.putIfAbsent(
-                  actualId,
-                  () => (name: name, args: StringBuffer()),
-                );
-              }
-              final currentId = toolCallIdByIndex[index];
-              if (currentId != null && args != null) {
-                toolCallBuffers[currentId]!.args.write(args);
-              }
-            }
+          final text = processor.processDelta(chunk.choices.first.delta!);
+          if (text != null) {
+            yield AgentResponse(output: text, messages: const []);
           }
         }
-
-        // Process the streamed response
-        final newToolCalls = <openai.ChatCompletionMessageToolCall>[];
-        if (toolCallBuffers.isNotEmpty) {
-          toolCallBuffers.removeWhere((_, v) {
-            final argsStr = v.args.toString().trim();
-            if (argsStr.isEmpty) return true;
-            try {
-              jsonDecode(argsStr);
-              return false;
-            } on Exception catch (_) {
-              return true;
-            }
-          });
-          newToolCalls.addAll(
-            toolCallBuffers.entries.map(
-              (entry) => openai.ChatCompletionMessageToolCall(
-                id: entry.key,
-                type: openai.ChatCompletionMessageToolCallType.function,
-                function: openai.ChatCompletionMessageFunctionCall(
-                  name: entry.value.name,
-                  arguments: entry.value.args.toString(),
-                ),
-              ),
-            ),
-          );
-        }
+        isFirstEverTextResponse = processor.isFirstEverTextResponseUpdated;
+        final result = processor.finish();
 
         // Add the completed assistant message to history
-        final newContent = chunks.join();
+        final newContent = result.content;
+        final newToolCalls = result.toolCalls;
         if (newContent.isNotEmpty || newToolCalls.isNotEmpty) {
           final sanitizedMessage =
               (newToolCalls.isEmpty)
@@ -469,85 +314,21 @@ class OpenAiModel extends Model {
             ),
           );
 
-          final chunks = <String>[];
-          final toolCallBuffers =
-              <String, ({String name, StringBuffer args})>{};
-          var syntheticIndex = 0;
-          final toolCallIdByIndex = <int, String?>{};
-          var isFirstTextChunk = true;
-
+          final processor = OpenAiStreamProcessor(
+            isFirstEverTextResponseUpdated: isFirstEverTextResponse,
+          );
           await for (final chunk in stream) {
-            final choice = chunk.choices.first;
-            final delta = choice.delta;
-            if (delta == null) continue;
-
-            // Stream text as it arrives
-            if (delta.content != null && delta.content!.isNotEmpty) {
-              var outputText = delta.content!;
-              if (isFirstTextChunk) {
-                if (!isFirstEverTextResponse) {
-                  outputText = '\n$outputText';
-                }
-                isFirstEverTextResponse = false;
-                isFirstTextChunk = false;
-              }
-              chunks.add(delta.content!);
-              yield AgentResponse(output: outputText, messages: const []);
-            }
-
-            // Buffer tool calls
-            if (delta.toolCalls != null && delta.toolCalls!.isNotEmpty) {
-              for (final toolCall in delta.toolCalls!) {
-                final index = toolCall.index ?? syntheticIndex++;
-                final id = toolCall.id;
-                final name = toolCall.function?.name;
-                final args = toolCall.function?.arguments;
-
-                if (id != null && name != null) {
-                  final actualId = id.isEmpty ? const Uuid().v4() : id;
-                  toolCallIdByIndex[index] = actualId;
-                  toolCallBuffers.putIfAbsent(
-                    actualId,
-                    () => (name: name, args: StringBuffer()),
-                  );
-                }
-                final currentId = toolCallIdByIndex[index];
-                if (currentId != null && args != null) {
-                  toolCallBuffers[currentId]!.args.write(args);
-                }
-              }
+            final text = processor.processDelta(chunk.choices.first.delta!);
+            if (text != null) {
+              yield AgentResponse(output: text, messages: const []);
             }
           }
-
-          // Process the streamed response
-          final newToolCalls = <openai.ChatCompletionMessageToolCall>[];
-          if (toolCallBuffers.isNotEmpty) {
-            toolCallBuffers.removeWhere((_, v) {
-              final argsStr = v.args.toString().trim();
-              if (argsStr.isEmpty) return true;
-              try {
-                jsonDecode(argsStr);
-                return false;
-              } on Exception catch (_) {
-                return true;
-              }
-            });
-            newToolCalls.addAll(
-              toolCallBuffers.entries.map(
-                (entry) => openai.ChatCompletionMessageToolCall(
-                  id: entry.key,
-                  type: openai.ChatCompletionMessageToolCallType.function,
-                  function: openai.ChatCompletionMessageFunctionCall(
-                    name: entry.value.name,
-                    arguments: entry.value.args.toString(),
-                  ),
-                ),
-              ),
-            );
-          }
+          isFirstEverTextResponse = processor.isFirstEverTextResponseUpdated;
+          final result = processor.finish();
 
           // Add the completed assistant message to history
-          final newContent = chunks.join();
+          final newContent = result.content;
+          final newToolCalls = result.toolCalls;
           if (newContent.isNotEmpty || newToolCalls.isNotEmpty) {
             final sanitizedMessage =
                 (newToolCalls.isEmpty)

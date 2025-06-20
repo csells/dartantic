@@ -21,6 +21,17 @@ export 'agent_response.dart';
 export 'embedding_type.dart';
 export 'tool.dart';
 
+/// The mode in which the agent will run.
+enum AgentMode {
+  /// The agent will use the model's single-step mode. This is the intuitive
+  /// request=>response mode.
+  singleStep,
+
+  /// The agent will use the model's multi-step mode. This is the mode that
+  /// allows the model to call tools multiple times in a single request.
+  multiStep,
+}
+
 /// An agent that can run prompts through an AI model and return responses.
 ///
 /// This class provides a unified interface for interacting with different
@@ -53,6 +64,7 @@ class Agent {
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     Iterable<Tool>? tools,
     double? temperature,
+    AgentMode mode = AgentMode.singleStep,
   }) => Agent.provider(
     providerFor(
       model,
@@ -60,6 +72,7 @@ class Agent {
       apiKey: apiKey,
       baseUrl: baseUrl,
       temperature: temperature,
+      agentMode: mode,
     ),
     systemPrompt: systemPrompt,
     outputSchema: outputSchema,
@@ -347,6 +360,7 @@ class Agent {
   /// Throws [ArgumentError] if [model] is empty.
   static Provider providerFor(
     String model, {
+    AgentMode? agentMode,
     String? embeddingModel,
     String? apiKey,
     Uri? baseUrl,
@@ -366,6 +380,7 @@ class Agent {
         apiKey: apiKey,
         baseUrl: baseUrl,
         temperature: temperature,
+        agentMode: agentMode,
       ),
     );
   }

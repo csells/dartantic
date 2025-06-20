@@ -1,5 +1,6 @@
 import 'package:openai_dart/openai_dart.dart' as oai;
 
+import '../../agent/agent.dart';
 import '../../models/implementations/openai_model.dart';
 import '../../models/interface/model.dart';
 import '../../models/interface/model_settings.dart';
@@ -27,7 +28,7 @@ class OpenAiProvider extends Provider {
     String? apiKey,
     this.baseUrl,
     this.temperature,
-    this.caps = ProviderCaps.all,
+    this.caps = ProviderCaps.all, AgentMode? agentMode,
   }) : apiKey = apiKey ?? platform.getEnv(apiKeyName);
 
   /// The name of the environment variable that contains the API key.

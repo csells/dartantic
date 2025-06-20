@@ -760,7 +760,7 @@ Connect to remote MCP servers and use their tools with your Agent:
 import 'package:dartantic_ai/dartantic_ai.dart';
 
 void main() async {
-  final huggingFace = McpServer.remote(
+  final huggingFace = McpClient.remote(
     'huggingface',
     url: Uri.parse('https://huggingface.co/mcp'),
   );
@@ -791,7 +791,7 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 
 void main() async {
   // Connect to a local MCP server (e.g., a calculator server)
-  final calculatorServer = McpServer.local(
+  final calculatorServer = McpClient.local(
     'calculator',
     command: 'dart',
     args: ['run', 'calculator_mcp_server.dart'],

@@ -178,9 +178,9 @@ tools.
 ### Milestone 5: MCP Server Support
 - [x] **MCP (Model Context Protocol) Server Integration**: Add support for
   connecting to MCP servers to extend Agent capabilities with external tools:
-  - `McpServer` class with factory constructors for local and remote servers:
-    - `McpServer.local()` - Connect to local MCP servers via stdio
-    - `McpServer.remote()` - Connect to remote MCP servers via HTTP
+  - `McpClient` class with factory constructors for local and remote servers:
+    - `McpClient.local()` - Connect to local MCP servers via stdio
+    - `McpClient.remote()` - Connect to remote MCP servers via HTTP
   - `Future<List<Tool>> getTools()` method to discover and convert MCP tools to
     Agent Tools
   - Lazy connection pattern - servers connect automatically on first tool use
@@ -188,11 +188,11 @@ tools.
     (remote servers)
   - Users combine MCP tools with local tools before creating Agent:
     ```dart
-    final mcpServer = McpServer.local(
+    final mcpClient = McpClient.local(
       'filesystem-server',
       command: 'filesystem-server',
     );
-    final mcpTools = await mcpServer.getTools();
+    final mcpTools = await mcpClient.getTools();
     final agent = Agent('google', tools: [...localTools, ...mcpTools]);
     ```
   - Proper resource management with `disconnect()` method for cleanup

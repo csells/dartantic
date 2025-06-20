@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:http/http.dart' as http;
 import 'package:mcp_dart/mcp_dart.dart' as mcp;
 
 import '../../pubspec.dart';
@@ -101,7 +99,6 @@ class McpClient {
   // Internal connection state
   mcp.Client? _client;
   mcp.Transport? _transport;
-  String? _sessionId;
 
   /// Whether the server is connected.
   bool get isConnected => _client != null;
@@ -135,201 +132,22 @@ class McpClient {
   /// Gets all tools from this MCP server as Agent Tool objects.
   /// Automatically connects if not already connected.
   Future<Iterable<Tool>> listTools() async {
-    // NOTE: waiting on a fix for this issue:
-    // https://github.com/leehack/mcp_dart/issues/11
-
-    // Restore this one line of code, perform the appropriate mapping, including
-    // the required parmaters in the inputSchema as before, and remove the rest
-    // of the gunk when/if that happens. mcp_dart does it all better anyway!
-    // final result = await _client!.listTools();
-
-    if (kind == McpServerKind.remote) {
-      return _getToolsViaHttp();
-    } else {
-      return _getToolsViaMcp();
-    }
-  }
-
-  /// Gets tools using raw HTTP to preserve required fields.
-  Future<Iterable<Tool>> _getToolsViaHttp() async {
-    // Try tools/list first - some servers work without initialization
-    var response = await _makeHttpRequest('tools/list');
-
-    // If we get a 400 error, try initializing first then retry
-    if (response.statusCode == 400) {
-      await _initializeSession();
-      response = await _makeHttpRequest('tools/list');
-    }
-
-    if (response.statusCode != 200) {
-      throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
-    }
-
-    // Parse the response - handle both SSE and direct JSON
-    Map<String, dynamic> json;
-    if (response.body.contains('event: message') ||
-        response.body.startsWith('data: ')) {
-      // Server-Sent Events format (like Zapier and DeepWiki)
-      final lines = response.body.split('\n');
-      String? jsonData;
-      for (final line in lines) {
-        if (line.startsWith('data: ') && line.length > 6) {
-          final dataContent = line.substring(6).trim();
-          if (dataContent.isNotEmpty && dataContent != 'ping') {
-            jsonData = dataContent;
-            break;
-          }
-        }
-      }
-      if (jsonData == null) {
-        throw Exception('No data found in SSE response');
-      }
-      json = jsonDecode(jsonData) as Map<String, dynamic>;
-    } else {
-      // Direct JSON response (like Hugging Face)
-      json = jsonDecode(response.body) as Map<String, dynamic>;
-    }
-    if (json['error'] != null) {
-      throw Exception('MCP Error: ${json['error']}');
-    }
-
-    final result = json['result'] as Map<String, dynamic>;
-    final toolList = result['tools'] as List<dynamic>;
-
-    final tools = <Tool>[];
-    for (final toolJson in toolList) {
-      final tool = toolJson as Map<String, dynamic>;
-      final schemaJson = tool['inputSchema'] as Map<String, dynamic>;
-
-      // Preserve the required fields from the raw schema
-      final inputSchema = schemaJson.toSchema();
-
-      tools.add(
-        Tool(
-          name: tool['name'] as String,
-          description: '[$name] ${tool['description'] as String}',
-          inputSchema: inputSchema,
-          onCall: (args) => call(tool['name'] as String, args),
-        ),
-      );
-    }
-    return tools;
-  }
-
-  /// Gets tools using raw transport to preserve required fields for local
-  /// servers.
-  Future<Iterable<Tool>> _getToolsViaMcp() async {
     if (!isConnected) await _connect();
 
-    // Send raw tools/list request to preserve required fields
-    final rawResponse = await _sendRawJsonRpcRequest({
-      'jsonrpc': '2.0',
-      'id': DateTime.now().millisecondsSinceEpoch,
-      'method': 'tools/list',
-    });
-
-    if (rawResponse['error'] != null) {
-      throw Exception('MCP Error: ${rawResponse['error']}');
-    }
-
-    final result = rawResponse['result'] as Map<String, dynamic>;
-    final toolList = result['tools'] as List<dynamic>;
+    final result = await _client!.listTools();
 
     final tools = <Tool>[];
-    for (final toolJson in toolList) {
-      final tool = toolJson as Map<String, dynamic>;
-      final schemaJson = tool['inputSchema'] as Map<String, dynamic>;
-
-      // Preserve the required fields from the raw schema
-      final inputSchema = schemaJson.toSchema();
-
+    for (final tool in result.tools) {
       tools.add(
         Tool(
-          name: tool['name'] as String,
-          description: '[$name] ${tool['description'] as String}',
-          inputSchema: inputSchema,
-          onCall: (args) => call(tool['name'] as String, args),
+          name: tool.name,
+          description: '[$name] ${tool.description ?? ''}',
+          inputSchema: tool.inputSchema.toJson().toSchema(),
+          onCall: (args) => call(tool.name, args),
         ),
       );
     }
     return tools;
-  }
-
-  /// Sends a raw JSON-RPC request and returns the raw JSON response.
-  /// This bypasses mcp_dart's type system to preserve schema information.
-  Future<Map<String, dynamic>> _sendRawJsonRpcRequest(
-    Map<String, dynamic> request,
-  ) async {
-    final completer = Completer<Map<String, dynamic>>();
-    final requestId = request['id'];
-
-    // Set up a temporary message handler to capture the raw response
-    final originalHandler = _transport!.onmessage;
-
-    _transport!.onmessage = (message) {
-      // Check if this is our response
-      if (message is mcp.JsonRpcResponse && message.id == requestId) {
-        // Convert back to raw JSON to preserve all fields
-        final rawJson = message.toJson();
-        completer.complete(rawJson);
-
-        // Restore original handler
-        _transport!.onmessage = originalHandler;
-      } else if (originalHandler != null) {
-        // Forward other messages to original handler
-        originalHandler(message);
-      }
-    };
-
-    // Send the raw request
-    final requestMessage = mcp.JsonRpcRequest(
-      id: requestId,
-      method: request['method'] as String,
-      params: request['params'],
-    );
-
-    await _transport!.send(requestMessage);
-
-    return completer.future;
-  }
-
-  /// Makes an HTTP request to the MCP server.
-  Future<http.Response> _makeHttpRequest(
-    String method, [
-    Map<String, dynamic>? params,
-  ]) async {
-    final requestHeaders = <String, String>{
-      'Content-Type': 'application/json',
-      'Accept': 'application/json, text/event-stream',
-      ...?headers,
-      if (_sessionId != null) 'mcp-session-id': _sessionId!,
-    };
-
-    return http.post(
-      url!,
-      headers: requestHeaders,
-      body: jsonEncode({
-        'jsonrpc': '2.0',
-        'id': DateTime.now().millisecondsSinceEpoch,
-        'method': method,
-        if (params != null) 'params': params,
-      }),
-    );
-  }
-
-  /// Initialize session for servers that require it.
-  Future<void> _initializeSession() async {
-    final response = await _makeHttpRequest('initialize', {
-      'protocolVersion': '2024-11-05',
-      'capabilities': {},
-      'clientInfo': {'name': 'dartantic_ai', 'version': Pubspec.version},
-    });
-
-    if (response.statusCode == 200) {
-      _sessionId = response.headers['mcp-session-id'];
-    } else {
-      throw Exception('Failed to initialize session: ${response.statusCode}');
-    }
   }
 
   Future<void> _connect() async {

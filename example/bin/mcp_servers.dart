@@ -3,13 +3,13 @@
 import 'dart:io';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:logging/logging.dart';
+// import 'package:logging/logging.dart';
 
 void main() async {
-  Logger.root.level = Level.FINE;
-  Logger.root.onRecord.listen(
-    (record) => print('\n[${record.level.name}]: ${record.message}\n'),
-  );
+  // Logger.root.level = Level.FINE;
+  // Logger.root.onRecord.listen(
+  //   (record) => print('\n[${record.level.name}]: ${record.message}\n'),
+  // );
 
   await singleMcpServer();
   await multipleToolsAndMcpServers();

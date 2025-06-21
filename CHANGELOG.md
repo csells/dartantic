@@ -1,4 +1,4 @@
-## 0.8.4
+## 0.9.0
 
 - Added `ToolCallingMode` to control multi-step tool calling behavior.
   - `multiStep` (default): The agent will continue to send tool results until

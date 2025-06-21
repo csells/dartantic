@@ -442,7 +442,9 @@ void main() {
         systemPrompt: 'You are a helpful assistant.',
       );
       // First exchange
-      final firstResponse = await agent.run('My favorite color is blue.');
+      final firstResponse = await agent.runWithRetries(
+        'My favorite color is blue.',
+      );
       final firstMessages = firstResponse.messages;
       // Second exchange, referencing the first
       final secondResponse = await agent.run(
@@ -510,7 +512,7 @@ Do not answer directly; always call the tool with the sound in question and retu
           tools: [tool],
           systemPrompt: systemPrompt,
         );
-        final result = await agent.run(prompt, messages: history);
+        final result = await agent.runWithRetries(prompt, messages: history);
         history = result.messages;
         print('Provider: ${agent.model}, output: ${result.output}');
         // Change the prompt for the next round

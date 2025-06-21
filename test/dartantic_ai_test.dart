@@ -2,6 +2,8 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dotprompt_dart/dotprompt_dart.dart';
 import 'package:test/test.dart';
 
+import 'test_utils.dart';
+
 // NOTE: these tests require environment variables to be set.
 // I recommend using .vscode/settings.json like so:
 //
@@ -289,7 +291,7 @@ Summarize this in {{length}} words: {{text}}
         );
 
         final output = StringBuffer();
-        await for (final chunk in agent.runStream(
+        await for (final chunk in agent.runStreamWithRetries(
           'Where does "hello world" come from?',
         )) {
           output.write(chunk.output);
@@ -378,7 +380,7 @@ Summarize this in {{length}} words: {{text}}
         );
 
         final output = StringBuffer();
-        await for (final chunk in agent.runStream(
+        await for (final chunk in agent.runStreamWithRetries(
           'What is the time and temperature in New York City?',
         )) {
           output.write(chunk.output);

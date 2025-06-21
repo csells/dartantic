@@ -262,10 +262,12 @@ class OpenAiModel extends Model {
       }
 
       // If there are no tool calls, check if we should probe.
+      // Skip probing entirely if no tools are configured - nothing to probe for
       final lastMessage = oiaMessages.lastOrNull;
       if (!hasProbedCurrentText &&
           lastMessage is openai.ChatCompletionAssistantMessage &&
-          (lastMessage.content?.isNotEmpty ?? false)) {
+          (lastMessage.content?.isNotEmpty ?? false) &&
+          (_tools?.isNotEmpty ?? false)) {
         // Set flag to true so we don't probe this same text again.
         hasProbedCurrentText = true;
 

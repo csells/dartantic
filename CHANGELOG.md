@@ -1,4 +1,4 @@
-## 0.9.2
+## 0.9.1
 
 - Added support for extending the provider table at runtime, allowing custom
   providers to be registered dynamically.

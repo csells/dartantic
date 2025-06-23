@@ -1,3 +1,7 @@
+## 0.9.3
+
+- Completely revamped docs! https://docs.page/csells/dartantic_ai
+
 ## 0.9.2
 
 - Added `Agent.environment` to allow setting environment variables

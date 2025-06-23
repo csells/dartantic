@@ -1,10 +1,12 @@
 # Welcome to Dartantic!
 
-The [dartantic_ai](https://pub.dev/packages/dartantic_ai) package is an agent framework inspired by pydantic-ai and designed to make building client and server-side apps in Dart with generative AI easier and more fun!
+The [dartantic_ai](https://pub.dev/packages/dartantic_ai) package provides an
+agent framework inspired by pydantic-ai and designed to make building client and
+server-side apps in Dart with generative AI easier and more fun!
 
 ## 🎯 Goals
 
-- **🤖 True agentic behavior with multi-step tool calling** - Let your AI agents autonomously chain tool calls together to solve complex problems without human intervention.
+- **🤖 Agentic behavior with multi-step tool calling:** Let your AI agents autonomously chain tool calls together to solve complex problems without human intervention.
 - **Multi-Provider Support**: Work seamlessly with OpenAI, Google Gemini, OpenRouter, and more
 - **Type Safety**: Leverage Dart's strong typing with automatic JSON schema generation
 - **Developer Experience**: Simple, intuitive APIs that feel natural in Dart
@@ -52,7 +54,7 @@ void main() async {
 
 The documentation includes:
 - **Getting Started Guide** - Installation and basic usage
-- **Core Features** - JSON output, typed responses, and DotPrompt
+- **Core Features** - JSON output, typed responses, and DotPrompt support
 - **Advanced Features** - Tool calling, agentic behavior, streaming, and embeddings
 - **Integration** - Logging, model discovery, MCP servers, and custom providers
 
@@ -70,9 +72,13 @@ Then run:
 dart pub get
 ```
 
-## 🤝 Contributing
+## 🤝 Contributing & Community
 
-We welcome contributions! Please see our [documentation](https://docs.page/csells/dartantic_ai) for guidelines.
+We welcome contributions! Feature requests, bug reports and PRs are welcome on
+[the dartantic_ai github site](https://github.com/csells/dartantic_ai).
+
+Want to chat about Dartantic? Then drop by [the Discussions
+forum](https://github.com/csells/dartantic_ai/discussions/).
 
 ## 📄 License
 

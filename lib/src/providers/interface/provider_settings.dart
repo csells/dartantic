@@ -8,12 +8,14 @@ class ProviderSettings {
   /// The [modelName] specifies which model to use within that family for text
   /// generation. The [embeddingModelName] specifies which model to use for
   /// embeddings within that family. The [apiKey] is an optional API key for
-  /// authentication with the provider.
+  /// authentication with the provider. The [extendedProperties] allows
+  /// provider-specific configuration options.
   ProviderSettings({
     required this.modelName,
     required this.embeddingModelName,
     required this.apiKey,
     required this.baseUrl,
+    this.extendedProperties,
   });
 
   /// The specific model name to use within the provider family for text
@@ -28,4 +30,7 @@ class ProviderSettings {
 
   /// The base URL for the provider.
   final Uri? baseUrl;
+
+  /// Extended properties for provider-specific configuration options.
+  final Map<String, dynamic>? extendedProperties;
 }

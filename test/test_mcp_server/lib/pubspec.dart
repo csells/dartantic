@@ -27,13 +27,9 @@ mixin Pubspec {
 
   static const versionIsPreRelease = false;
 
-  static const environment = <dynamic, dynamic>{
-    'sdk': '^3.8.1',
-  };
+  static const environment = <dynamic, dynamic>{'sdk': '^3.8.1'};
 
-  static const dependencies = <dynamic, dynamic>{
-    'mcp_dart': '^0.5.1',
-  };
+  static const dependencies = <dynamic, dynamic>{'mcp_dart': '^0.5.1'};
 
   static const dev_dependencies = <dynamic, dynamic>{
     'lints': '^5.0.0',

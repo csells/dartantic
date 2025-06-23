@@ -20,6 +20,8 @@ class OpenAiProvider extends Provider {
   /// If not provided, [OpenAiModel.defaultEmbeddingModelName] is used.
   /// The [apiKey] is the API key to use for authentication.
   /// If not provided, it's retrieved from the environment.
+  /// The [parallelToolCalls] determines whether the OpenAI API implementation
+  /// supports parallel tool calls (gemini-compat does not).
   OpenAiProvider({
     this.name = 'openai',
     this.modelName,
@@ -27,6 +29,7 @@ class OpenAiProvider extends Provider {
     String? apiKey,
     this.baseUrl,
     this.caps = ProviderCaps.all,
+    this.parallelToolCalls = true,
   }) : apiKey = apiKey ?? platform.getEnv(apiKeyName);
 
   /// The name of the environment variable that contains the API key.
@@ -47,6 +50,9 @@ class OpenAiProvider extends Provider {
   /// The base URL for the OpenAI API.
   final Uri? baseUrl;
 
+  /// Whether to enable parallel tool calls via the OpenAI API.
+  final bool parallelToolCalls;
+
   /// Creates a [Model] instance using this provider's configuration.
   ///
   /// The [settings] parameter contains additional configuration options
@@ -63,6 +69,7 @@ class OpenAiProvider extends Provider {
     baseUrl: baseUrl,
     temperature: settings.temperature,
     caps: caps,
+    parallelToolCalls: parallelToolCalls,
   );
 
   @override

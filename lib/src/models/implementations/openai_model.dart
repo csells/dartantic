@@ -21,6 +21,8 @@ class OpenAiModel extends Model {
   /// The [embeddingModelName] is the name of the OpenAI embedding model to use.
   /// The [outputSchema] is an optional JSON schema for structured outputs.
   /// The [systemPrompt] is an optional system prompt to use.
+  /// The [parallelToolCalls] determines whether the OpenAI API implementation
+  /// supports parallel tool calls (gemini-compat does not).
   OpenAiModel({
     required String apiKey,
     required this.caps,
@@ -32,11 +34,13 @@ class OpenAiModel extends Model {
     Iterable<Tool>? tools,
     ToolCallingMode? toolCallingMode,
     double? temperature,
+    bool parallelToolCalls = true,
   }) : generativeModelName = modelName ?? defaultModelName,
        embeddingModelName = embeddingModelName ?? defaultEmbeddingModelName,
        _tools = tools?.toList(),
        _toolCallingMode = toolCallingMode ?? ToolCallingMode.multiStep,
        _systemPrompt = systemPrompt,
+       _parallelToolCalls = parallelToolCalls,
        _client = openai.OpenAIClient(
          apiKey: apiKey,
          baseUrl: baseUrl?.toString(),
@@ -62,6 +66,7 @@ class OpenAiModel extends Model {
   final ToolCallingMode _toolCallingMode;
   final double? _temperature;
   final Map<String, String> _toolCallIdToName = {};
+  final bool _parallelToolCalls;
 
   @override
   final String generativeModelName;
@@ -79,8 +84,14 @@ class OpenAiModel extends Model {
     // conflicts with previous runs
     _toolCallIdToName.clear();
 
+    final hasTools = _tools?.isNotEmpty ?? false;
+    final parallelToolCallsEnabled =
+        hasTools &&
+        _toolCallingMode == ToolCallingMode.multiStep &&
+        _parallelToolCalls;
     log.fine(
-      '[OpenAiModel] Starting stream with toolCallingMode: $_toolCallingMode',
+      '[OpenAiModel] Starting stream with toolCallingMode: $_toolCallingMode, '
+      'parallelToolCalls: $parallelToolCallsEnabled',
     );
 
     // Process the incoming message history to extract and register all tool
@@ -100,49 +111,34 @@ class OpenAiModel extends Model {
 
     // # Implementation Notes:
     // ## Goal: Multi-Step Tool Calling for OpenAI
-    // To enable OpenAI models to perform multi-step tool calling like Gemini
-    // does requires a little bit of magic.
+    // To enable OpenAI models to perform multi-step tool calling like Gemini,
+    // we use the `parallelToolCalls` parameter to prevent conversational
+    // interruptions.
     //
-    // For example, assume that the agent is configured with two tools:
+    // For example, with two tools:
     // - current-date-time
     // - query-calendar(start_date, end_date)
     //
     // When a user asks "What's on my schedule today?", the agent should:
-    // - Call current-date-time tool so it knows what date to query the calendar
-    // - Call query-calendar tool to check the calendar
+    // - Call current-date-time tool to get the current date
+    // - Call query-calendar tool with that date to check the calendar
     // - Return a final response with the results
     //
-    // The problem is that, when using the API naively, OpenAI would make the
-    // first tool call, then get conversational ("Let me check your
-    // calendar...") and stop (!) instead of making the second tool call.
+    // ## The Solution: parallelToolCalls
+    // By setting `parallelToolCalls = true` (in multiStep mode), OpenAI models
+    // are much less likely to get conversational and interrupt tool calling
+    // sequences with text like "Let me check your calendar...".
     //
     // ## The Loop
-    // To nudge it down the right path, we need a loop:
+    // The main loop is now simple:
     // - Send history + messages + tools to OpenAI
     // - Process streaming response, collecting tool calls
-    // - If tool calls found → execute them, add results to conversation,
+    // - If tool calls found: execute them, add results to conversation,
     //   continue loop
-    // - If no tool calls but text response → probe for hidden tool calls (see
-    //   below)
-    // - If probe succeeds → add discovered tool calls to queue, continue loop
-    // - If probe fails or no more tools → return final response
+    // - If no tool calls: we're done, return final response
     //
-    // ## The Probe
-    // The probing mechanism is where things get interesting:
-    // - When OpenAI gives text instead of tool calls → send messages
-    //   + empty user message (this empty message is the probe)
-    // - If OpenAI responds with tool calls → it was "thinking out loud",
-    //   continue processing
-    // - If OpenAI gives another text response → it's truly done
-    //
-    // The downside of this approach is that, when it's all done, we've
-    // generated one more text response than we need, something like: "Is there
-    // anything else you'd like to know?" Not only is this useless, but when
-    // we're expecting typed output, e.g. a JSON object, it screws up the
-    // parsing.
-    //
-    // When that happens, we drop that last text response and don't stream it.
-    // That requires caching the response after the probe, but it's worth it.
+    // This relies on `parallelToolCalls` to keep the model focused on tool
+    // execution rather than getting conversational between tool calls.
     var isFirstEverTextResponse = true;
     log.finer(
       '[OpenAiModel] Starting stream with ${messages.length} messages, '
@@ -157,25 +153,28 @@ class OpenAiModel extends Model {
       _openaiMessagesFrom([message]).first,
     ];
 
+    final toolsList =
+        _tools
+            ?.map(
+              (tool) => openai.ChatCompletionTool(
+                type: openai.ChatCompletionToolType.function,
+                function: openai.FunctionObject(
+                  name: tool.name,
+                  description: tool.description,
+                  parameters: tool.inputSchema?.toMap(),
+                ),
+              ),
+            )
+            .toList();
+
     final stream = _client.createChatCompletionStream(
       request: openai.CreateChatCompletionRequest(
         model: openai.ChatCompletionModel.modelId(generativeModelName),
         responseFormat: _responseFormat,
         messages: oiaMessages,
         temperature: _temperature,
-        tools:
-            _tools
-                ?.map(
-                  (tool) => openai.ChatCompletionTool(
-                    type: openai.ChatCompletionToolType.function,
-                    function: openai.FunctionObject(
-                      name: tool.name,
-                      description: tool.description,
-                      parameters: tool.inputSchema?.toMap(),
-                    ),
-                  ),
-                )
-                .toList(),
+        parallelToolCalls: hasTools ? parallelToolCallsEnabled : null,
+        tools: toolsList,
       ),
     );
 
@@ -209,8 +208,8 @@ class OpenAiModel extends Model {
       );
     }
 
-    // Main loop following the user's algorithm
-    var hasProbedCurrentText = false;
+    // Main tool calling loop - parallelToolCalls should prevent conversational
+    // interruptions
     while (true) {
       // If there are tool calls in our queue, execute them.
       if (toolCalls.isNotEmpty) {
@@ -258,19 +257,8 @@ class OpenAiModel extends Model {
             responseFormat: _responseFormat,
             messages: oiaMessages,
             temperature: _temperature,
-            tools:
-                _tools
-                    ?.map(
-                      (tool) => openai.ChatCompletionTool(
-                        type: openai.ChatCompletionToolType.function,
-                        function: openai.FunctionObject(
-                          name: tool.name,
-                          description: tool.description,
-                          parameters: tool.inputSchema?.toMap(),
-                        ),
-                      ),
-                    )
-                    .toList(),
+            parallelToolCalls: hasTools ? parallelToolCallsEnabled : null,
+            tools: toolsList,
           ),
         );
 
@@ -331,106 +319,7 @@ class OpenAiModel extends Model {
         break;
       }
 
-      // If there are no tool calls, check if we should probe.
-      // Skip probing entirely if no tools are configured - nothing to probe for
-      final lastMessage = oiaMessages.lastOrNull;
-      if (!hasProbedCurrentText &&
-          lastMessage is openai.ChatCompletionAssistantMessage &&
-          (lastMessage.content?.isNotEmpty ?? false) &&
-          (_tools?.isNotEmpty ?? false)) {
-        // Set flag to true so we don't probe this same text again.
-        hasProbedCurrentText = true;
-
-        log.fine(
-          '[OpenAiModel] Probing for more tool calls after text response',
-        );
-        try {
-          final stream = _client.createChatCompletionStream(
-            request: openai.CreateChatCompletionRequest(
-              model: openai.ChatCompletionModel.modelId(generativeModelName),
-              responseFormat: _responseFormat,
-              messages: [
-                ...oiaMessages,
-                const openai.ChatCompletionMessage.user(
-                  content: openai.ChatCompletionUserMessageContent.string(''),
-                ),
-              ],
-              tools:
-                  _tools
-                      ?.map(
-                        (tool) => openai.ChatCompletionTool(
-                          type: openai.ChatCompletionToolType.function,
-                          function: openai.FunctionObject(
-                            name: tool.name,
-                            description: tool.description,
-                            parameters: tool.inputSchema?.toMap(),
-                          ),
-                        ),
-                      )
-                      .toList(),
-              temperature: _temperature,
-            ),
-          );
-
-          // For post-probe responses, we need to cache everything without
-          // streaming
-          final processor = OpenAiStreamProcessor(
-            isFirstEverTextResponseUpdated: isFirstEverTextResponse,
-          );
-
-          // Process the stream but don't yield anything yet (cache the
-          // response)
-          await for (final chunk in stream) {
-            processor.processDelta(chunk.choices.first.delta!);
-            // Not yielding anything here - we're caching the response
-          }
-
-          isFirstEverTextResponse = processor.isFirstEverTextResponseUpdated;
-          final result = processor.finish();
-          final newContent = result.content;
-          final newToolCalls = result.toolCalls;
-
-          // Check if the post-probe response contains tool calls
-          if (newToolCalls.isNotEmpty) {
-            // If it has tool calls, we are out of the probing state and can
-            // probe again after the next text response.
-            hasProbedCurrentText = false;
-
-            // If it has tool calls, stream the cached text (if any)
-            if (newContent.isNotEmpty) {
-              yield AgentResponse(output: newContent, messages: const []);
-            }
-
-            // Add the complete message (with text and tool calls) to history
-            final sanitizedMessage = openai.ChatCompletionMessage.assistant(
-              content: newContent.isNotEmpty ? newContent : null,
-              toolCalls: newToolCalls,
-            );
-            oiaMessages.add(sanitizedMessage);
-          } else {
-            // If post-probe response is text-only, discard it completely
-            // Don't stream it, don't add to message history
-            log.fine(
-              '[OpenAiModel] Discarding text-only post-probe response: '
-              '$newContent',
-            );
-          }
-
-          // If the probe found new tools, add them to the queue and loop.
-          if (newToolCalls.isNotEmpty) {
-            toolCalls.addAll(newToolCalls);
-            continue;
-          }
-        } on Exception catch (e) {
-          log.warning('[OpenAiModel] Probe failed: $e');
-        }
-
-        // If we get here, the probe failed or found no more tools.
-        // The last message is the final one, so we can exit.
-        break;
-      }
-
-      // If we've reached here, there are no more tools and probing is done.
+      // No more tool calls - we're done!
       break;
     }
 
@@ -464,7 +353,8 @@ class OpenAiModel extends Model {
       return Float64List.view(bytes.buffer);
     } else {
       throw UnsupportedError(
-        'Unknown embedding vector type: ${embeddingVector.runtimeType}',
+        'Unknown embedding vector type: '
+        '${embeddingVector.runtimeType}',
       );
     }
   }

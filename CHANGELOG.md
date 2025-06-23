@@ -1,7 +1,15 @@
+## 0.9.5
+
+- Major OpenAI Multi-Step Tool Calling Improvement: Eliminated complex probe
+  mechanism (100+ lines of code) in favor of [OpenAI's native
+  `parallelToolCalls`
+  parameter](https://pub.dev/documentation/openai_dart/latest/openai_dart/CreateChatCompletionRequest/parallelToolCalls.html).
+  This dramatically simplifies the implementation while improving reliability
+  and performance.
+
 ## 0.9.4
 
 - README & docs tweaks
-
 
 ## 0.9.3
 

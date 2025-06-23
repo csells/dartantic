@@ -18,6 +18,7 @@ class ProviderTable {
           apiKey: settings.apiKey,
           baseUrl: settings.baseUrl,
           caps: ProviderCaps.all,
+          parallelToolCalls: true,
         ),
     'openrouter':
         (settings) => OpenAiProvider(
@@ -28,6 +29,7 @@ class ProviderTable {
           baseUrl:
               settings.baseUrl ?? Uri.parse('https://openrouter.ai/api/v1'),
           caps: ProviderCaps.allExcept({ProviderCaps.embeddings}),
+          parallelToolCalls: true,
         ),
     'gemini-compat':
         // we're using the OpenAI-compatible Gemini API, but we still have to
@@ -45,6 +47,7 @@ class ProviderTable {
                 'https://generativelanguage.googleapis.com/v1beta/openai',
               ),
           caps: ProviderCaps.all,
+          parallelToolCalls: false,
         ),
     'google': (settings) {
       if (settings.baseUrl != null) {

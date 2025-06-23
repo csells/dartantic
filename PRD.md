@@ -125,21 +125,20 @@ The implementation handles provider-specific differences:
   - Loop until no more tool calls are detected
 
 #### OpenAI Implementation
-- **Probe-Based Approach**: OpenAI requires additional handling to achieve
-  multi-turn tool calling
-- **Challenge**: OpenAI models often stop after making initial tool calls
-  instead of continuing the reasoning chain
+- **parallelToolCalls Parameter**: OpenAI's API includes a `parallelToolCalls` 
+  parameter that enables multi-turn tool calling behavior
 - **Process Flow**:
-  - Send history + messages + tools to OpenAI
+  - Send history + messages + tools to OpenAI with `parallelToolCalls: true`
   - Process streaming response, collecting tool calls
   - Execute tool calls and add results to conversation
-      - If model returns text instead of tool calls, use a "probe" technique:
-    - Send an empty user message to prompt for additional tool calls
-    - If probe reveals more tool calls, execute them and continue loop
-    - If probe confirms no more tool calls, we're done
-    - Cache and selectively process post-probe responses:
-      - For tool calls: stream cached text and process normally
-      - For text-only: discard completely (don't stream or add to history)
+  - OpenAI continues making sequential tool calls without interruption
+  - Loop until no more tool calls are detected
+- **Provider-Specific Configuration**: The `parallelToolCalls` parameter is 
+  configured per provider:
+  - `openai`: `parallelToolCalls: true` (native OpenAI API)
+  - `openrouter`: `parallelToolCalls: true` (OpenAI-compatible)
+  - `gemini-compat`: `parallelToolCalls: false` (Gemini via OpenAI API doesn't
+    support this parameter, although it still does multi-turn tool calls)
 
 #### Cross-Provider Compatibility
 - Tool call/result IDs are maintained consistently across providers
@@ -147,23 +146,13 @@ The implementation handles provider-specific differences:
 - FIFO (First-In, First-Out) matching of tool calls and results ensures correct
   pairing
 
-### Streaming Considerations
-All text responses are streamed out from the Agent as they come in from the LLM.
-For post-probe responses, we implement special buffering logic:
-- The entire response is cached without streaming
-- If the cached response contains tool calls:
-  - Stream the cached text (if any)
-  - Process tool calls normally
-  - Continue the conversation flow
-- If the cached response contains only text:
-  - Discard the text completely
-  - Don't add anything to message history
-  - Exit as if the response never happened
-
 ### Optimizations
-- no tools, no probe: skip the probe message entirely when an Agent has no tools
-configured. Since there would be no possibility of additional tool calls in this
-scenario, the probe step would be unnecessary overhead.
+- **ToolCallingMode and parallelToolCalls Alignment**: The system intelligently 
+  maps `ToolCallingMode` to the `parallelToolCalls` parameter:
+  - `ToolCallingMode.singleStep` → `parallelToolCalls: false` (sequential, 
+    predictable execution)
+  - `ToolCallingMode.multiStep` → `parallelToolCalls: true` (efficient 
+    multi-step reasoning when provider supports it)
 
 - **Single-Step vs. Multi-Step Tool Calling**: By default, Agents run in
   multi-step tool mode, which is what makes them agents. However, as an
@@ -265,16 +254,6 @@ final response = await agent.run("What's on my schedule today?");
     output, and provider switching (including cross-provider tool call/result
     threading).
 
-**Summary of current status:**  
-- Multi-turn chat, streaming, message roles, and content types are fully
-  implemented and tested.
-- Tool calls and provider switching (OpenAI <-> Gemini) are implemented and
-  tested, with stable tool call/result IDs across providers.
-- Message history serialization/deserialization is provider-agnostic and robust.
-- Remaining gaps: advanced agent loop (auto tool loop until schema is
-  satisfied), multi-media input as prompt, and some advanced error handling.
-
-
 ### Milestone 3: RAG and Embedding Support
 - [x] **Embedding generation**: Add methods to generate vector embeddings for
   text:
@@ -371,7 +350,7 @@ final response = await agent.run("What's on my schedule today?");
 ### Milestone 8: Dartantic provider for Flutter AI Toolkit
 - [x] Implement the `LlmProvider` interface in terms of `Agent`
 
-### Milestone 9: Multi-media input and output
+### Milestone 9: Multi-media input
 - [x] **Multi-media input support**: Added `attachments` parameter to Agent and
   Model interfaces for including files, images, and other media:
   - `Agent.runStream()`, `Agent.run()`, and related methods accept `attachments:
@@ -383,14 +362,6 @@ final response = await agent.run("What's on my schedule today?");
   - Both OpenAI and Gemini providers handle multimedia content appropriately
   - Comprehensive examples in `example/bin/multimedia.dart` demonstrate file
     summaries, image descriptions, and visual content analysis
-
-- [ ] **Multi-media output support**: Enable agents to generate multimedia
-  content (images, audio, etc.) in addition to text:
-  - Update `AgentResponse` to support multimedia content parts in output
-  - Support models that can generate images (e.g., DALL-E, Imagen)
-  - Support models that can generate audio or other media types
-  - Handle multimedia content in message history for multi-turn conversations
-  - Examples demonstrating image generation, audio synthesis, etc.
 
 ### Milestone 10: Platform-Agnostic Configuration
 - [x] **Platform-Agnostic Configuration**: Implement a unified,
@@ -417,7 +388,16 @@ final response = await agent.run("What's on my schedule today?");
   currently blocks web support. A pull request to `mcp_dart` will be required to
   make it platform-agnostic.
 
-### Milestone 12: Typed Response + Tools + Simple Agent Loop
+### Milestone 12: Multi-media output
+- [ ] **Multi-media output support**: Enable agents to generate multimedia
+  content (images, audio, etc.) in addition to text:
+  - Update `AgentResponse` to support multimedia content parts in output
+  - Support models that can generate images (e.g., DALL-E, Imagen)
+  - Support models that can generate audio or other media types
+  - Handle multimedia content in message history for multi-turn conversations
+  - Examples demonstrating image generation, audio synthesis, etc.
+
+### Milestone 13: Typed Response + Tools + Simple Agent Loop
 - [ ] e.g. two tools, typed response and we keep looping till the LLM is done
 - Just like pydantic-ai can do!
 

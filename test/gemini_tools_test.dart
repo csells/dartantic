@@ -768,8 +768,6 @@ void main() {
   });
 }
 
-
-
 /// Helper function to verify basic tool conversion from Tool to Gemini FunctionDeclaration
 void _verifyToolConversion(
   Tool originalTool,
@@ -789,7 +787,10 @@ void _verifyToolConversion(
 }
 
 /// Recursively verify that a JSON schema was correctly converted to Gemini schema
-void _verifySchemaConversion(Map<String, dynamic> originalSchema, gemini.Schema geminiSchema) {
+void _verifySchemaConversion(
+  Map<String, dynamic> originalSchema,
+  gemini.Schema geminiSchema,
+) {
   // Verify schema type
   final originalType = originalSchema['type'] as String?;
   if (originalType != null) {
@@ -804,28 +805,43 @@ void _verifySchemaConversion(Map<String, dynamic> originalSchema, gemini.Schema 
   }
 
   // Verify properties for object types
-  final originalProperties = originalSchema['properties'] as Map<String, dynamic>?;
+  final originalProperties =
+      originalSchema['properties'] as Map<String, dynamic>?;
   if (originalProperties != null) {
     expect(geminiSchema.properties, hasLength(originalProperties.length));
-    
+
     // Verify each property recursively
     originalProperties.forEach((propName, propSchema) {
       final geminiPropSchema = geminiSchema.properties![propName];
-      expect(geminiPropSchema, isNotNull, reason: 'Property "$propName" should exist in converted schema');
-      _verifySchemaConversion(propSchema as Map<String, dynamic>, geminiPropSchema!);
+      expect(
+        geminiPropSchema,
+        isNotNull,
+        reason: 'Property "$propName" should exist in converted schema',
+      );
+      _verifySchemaConversion(
+        propSchema as Map<String, dynamic>,
+        geminiPropSchema!,
+      );
     });
   }
 
   // Verify required properties
   final originalRequired = originalSchema['required'] as List<dynamic>?;
   if (originalRequired != null) {
-    expect(geminiSchema.requiredProperties, equals(originalRequired.cast<String>()));
+    expect(
+      geminiSchema.requiredProperties,
+      equals(originalRequired.cast<String>()),
+    );
   }
 
   // Verify array items
   final originalItems = originalSchema['items'] as Map<String, dynamic>?;
   if (originalItems != null) {
-    expect(geminiSchema.items, isNotNull, reason: 'Array items schema should exist');
+    expect(
+      geminiSchema.items,
+      isNotNull,
+      reason: 'Array items schema should exist',
+    );
     _verifySchemaConversion(originalItems, geminiSchema.items!);
   }
 
@@ -836,10 +852,13 @@ void _verifySchemaConversion(Map<String, dynamic> originalSchema, gemini.Schema 
   }
 
   // Verify nullable properties based on required fields
-  if (originalSchema.containsKey('required') && originalSchema.containsKey('properties')) {
-    final requiredProps = Set<String>.from(originalSchema['required'] as List<dynamic>);
+  if (originalSchema.containsKey('required') &&
+      originalSchema.containsKey('properties')) {
+    final requiredProps = Set<String>.from(
+      originalSchema['required'] as List<dynamic>,
+    );
     final properties = originalSchema['properties'] as Map<String, dynamic>;
-    
+
     properties.forEach((propName, _) {
       final geminiPropSchema = geminiSchema.properties![propName]!;
       if (requiredProps.contains(propName)) {

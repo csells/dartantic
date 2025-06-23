@@ -106,6 +106,19 @@ class Agent {
     model = '${provider.name}:${_model.generativeModelName}';
   }
 
+  /// A map of environment variables that can be used by providers.
+  ///
+  /// This provides a platform-agnostic way to set configuration, especially
+  /// for API keys on the web, where traditional environment variables are not
+  /// available.
+  ///
+  /// Example:
+  /// ```dart
+  /// Agent.environment['OPENAI_API_KEY'] = 'your_api_key';
+  /// final agent = Agent('openai'); // no explicit apiKey needed!
+  /// ```
+  static final Map<String, String> environment = {};
+
   final Provider _provider;
   final Model _model;
   final String? _systemPrompt;

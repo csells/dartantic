@@ -1,13 +1,15 @@
 # dartantic_ai
+Hello and welcome to Dartantic!
+
 The [dartantic_ai package](https://pub.dev/packages/dartantic_ai) is an agent
 framework inspired by [the pydantic-ai](https://ai.pydantic.dev/) and designed
 to make building client and server-side apps in Dart with generative AI easier
 and more fun!
 
 # Table of Contents
+- [Basic Agent Usage](#basic-agent-usage)
 - [Features](#features)
 - [Supported Providers](#supported-providers)
-- [Basic Agent Usage](#basic-agent-usage)
 - [Using DotPrompt](#using-dotprompt)
 - [JSON Output with JSON Schema](#json-output-with-json-schema)
 - [Manual Typed Output with Object Mapping](#manual-typed-output-with-object-mapping)
@@ -23,6 +25,42 @@ and more fun!
 - [Provider Capabilities](#provider-capabilities-1)
 - [Provider Switching](#provider-switching)
 - [Custom Providers](#custom-providers)
+
+## Basic Agent Usage
+
+The following shows simple agent usage using the `Agent()` constructor, which
+takes a model string.
+
+```dart
+void main() async {
+  // Create an agent with a model string and a system prompt
+  final agent = Agent(
+    'openai',  // Can also use 'openai:gpt-4o' or 'openai/gpt-4o'
+    systemPrompt: 'Be concise, reply with one sentence.',
+  );
+
+  // Run the agent with a prompt (non-streaming)
+  final result = await agent.run('Where does "hello world" come from?');
+  print(result.output); // Output: one sentence on the origin of "hello world"
+}
+```
+
+Alternatively, you can use the `Agent()` constructor which takes a provider
+directly:
+
+```dart
+void main() async {
+  // Create an agent with a provider
+  final agent = Agent.provider(
+    OpenAiProvider(),
+    systemPrompt: 'Be concise, reply with one sentence.',
+  );
+
+  // Run the agent with a prompt (non-streaming)
+  final result = await agent.run('Where does "hello world" come from?');
+  print(result.output); // Output: one sentence on the origin of "hello world"
+}
+```
 
 ## Features
 The following are the target features for this package:
@@ -49,10 +87,10 @@ The following are the target features for this package:
 - [x] Capabilities capture and reporting
 - [x] Model discovery via `Provider.listModels()` to enumerate available models
   and their capabilities
+- [x] Agentic workflows including multi-step and single-step tool calling
 - [ ] Firebase AI provider (no API keys!)
 - [ ] Multimedia output
 - [ ] Audio transcription
-- [x] Agentic workflows including multi-step and single-step tool calling
 - [ ] Tools + Typed Output (that's a little sticky right now)
 - [ ] More OpenAI-compat providers (local and remote, e.g. Ollama, Gemma, xAI, Groq, etc.)
 
@@ -96,43 +134,36 @@ Some providers support multiple provider prefixes. The alias can be used where t
 ### API Key Environment Variables
 
 If you don't provide an API key when creating an agent, dartantic_ai will look
-for API keys in the apprpriate environment.
+for API keys in the appropriate environment.
 
-## Basic Agent Usage
+#### Example using Agent.environment
 
-The following shows simple agent usage using the `Agent()` constructor, which
-takes a model string.
-
-```dart
-void main() async {
-  // Create an agent with a system prompt
-  final agent = Agent(
-    'openai',  // Can also use 'openai:gpt-4o' or 'openai/gpt-4o'
-    systemPrompt: 'Be concise, reply with one sentence.',
-  );
-
-  // Run the agent with a prompt (non-streaming)
-  final result = await agent.run('Where does "hello world" come from?');
-  print(result.output); // Output: one sentence on the origin of "hello world"
-}
-```
-
-Alternatively, you can use the `Agent()` constructor which takes a provider
-directly:
+The Agent class provides an environment property that you can use to pass API keys along to the provider. This method is particularly suitable for setting API keys for multiple providers at once and for platforms that don't
+have their own environments, like Flutter Web.
 
 ```dart
 void main() async {
-  // Create an agent with a provider
-  final agent = Agent.provider(
-    OpenAiProvider(),
-    systemPrompt: 'Be concise, reply with one sentence.',
-  );
+  // Set API keys for both OpenAI and Gemini using environment variables
+  Agent.environment.addAll({
+    'OPENAI_API_KEY': 'your-openai-api-key-here',
+    'GEMINI_API_KEY': 'your-gemini-api-key-here',
+  });
 
-  // Run the agent with a prompt (non-streaming)
-  final result = await agent.run('Where does "hello world" come from?');
-  print(result.output); // Output: one sentence on the origin of "hello world"
+  // Create and test OpenAI agent without explicitly passing an apiKey
+  final openAiAgent = Agent('openai', systemPrompt: 'Be concise.');
+  final openAiResult = await openAiAgent.run('Why is the sky blue?');
+  print('# OpenAI Agent');
+  print(openAiResult.output);
+
+  // Create and test Gemini agent without explicitly passing an apiKey
+  final geminiAgent = Agent('gemini', systemPrompt: 'Be concise.');
+  final geminiResult = await geminiAgent.run('Why is the sea salty?');
+  print('# Gemini Agent');
+  print(geminiResult.output);
 }
 ```
+
+For a runnable example, take a look at [agent_env.dart](example/bin/agent_env.dart).
 
 ## Using DotPrompt
 
@@ -156,6 +187,8 @@ Summarize this in {{length}} words: {{text}}
   print(result.output); // Output: Fox jumps dog.
 }
 ```
+
+You can find a working example in [dotprompt.dart](example/bin/dotprompt.dart).
 
 ## JSON Output with JSON Schema
 
@@ -282,6 +315,8 @@ void main() async {
 }
 ```
 
+If you want to see more details, check out [output_types.dart](example/bin/output_types.dart).
+
 ## Typed Tool Calling
 
 Imagine you'd like to provided your AI Agent with some tools to call. You'd like
@@ -390,6 +425,8 @@ Future<Map<String, dynamic>?> onTimeCall(Map<String, dynamic> input) async {
 
 Not only is this simpler code, but it frees you from maintaining a separate type
 for output.
+
+For a complete implementation, see [tools.dart](example/bin/tools.dart).
 
 ## Agentic Behavior: Multi vs. Single Step Tool Calling
 
@@ -561,6 +598,8 @@ void main() async {
 }
 ```
 
+You can find a working example in [multi_turn.dart](example/bin/multi_turn.dart).
+
 ### Message Construction Convenience Methods
 
 dartantic_ai provides several convenience methods to simplify creating messages
@@ -687,6 +726,8 @@ void main() async {
 and web URLs. At the time of this writing, Gemini requires files uploaded to
 Google AI File Service for LinkPart URLs.
 
+You can find a working example in [multimedia.dart](example/bin/multimedia.dart).
+
 ## Embeddings
 
 dartantic_ai supports generating vector embeddings for text using both OpenAI
@@ -756,7 +797,7 @@ void main() async {
 ### Cross-Provider Embedding Support
 
 Both OpenAI and Gemini providers support embedding generation with consistent
-APIs:
+APIs. However, the embeddings themselves are NOT compatible between providers. This means that embeddings generated by one provider cannot be directly compared or used interchangeably with embeddings generated by another provider.
 
 ```dart
 import 'package:dartantic_ai/dartantic_ai.dart';
@@ -778,6 +819,8 @@ void main() async {
   // But the API and similarity calculations work the same way
 }
 ```
+
+For a complete implementation, see [embeddings.dart](example/bin/embeddings.dart).
 
 ## Logging
 
@@ -829,6 +872,8 @@ void main() async {
 This is particularly useful for debugging tool execution, understanding provider
 behavior, or troubleshooting unexpected responses.
 
+If you want to see more details, check out [logging.dart](example/bin/logging.dart).
+
 ## Model Discovery
 
 dartantic_ai supports discovering available models from providers using the
@@ -861,6 +906,8 @@ experimental ones:
 Until there's an API from the model providers (I'm looking at you, Google and OpenAI),
 models are classified using heuristics based on their names, looking for patterns
 like "preview", "experimental", "latest", version numbers, and date suffixes.
+
+For a working example, take a look at [list_models.dart](example/bin/list_models.dart).
 
 ## MCP (Model Context Protocol) Server Support
 
@@ -941,6 +988,8 @@ void main() async {
   }
 }
 ```
+
+For a runnable example, take a look at [mcp_servers.dart](example/bin/mcp_servers.dart).
 
 ## Provider Capabilities
 
@@ -1052,6 +1101,8 @@ void main() async {
 }
 ```
 
+You can find a working example in [providers.dart](example/bin/providers.dart).
+
 ## Custom Providers
 
 dartantic_ai allows you to extend its functionality by creating your own custom
@@ -1147,3 +1198,5 @@ void main() async {
   print(agent.model);    // Output: echo:echo
 }
 ```
+
+For a complete implementation, see [custom_provider.dart](example/bin/custom_provider.dart).

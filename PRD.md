@@ -34,6 +34,10 @@ tools.
 - Model discovery via `Provider.listModels()` to enumerate available models, the
   kinds of operations they support, and their stability status (stable vs
   preview/experimental).
+- **Platform-Agnostic Configuration**: A static `Agent.environment` map allows
+  developers to provide configuration variables (like API keys) from any source,
+  making it easy to manage secrets across all platforms, including web, where
+  traditional environment variables are not available.
 - (Planned) Tool execution with validated inputs.
 - (Planned) Chains and sequential execution.
 - (Planned) JSON mode, functions mode, flexible decoding.
@@ -168,8 +172,8 @@ scenario, the probe step would be unnecessary overhead.
   - `ToolCallingMode.multiStep` (Default): The agent will loop through tool
     calls until it has a final answer for the user.
   - `ToolCallingMode.singleStep`: The agent will only perform a single round of
-    tool calls before stopping. This is useful when you only want the first
-    set of tool calls without further reasoning.
+    tool calls before stopping. This is useful when you only want the first set
+    of tool calls without further reasoning.
 
 This implementation enables complex multi-step reasoning chains like:
 ```dart
@@ -364,13 +368,10 @@ final response = await agent.run("What's on my schedule today?");
   - Examples showing how to check capabilities and handle unsupported operations
     gracefully
 
-### Milestone 8: Flutter Web Support
-- [ ] **Flutter Web Compatibility**: Ensure that the `dartantic_ai` package is fully functional on the Flutter Web platform. This involves addressing platform-specific dependencies, particularly in the `mcp_dart` package which currently blocks web support. A pull request to `mcp_dart` will be required to make it platform-agnostic.
+### Milestone 8: Dartantic provider for Flutter AI Toolkit
+- [x] Implement the `LlmProvider` interface in terms of `Agent`
 
-### Milestone 9: Dartantic provider for Flutter AI Toolkit
-- [ ] Implement the `LlmProvider` interface in terms of `Agent`
-
-### Milestone 10: Multi-media input and output
+### Milestone 9: Multi-media input and output
 - [x] **Multi-media input support**: Added `attachments` parameter to Agent and
   Model interfaces for including files, images, and other media:
   - `Agent.runStream()`, `Agent.run()`, and related methods accept `attachments:
@@ -391,9 +392,35 @@ final response = await agent.run("What's on my schedule today?");
   - Handle multimedia content in message history for multi-turn conversations
   - Examples demonstrating image generation, audio synthesis, etc.
 
-### Milestone 11: Typed Response + Tools + Simple Agent Loop
+### Milestone 10: Platform-Agnostic Configuration
+- [x] **Platform-Agnostic Configuration**: Implement a unified,
+  platform-agnostic way to provide secrets and other configuration to providers.
+  - Introduce a static `Agent.environment` map (`Map<String, String>`) where
+    developers can preload environment variables from any source (e.g., `.env`
+    files, process environment, Flutter assets, cloud secret managers).
+  - Update all providers to use a new key lookup mechanism:
+    1. Check for an API key explicitly passed to the provider's constructor.
+    2. Look up the key in `Agent.environment`.
+    3. Fall back to the platform-specific environment (e.g.,
+       `Platform.environment` on native, a no-op on web).
+    4. Throw an error if the key is not found.
+  - This approach solves the problem of managing API keys on the web (where
+    there is no process environment) and provides a single, flexible
+    configuration point for all platforms.
+  - Update documentation and examples to reflect the new best practice for
+    configuring API keys.
+
+### Milestone 11: Flutter Web Support
+- [ ] **Flutter Web Compatibility**: Ensure that the `dartantic_ai` package is
+  fully functional on the Flutter Web platform. This involves addressing
+  platform-specific dependencies, particularly in the `mcp_dart` package which
+  currently blocks web support. A pull request to `mcp_dart` will be required to
+  make it platform-agnostic.
+
+### Milestone 12: Typed Response + Tools + Simple Agent Loop
 - [ ] e.g. two tools, typed response and we keep looping till the LLM is done
 - Just like pydantic-ai can do!
+
 
 ```python
 """

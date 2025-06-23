@@ -1,0 +1,109 @@
+{
+  "name": "dartantic_ai",
+  "description": "An agent framework inspired by pydantic-ai and designed to make building client and server-side apps in Dart with generative AI easier and more fun!",
+  "theme": {
+    "primary": "#0175C2"
+  },
+  "logo": {
+    "light": "https://dart.dev/assets/img/shared/dart/logo+text/horizontal/white.svg",
+    "dark": "https://dart.dev/assets/img/shared/dart/logo+text/horizontal/blue.svg"
+  },
+  "sidebar": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        {
+          "title": "Welcome",
+          "href": "/"
+        },
+        {
+          "title": "Basic Agent Usage",
+          "href": "/basic-agent-usage"
+        },
+        {
+          "title": "Features",
+          "href": "/features"
+        },
+        {
+          "title": "Supported Providers",
+          "href": "/supported-providers"
+        }
+      ]
+    },
+    {
+      "group": "Core Features",
+      "pages": [
+        {
+          "title": "Using DotPrompt",
+          "href": "/using-dotprompt"
+        },
+        {
+          "title": "JSON Output with JSON Schema",
+          "href": "/json-output-with-json-schema"
+        },
+        {
+          "title": "Manual Typed Output",
+          "href": "/manual-typed-output-with-object-mapping"
+        },
+        {
+          "title": "Automatic Typed Output",
+          "href": "/automatic-typed-output-with-object-mapping"
+        }
+      ]
+    },
+    {
+      "group": "Advanced Features",
+      "pages": [
+        {
+          "title": "Typed Tool Calling",
+          "href": "/typed-tool-calling"
+        },
+        {
+          "title": "Agentic Behavior",
+          "href": "/agentic-behavior-multi-vs-single-step-tool-calling"
+        },
+        {
+          "title": "Streaming Output",
+          "href": "/streaming-output"
+        },
+        {
+          "title": "Multi-media Input",
+          "href": "/multi-media-input"
+        },
+        {
+          "title": "Embeddings",
+          "href": "/embeddings"
+        }
+      ]
+    },
+    {
+      "group": "Integration & Configuration",
+      "pages": [
+        {
+          "title": "Logging",
+          "href": "/logging"
+        },
+        {
+          "title": "Model Discovery",
+          "href": "/model-discovery"
+        },
+        {
+          "title": "MCP Server Support",
+          "href": "/mcp-model-context-protocol-server-support"
+        },
+        {
+          "title": "Provider Capabilities",
+          "href": "/provider-capabilities"
+        },
+        {
+          "title": "Provider Switching",
+          "href": "/provider-switching"
+        },
+        {
+          "title": "Custom Providers",
+          "href": "/custom-providers"
+        }
+      ]
+    }
+  ]
+}

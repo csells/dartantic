@@ -1,3 +1,9 @@
+## 0.9.6
+
+- fixed an issue where the OpenAI model only processed the last tool result when
+  multiple tool results existed in a single message, causing unmatched tool call
+  IDs during provider switching.
+
 ## 0.9.5
 
 - Major OpenAI Multi-Step Tool Calling Improvement: Eliminated complex probe

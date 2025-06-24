@@ -48,10 +48,6 @@ void main() {
                     'description':
                         'Date to search for events (YYYY-MM-DD format)',
                   },
-                  'include_time': {
-                    'type': 'boolean',
-                    'description': 'Whether to include time information',
-                  },
                 },
                 'required': ['date'],
               }.toSchema(),
@@ -182,11 +178,14 @@ void main() {
             'gemini',
             tools: testTools,
             toolCallingMode: ToolCallingMode.multiStep,
+            systemPrompt:
+                'You are a helpful assistant that can find events for a user. '
+                'Make sure to ground yourself in the current time and date. '
+                'You can use the get_current_time tool to get the current time, '
+                'and the find_events tool to find events for a user.',
           );
 
-          await agent.runWithRetries(
-            'Get the current time, then find my events for today.',
-          );
+          await agent.runWithRetries('find my events for the current date');
 
           // Verify both tools were called in sequence
           expect(toolCallLog, containsPair('get_current_time', {}));

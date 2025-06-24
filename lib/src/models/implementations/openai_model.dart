@@ -454,7 +454,7 @@ class OpenAiModel extends Model {
     for (final message in messages) {
       // Gather tool calls and tool results
       final toolCalls = <openai.ChatCompletionMessageToolCall>[];
-      ToolPart? toolResult;
+      final toolResults = <ToolPart>[]; // Fix: collect ALL tool results
       final textParts = <String>[];
       for (final part in message.parts) {
         if (part is TextPart) {
@@ -479,21 +479,23 @@ class OpenAiModel extends Model {
                 ),
               );
             case ToolPartKind.result:
-              toolResult = part;
+              toolResults.add(part); // Fix: add to list instead of overwriting
           }
         }
       }
 
       final contentString = textParts.join(' ');
 
-      if (toolResult != null) {
-        // Tool result: emit a tool role message
-        result.add(
-          openai.ChatCompletionMessage.tool(
-            toolCallId: toolResult.id,
-            content: jsonEncode(toolResult.result),
-          ),
-        );
+      if (toolResults.isNotEmpty) {
+        // Tool results: emit a tool role message for each result
+        for (final toolResult in toolResults) {
+          result.add(
+            openai.ChatCompletionMessage.tool(
+              toolCallId: toolResult.id,
+              content: jsonEncode(toolResult.result),
+            ),
+          );
+        }
       } else if (toolCalls.isNotEmpty) {
         // Tool call: emit an assistant message with toolCalls
         result.add(

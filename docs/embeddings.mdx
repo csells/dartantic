@@ -87,20 +87,46 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 void main() async {
   final text = 'Artificial intelligence is transforming technology.';
 
-  // OpenAI embeddings
+  // OpenAI embeddings (supports 768 and 1536 dimensions)
   final openaiAgent = Agent('openai');
-  final openaiEmbedding = await openaiAgent.createEmbedding(text, type: EmbeddingType.document);
-  print('OpenAI embedding: ${openaiEmbedding.length} dimensions'); // Output: OpenAI embedding: 1536 dimensions
+  final openaiEmbedding = await openaiAgent.createEmbedding(
+    text,
+    type: EmbeddingType.document,
+    dimensions: 1536, // or 768
+  );
+  print('OpenAI embedding: ${openaiEmbedding.length} dimensions');
 
-  // Gemini embeddings
-  final geminiAgent = Agent('gemini');
-  final geminiEmbedding = await geminiAgent.createEmbedding(text, type: EmbeddingType.document);
-  print('Gemini embedding: ${geminiEmbedding.length} dimensions'); // Output: Gemini embedding: 768 dimensions
+  // Gemini experimental embeddings (supports 768, 1536, and 3072 dimensions)
+  final geminiAgent = Agent('google', embeddingModel: 'gemini-embedding-exp-03-07');
+  final geminiEmbedding = await geminiAgent.createEmbedding(
+    text,
+    type: EmbeddingType.document,
+    dimensions: 3072, // or 1536, or 768
+  );
+  print('Gemini embedding: ${geminiEmbedding.length} dimensions');
 
-  // Note: Different providers may have different embedding dimensions
+  // Note: Different providers and models may have different embedding dimensions
   // But the API and similarity calculations work the same way
 }
 ```
 
-For a complete implementation, see
+## Embedding Dimensionality
+
+Most embedding models support one or more common dimensionalities, such as 768, 1536, or 3072. Not all providers or models support all values, and the set of supported dimensions may change over time as new models are released.
+
+If you request a dimension not supported by the provider/model, you may get an error or the provider will return its default size.
+
+Specify the desired dimensionality using the `dimensions` parameter:
+
+```dart
+final embedding = await agent.createEmbedding(
+  'your text',
+  type: EmbeddingType.document,
+  dimensions: 1536, // or 768, 3072, etc. as supported
+);
+```
+
+Check your provider/model documentation for the most up-to-date list of supported embedding sizes.
+
+For a sample of embedding usage, see
 [embeddings.dart](https://github.com/csells/dartantic_ai/blob/main/example/bin/embeddings.dart). 

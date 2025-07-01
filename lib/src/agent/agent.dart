@@ -44,8 +44,7 @@ class Agent {
   /// - [tools]: (Optional) A collection of [Tool]s the agent can use.
   /// - [embeddingModel]: (Optional) The model name to use for embeddings. If
   ///   not provided, uses the provider's default embedding model.
-  /// - [toolCallingMode]: (Optional) The mode in which the model will call
-  ///   tools.
+  /// - [temperature]: (Optional) The temperature for the model.
   factory Agent(
     String model, {
     String? embeddingModel,
@@ -55,7 +54,6 @@ class Agent {
     JsonSchema? outputSchema,
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     Iterable<Tool>? tools,
-    ToolCallingMode? toolCallingMode,
     double? temperature,
   }) => Agent.provider(
     providerFor(
@@ -69,7 +67,6 @@ class Agent {
     outputSchema: outputSchema,
     outputFromJson: outputFromJson,
     tools: tools,
-    toolCallingMode: toolCallingMode,
   );
 
   /// Creates a new [Agent] with the given [provider].
@@ -81,15 +78,13 @@ class Agent {
   /// - [outputFromJson]: (Optional) A function to convert JSON output to a
   ///   typed object.
   /// - [tools]: (Optional) A collection of [Tool]s the agent can use.
-  /// - [toolCallingMode]: (Optional) The mode in which the model will call
-  ///   tools.
+  /// - [temperature]: (Optional) The temperature for the model.
   Agent.provider(
     Provider provider, {
     String? systemPrompt,
     JsonSchema? outputSchema,
     this.outputFromJson,
     Iterable<Tool>? tools,
-    ToolCallingMode? toolCallingMode,
     double? temperature,
   }) : _provider = provider,
        _systemPrompt = systemPrompt,
@@ -99,7 +94,6 @@ class Agent {
            outputSchema: outputSchema,
            tools: tools,
            caps: provider.caps,
-           toolCallingMode: toolCallingMode,
            temperature: temperature,
          ),
        ) {

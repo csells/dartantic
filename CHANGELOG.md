@@ -1,6 +1,8 @@
 ## 0.9.7
 
 - Added the ability to set embedding dimensionality
+- Removed ToolCallingMode and singleStep mode. Multi-step tool calling is now
+  always enabled.
 
 ## 0.9.6
 

@@ -59,14 +59,13 @@ class OpenAiProvider extends Provider {
   /// for the model, such as the system prompt and output type.
   @override
   Model createModel(ModelSettings settings) => OpenAiModel(
+    apiKey: apiKey,
     modelName: modelName,
     embeddingModelName: embeddingModelName,
-    apiKey: apiKey,
+    baseUrl: baseUrl,
     outputSchema: settings.outputSchema,
     systemPrompt: settings.systemPrompt,
     tools: settings.tools,
-    toolCallingMode: settings.toolCallingMode,
-    baseUrl: baseUrl,
     temperature: settings.temperature,
     caps: caps,
     parallelToolCalls: parallelToolCalls,

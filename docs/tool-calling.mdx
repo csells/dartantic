@@ -39,7 +39,7 @@ Future<void> main() async {
   print(result.output);
 }
 
-  Future<Map<String, dynamic>> _onTimeCall(Map<String, dynamic> input) {
+Future<Map<String, dynamic>> _onTimeCall(Map<String, dynamic> input) {
   // TODO: Implement the tool call
   return Future.value({'time': '10:00 AM'});
 }
@@ -162,4 +162,8 @@ Not only is this simpler code, but it frees you from maintaining a separate type
 for output.
 
 For a complete example, see
-[tools.dart](https://github.com/csells/dartantic_ai/blob/main/example/bin/tools.dart). 
+[tools.dart](https://github.com/csells/dartantic_ai/blob/main/example/bin/tools.dart).
+
+---
+
+For more on how agents use tools in multi-step reasoning chains, see [Agentic Behavior](./agentic-behavior.mdx). This explains how agents can chain tool calls together to solve complex problems, rather than just calling a single tool in isolation. 

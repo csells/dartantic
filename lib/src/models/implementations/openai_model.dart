@@ -32,13 +32,11 @@ class OpenAiModel extends Model {
     JsonSchema? outputSchema,
     String? systemPrompt,
     Iterable<Tool>? tools,
-    ToolCallingMode? toolCallingMode,
     double? temperature,
     bool parallelToolCalls = true,
   }) : generativeModelName = modelName ?? defaultModelName,
        embeddingModelName = embeddingModelName ?? defaultEmbeddingModelName,
        _tools = tools?.toList(),
-       _toolCallingMode = toolCallingMode ?? ToolCallingMode.multiStep,
        _systemPrompt = systemPrompt,
        _parallelToolCalls = parallelToolCalls,
        _client = openai.OpenAIClient(
@@ -63,7 +61,6 @@ class OpenAiModel extends Model {
   final openai.ResponseFormat? _responseFormat;
   final String? _systemPrompt;
   final List<Tool>? _tools;
-  final ToolCallingMode _toolCallingMode;
   final double? _temperature;
   final Map<String, String> _toolCallIdToName = {};
   final bool _parallelToolCalls;
@@ -85,13 +82,9 @@ class OpenAiModel extends Model {
     _toolCallIdToName.clear();
 
     final hasTools = _tools?.isNotEmpty ?? false;
-    final parallelToolCallsEnabled =
-        hasTools &&
-        _toolCallingMode == ToolCallingMode.multiStep &&
-        _parallelToolCalls;
+    final parallelToolCalls = hasTools && _parallelToolCalls;
     log.fine(
-      '[OpenAiModel] Starting stream with toolCallingMode: $_toolCallingMode, '
-      'parallelToolCalls: $parallelToolCallsEnabled',
+      '[OpenAiModel] Starting stream w/ parallelToolCalls: $parallelToolCalls',
     );
 
     // Process the incoming message history to extract and register all tool
@@ -173,7 +166,7 @@ class OpenAiModel extends Model {
         responseFormat: _responseFormat,
         messages: oiaMessages,
         temperature: _temperature,
-        parallelToolCalls: hasTools ? parallelToolCallsEnabled : null,
+        parallelToolCalls: hasTools ? parallelToolCalls : null,
         tools: toolsList,
       ),
     );
@@ -257,7 +250,7 @@ class OpenAiModel extends Model {
             responseFormat: _responseFormat,
             messages: oiaMessages,
             temperature: _temperature,
-            parallelToolCalls: hasTools ? parallelToolCallsEnabled : null,
+            parallelToolCalls: hasTools ? parallelToolCalls : null,
             tools: toolsList,
           ),
         );
@@ -294,29 +287,8 @@ class OpenAiModel extends Model {
         // If the response has new tool calls, add them to the queue and loop.
         if (newToolCalls.isNotEmpty) {
           toolCalls.addAll(newToolCalls);
-
-          // If we're in single-step mode, break out after one iteration
-          if (_toolCallingMode == ToolCallingMode.singleStep) {
-            log.fine(
-              '[OpenAiModel] Single-step mode: breaking out of tool calling '
-              'loop',
-            );
-            toolCalls.clear(); // Clear any pending tool calls
-            break;
-          }
-
           continue;
         }
-      }
-
-      // If we're in single-step mode and we've completed one iteration, break
-      // out
-      if (_toolCallingMode == ToolCallingMode.singleStep) {
-        log.fine(
-          '[OpenAiModel] Single-step mode: breaking out of tool calling loop',
-        );
-        toolCalls.clear(); // Clear any pending tool calls
-        break;
       }
 
       // No more tool calls - we're done!

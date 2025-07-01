@@ -54,14 +54,13 @@ class GeminiProvider extends Provider {
   /// for the model, such as the system prompt and output type.
   @override
   Model createModel(ModelSettings settings) => GeminiModel(
+    apiKey: apiKey,
     modelName: modelName,
     embeddingModelName: embeddingModelName,
-    apiKey: apiKey,
     outputSchema: settings.outputSchema,
     systemPrompt: settings.systemPrompt,
-    temperature: temperature,
     tools: settings.tools,
-    toolCallingMode: settings.toolCallingMode,
+    temperature: temperature,
   );
 
   @override

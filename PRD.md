@@ -147,22 +147,7 @@ The implementation handles provider-specific differences:
   pairing
 
 ### Optimizations
-- **ToolCallingMode and parallelToolCalls Alignment**: The system intelligently 
-  maps `ToolCallingMode` to the `parallelToolCalls` parameter:
-  - `ToolCallingMode.singleStep` → `parallelToolCalls: false` (sequential, 
-    predictable execution)
-  - `ToolCallingMode.multiStep` → `parallelToolCalls: true` (efficient 
-    multi-step reasoning when provider supports it)
-
-- **Single-Step vs. Multi-Step Tool Calling**: By default, Agents run in
-  multi-step tool mode, which is what makes them agents. However, as an
-  optimization, models can be configured for single-step mode using the
-  `ToolCallingMode` enum when creating an `Agent`:
-  - `ToolCallingMode.multiStep` (Default): The agent will loop through tool
-    calls until it has a final answer for the user.
-  - `ToolCallingMode.singleStep`: The agent will only perform a single round of
-    tool calls before stopping. This is useful when you only want the first set
-    of tool calls without further reasoning.
+- By default, Agents run in multi-step tool mode, which is what makes them agents. The agent will loop through tool calls until it has a final answer for the user.
 
 This implementation enables complex multi-step reasoning chains like:
 ```dart
@@ -198,10 +183,7 @@ final response = await agent.run("What's on my schedule today?");
 ### Milestone 2: Multi-turn Chat, Streaming
 - [x] **Streaming responses**: LLM responses can be streamed via
   `Agent.runStream`, `Agent.runPromptStream`, and similar methods, all of which
-  return a `Stream<AgentResponse>`. This allows real-time consumption of output
-  as it's generated. Streaming is a core, stable feature of the API, and is the
-  primary way to consume real-time output from the agent. Note: `Agent.run`
-  returns a `Future<AgentResponse>` with the full response, not a stream.
+  support multi-step tool calling.
 
   ```dart
   // Example of streaming with Agent.runStream

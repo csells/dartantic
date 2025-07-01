@@ -1,28 +1,19 @@
 ---
-title: Agentic Behavior - Multi vs. Single Step Tool Calling
+title: Agentic Behavior - Multi-Step Tool Calling
 ---
 
 A key feature of an "agent" is its ability to perform multi-step reasoning.
 Instead of just calling one tool and stopping, an agent can use the result of
 one tool to inform its next action, chaining multiple tool calls together to
-solve a complex problem without requiring further user intervention. This is the
-default "agentic" behavior in Dartantic.
+solve a complex problem without requiring further user intervention.
 
-You can control this behavior using the `toolCallingMode` parameter when
-creating an `Agent`:
+Agents will loop, calling tools as many times as needed to fully resolve the
+user's prompt. They can use the output from one tool as the input for another,
+creating sophisticated chains of execution.
 
-- **`ToolCallingMode.multiStep`** (Default): This is the "agentic" mode. The
-  agent will loop, calling tools as many times as it needs to fully resolve the
-  user's prompt. It can use the output from one tool as the input for another,
-  creating sophisticated chains of execution.
-- **`ToolCallingMode.singleStep`**: The agent will perform only one round of
-  tool calls and then stop. This is useful as an optimization if you only need
-  the first set of tool calls.
+## Example: Multi-Step Tool Execution
 
-## Example: Multi-Step vs. Single-Step
-
-Let's see the difference in action. First, we'll set up some tools and a common
-prompt.
+Let's see this in action. First, we'll set up some tools and a common prompt.
 
 ```dart
 // Two simple tools for our agent
@@ -60,23 +51,18 @@ void printMessages(List<Message> messages) {
 }
 ```
 
-### Multi-Step Execution (Default)
-
-When run in the default `multiStep` mode, the agent calls the first tool, gets
-the date, and then immediately uses that date to call the second tool.
+When you run the agent, it will call the first tool, get the date, and then
+immediately use that date to call the second tool.
 
 ```dart
-// Create an agent in the default multi-step mode
-final multiStepAgent = Agent('openai', tools: tools);
-final multiStepResponse = await multiStepAgent.run(prompt);
-print('--- Multi-Step Mode ---');
-printMessages(multiStepResponse.messages);
+final agent = Agent('openai', tools: tools);
+final response = await agent.run(prompt);
+printMessages(response.messages);
 ```
 
 The resulting message history shows the full, two-step reasoning chain:
 
 ```
---- Multi-Step Mode ---
 Message #1: role=user
   - TextPart(text: "What events do I have today? Please find the current date first.")
 Message #2: role=model
@@ -91,38 +77,3 @@ Message #6: role=model
   - TextPart(text: "You have one event today: a Team Meeting at 11am.")
 ---
 ```
-
-### Single-Step Execution
-
-Now, let's run the exact same scenario in `singleStep` mode.
-
-```dart
-// Create an agent explicitly in single-step mode
-final singleStepAgent = Agent(
-  'openai',
-  tools: tools,
-  toolCallingMode: ToolCallingMode.singleStep,
-);
-final singleStepResponse = await singleStepAgent.run(prompt);
-print('--- Single-Step Mode ---');
-printMessages(singleStepResponse.messages);
-```
-
-The agent stops after the first round of tool calls. It finds the time but
-doesn't proceed to the next logical step of finding the events.
-
-```
---- Single-Step Mode ---
-Message #1: role=user
-  - TextPart(text: "What events do I have today? Please find the current date first.")
-Message #2: role=model
-  - ToolPart(kind: call, id: ..., name: get_current_time, arguments: {})
-Message #3: role=model
-  - ToolPart(kind: result, id: ..., name: get_current_time, result: {time: 2025-06-21T10:00:00Z})
-Message #4: role=model
-  - TextPart(text: "Okay, the current date is June 21, 2025. Now I will find your events.")
----
-```
-
-Single-step mode is useful as an optimization only, which is why multi-step mode
-is the default.

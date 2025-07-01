@@ -122,7 +122,7 @@ void main() {
           );
 
           print(
-            '✓ Verified match: call ${call.id} -> result ${matchingResult.id}',
+            '\u2713 Verified match: call ${call.id} -> result ${matchingResult.id}',
           );
         }
 
@@ -213,54 +213,5 @@ void main() {
         );
       },
     );
-
-    test('should handle single-step mode with consistent IDs', () async {
-      final geminiAgent = Agent(
-        'gemini',
-        tools: testTools,
-        toolCallingMode: ToolCallingMode.singleStep,
-      );
-
-      var conversationHistory = <Message>[];
-      await for (final response in geminiAgent.runStreamWithRetries(
-        'Get the current time and find events',
-      )) {
-        if (response.messages.isNotEmpty) {
-          conversationHistory = response.messages.toList();
-        }
-      }
-
-      // Extract tool parts
-      final allParts = conversationHistory.expand((m) => m.parts).toList();
-      final toolParts = allParts.whereType<ToolPart>().toList();
-
-      final toolCalls =
-          toolParts.where((p) => p.kind == ToolPartKind.call).toList();
-      final toolResults =
-          toolParts.where((p) => p.kind == ToolPartKind.result).toList();
-
-      print(
-        'Single-step mode: ${toolCalls.length} calls, ${toolResults.length} results',
-      );
-
-      // In single-step mode, should still have matching pairs
-      expect(
-        toolCalls.length,
-        equals(toolResults.length),
-        reason: 'Even in single-step mode, calls and results should match',
-      );
-
-      // Validate ID consistency
-      for (final call in toolCalls) {
-        final matchingResult =
-            toolResults.where((r) => r.id == call.id).singleOrNull;
-        expect(
-          matchingResult,
-          isNotNull,
-          reason: 'Single-step mode should still maintain ID consistency',
-        );
-        expect(matchingResult!.name, equals(call.name));
-      }
-    });
   });
 }

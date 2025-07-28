@@ -1,3 +1,7 @@
+## 1.0.1
+
+- updating to dartantic_interface 1.0.1 (that didn't take long : )
+
 ## 1.0.0
 
 ### Dynamic => Static Provider instances

@@ -58,58 +58,58 @@ void main() {
   group('Provider Discovery', () {
     group('chat provider selection', () {
       test('finds providers by exact name', () {
-        expect(Providers.byName('openai'), equals(Providers.openai));
-        expect(Providers.byName('anthropic'), equals(Providers.anthropic));
-        expect(Providers.byName('google'), equals(Providers.google));
-        expect(Providers.byName('mistral'), equals(Providers.mistral));
-        expect(Providers.byName('ollama'), equals(Providers.ollama));
-        expect(Providers.byName('together'), equals(Providers.together));
-        expect(Providers.byName('lambda'), equals(Providers.lambda));
-        expect(Providers.byName('cohere'), equals(Providers.cohere));
-        expect(Providers.byName('openrouter'), equals(Providers.openrouter));
+        expect(Providers.get('openai'), equals(Providers.openai));
+        expect(Providers.get('anthropic'), equals(Providers.anthropic));
+        expect(Providers.get('google'), equals(Providers.google));
+        expect(Providers.get('mistral'), equals(Providers.mistral));
+        expect(Providers.get('ollama'), equals(Providers.ollama));
+        expect(Providers.get('together'), equals(Providers.together));
+        expect(Providers.get('lambda'), equals(Providers.lambda));
+        expect(Providers.get('cohere'), equals(Providers.cohere));
+        expect(Providers.get('openrouter'), equals(Providers.openrouter));
       });
 
       test('finds providers by aliases', () {
         // Test documented aliases from README
-        expect(Providers.byName('claude'), equals(Providers.anthropic));
-        expect(Providers.byName('gemini'), equals(Providers.google));
+        expect(Providers.get('claude'), equals(Providers.anthropic));
+        expect(Providers.get('gemini'), equals(Providers.google));
         // These aliases were removed in the migration
       });
 
       test('throws on unknown provider name', () {
         expect(
-          () => Providers.byName('unknown-provider'),
+          () => Providers.get('unknown-provider'),
           throwsA(isA<Exception>()),
         );
-        expect(() => Providers.byName('invalid'), throwsA(isA<Exception>()));
-        expect(() => Providers.byName(''), throwsA(isA<Exception>()));
+        expect(() => Providers.get('invalid'), throwsA(isA<Exception>()));
+        expect(() => Providers.get(''), throwsA(isA<Exception>()));
       });
 
       test('is case insensitive', () {
         // Provider lookup is actually case-insensitive
-        expect(Providers.byName('OpenAI'), equals(Providers.openai));
-        expect(Providers.byName('ANTHROPIC'), equals(Providers.anthropic));
-        expect(Providers.byName('Claude'), equals(Providers.anthropic));
+        expect(Providers.get('OpenAI'), equals(Providers.openai));
+        expect(Providers.get('ANTHROPIC'), equals(Providers.anthropic));
+        expect(Providers.get('Claude'), equals(Providers.anthropic));
       });
     });
 
     group('embeddings provider selection', () {
       test('finds providers by exact name', () {
-        expect(Providers.byName('openai'), equals(Providers.openai));
-        expect(Providers.byName('google'), equals(Providers.google));
-        expect(Providers.byName('mistral'), equals(Providers.mistral));
-        expect(Providers.byName('cohere'), equals(Providers.cohere));
+        expect(Providers.get('openai'), equals(Providers.openai));
+        expect(Providers.get('google'), equals(Providers.google));
+        expect(Providers.get('mistral'), equals(Providers.mistral));
+        expect(Providers.get('cohere'), equals(Providers.cohere));
       });
 
       test('finds providers by aliases', () {
         // After unified Provider, aliases work for embeddings too
-        expect(Providers.byName('gemini'), equals(Providers.google));
+        expect(Providers.get('gemini'), equals(Providers.google));
       });
 
       test('throws on unknown provider name', () {
-        expect(() => Providers.byName('unknown'), throwsA(isA<Exception>()));
+        expect(() => Providers.get('unknown'), throwsA(isA<Exception>()));
         expect(
-          () => Providers.byName('invalid-provider'),
+          () => Providers.get('invalid-provider'),
           throwsA(isA<Exception>()),
         );
       });
@@ -225,13 +225,13 @@ void main() {
 
     group('dynamic provider usage', () {
       test('can create models via discovered providers', () {
-        final provider = Providers.byName('openai');
+        final provider = Providers.get('openai');
         final model = provider.createChatModel(name: 'gpt-4o-mini');
         expect(model, isNotNull);
       });
 
       test('can use aliases for model creation', () {
-        final claudeProvider = Providers.byName('claude');
+        final claudeProvider = Providers.get('claude');
         expect(claudeProvider.name, equals('anthropic'));
 
         // Skip actual model creation if API key not available
@@ -239,7 +239,7 @@ void main() {
       });
 
       test('supports dynamic agent creation', () {
-        final provider = Providers.byName('gemini');
+        final provider = Providers.get('gemini');
         expect(provider.name, equals('google'));
 
         final agent = Agent('${provider.name}:gemini-2.0-flash');
@@ -251,11 +251,11 @@ void main() {
 
     group('provider comparison', () {
       test('providers are comparable', () {
-        final provider1 = Providers.byName('openai');
+        final provider1 = Providers.get('openai');
         final provider2 = Providers.openai;
         expect(provider1, equals(provider2));
 
-        final aliasProvider = Providers.byName('claude');
+        final aliasProvider = Providers.get('claude');
         final directProvider = Providers.anthropic;
         expect(aliasProvider, equals(directProvider));
       });
@@ -269,12 +269,12 @@ void main() {
 
     group('error handling', () {
       test('handles null and empty provider names gracefully', () {
-        expect(() => Providers.byName(''), throwsA(isA<Exception>()));
+        expect(() => Providers.get(''), throwsA(isA<Exception>()));
       });
 
       test('provides helpful error messages', () {
         expect(
-          () => Providers.byName('invalid-provider'),
+          () => Providers.get('invalid-provider'),
           throwsA(isA<Exception>()),
         );
       });

@@ -331,7 +331,7 @@ abstract class Provider {
 
 ```dart
 // Test provider discovery
-final provider = Providers.byName('example');
+final provider = Providers.get('example');
 assert(provider.name == 'example');
 
 // Test model creation

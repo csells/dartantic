@@ -101,7 +101,7 @@ void runProviderTest(
 
   for (final providerModel in providers) {
     test('$providerModel: $description', () async {
-      final provider = Providers.byName(providerModel.split(':')[0]);
+      final provider = Providers.get(providerModel.split(':')[0]);
       await testFunction(provider);
     });
   }

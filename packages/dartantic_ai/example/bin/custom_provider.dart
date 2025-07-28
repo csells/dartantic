@@ -22,11 +22,11 @@ void main() async {
   print('');
   print('Successfully echoed the prompt!');
 
-  // Example: Getting a provider by name using Providers.byName()
+  // Example: Getting a provider by name using Providers.get()
   print('\n═══ Getting providers by name ═══');
 
   // Get a built-in provider
-  final openaiProvider = Providers.byName('openai');
+  final openaiProvider = Providers.get('openai');
   print('Got provider: ${openaiProvider.displayName}');
 
   // Create an agent using the provider directly
@@ -37,11 +37,11 @@ void main() async {
   print('Created agent with model: ${openaiAgent.model}');
 
   // Get our custom provider
-  final echoProvider = Providers.byName('echo');
+  final echoProvider = Providers.get('echo');
   print('Got custom provider: ${echoProvider.displayName}');
 
   // You can also use aliases
-  final googleProvider = Providers.byName('gemini'); // alias for 'google'
+  final googleProvider = Providers.get('gemini'); // alias for 'google'
   print('Got provider using alias: ${googleProvider.displayName}');
 }
 

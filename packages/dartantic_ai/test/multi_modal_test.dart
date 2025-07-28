@@ -67,7 +67,7 @@ void main() {
     bool edgeCase = false,
   }) {
     final providers = edgeCase
-        ? [Providers.byName('google')] // Edge cases on Google only
+        ? [Providers.get('google')] // Edge cases on Google only
         : Providers.all.where(
             (p) => p.caps.contains(ProviderCaps.vision) && isGeneralPurpose(p),
           );
@@ -226,7 +226,7 @@ void main() {
 
       // Link attachments - only test on providers that support external URLs
       for (final providerName in ['openai', 'anthropic']) {
-        final provider = Providers.byName(providerName);
+        final provider = Providers.get(providerName);
         final agent = Agent(provider.name);
 
         test('${agent.model}: handles single URL attachment', () async {

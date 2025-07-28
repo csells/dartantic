@@ -127,7 +127,7 @@ classDiagram
 ```
 
 - **Static instances**: Each provider has a static instance (e.g., `Providers.openai`)
-- **Name-based lookup**: `Providers.byName(String)` with case-insensitive matching
+- **Name-based lookup**: `Providers.get(String)` with case-insensitive matching
 - **Alias support**: Providers can have alternative names (e.g., 'claude' → 'anthropic')
 - **Discovery methods**: `Providers.all` lists all providers, `Providers.allWith()` filters by capabilities
 
@@ -150,7 +150,7 @@ sequenceDiagram
     rect rgb(200, 220, 240)
         note over Agent: AGENT LAYER
         Agent->>Agent: Parse "openai" → provider name
-        Agent->>Provider: Providers.byName("openai")
+        Agent->>Provider: Providers.get("openai")
         Provider-->>Agent: OpenAIProvider instance
         Agent->>Agent: Lazy model creation
     end

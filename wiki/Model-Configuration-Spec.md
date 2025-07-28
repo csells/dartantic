@@ -67,7 +67,7 @@ flowchart TD
     B --> C["provider: 'openai'<br/>chat: 'gpt-4'<br/>embeddings: null"]
     
     C --> D[Provider Lookup]
-    D --> E["Providers.byName('openai')"]
+    D --> E["Providers.get('openai')"]
     E --> F["defaultModelNames:<br/>chat: 'gpt-4o'<br/>embeddings: 'text-embedding-3-small'"]
     
     F --> G{Model Resolution}

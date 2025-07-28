@@ -50,7 +50,7 @@ final agent = Agent.provider(
 // NEW - dartantic_ai
 final agent = Agent.forProvider(
   Providers.openai,
-  systemPrompt: 'Be concise.',
+  history: [ChatMessage.system('Be concise.')],
 );
 ```
 
@@ -78,7 +78,7 @@ final provider = GeminiProvider();
 // NEW - dartantic_ai
 final provider = Providers.openai;
 final provider = Providers.google;
-final provider = Providers.byName('openai');
+final provider = Providers.get('openai');
 ```
 
 #### 5. Schema Definition Changes
@@ -320,7 +320,7 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 void main() async {
   final agent = Agent(
     'openai',
-    systemPrompt: 'Be concise, reply with one sentence.',
+    history: [ChatMessage.system('Be concise, reply with one sentence.')],
   );
 
   final response = await agent.send('Where does "hello world" come from?');
@@ -549,9 +549,9 @@ as well as `provideName` and `providerName:chatModel` and `providerName/chatMode
 - Provider lookup by name or by using intrinsic providers
 
   - ChatProvider.name, e.g. ChatProviders.anthropic
-  - ChatProviders.byName(name|alias), e.g. ChatProviders.byName('anthropic') or ChatProviders.byName('claude')
+  - ChatProviders.get(name|alias), e.g. ChatProviders.get('anthropic') or ChatProviders.get('claude')
   - EmbeddingsProvider.name, e.g. ChatProviders.openai
-  - EmebeddingsProviders.byName(name|alias), e.g. EmbeddingsProvider.forName['openai']
+  - EmebeddingsProviders.get(name|alias), e.g. EmbeddingsProvider.forName['openai']
   - Agent.forProvider(ChatProvider.name), e.g. Agent.forProvider(MyCustomProvider()) or Agent.forProvider(ChatProviders.google)
   - Can extend a provider type's namespace, e.g.
     ChatProvider.providerMap['acme'] = AcmeChatProvider();
@@ -605,7 +605,7 @@ as well as `provideName` and `providerName:chatModel` and `providerName/chatMode
   - see example/dot_prompt.dart
 
 -The `Agent.providerFor()` static method has been removed.
-    final provider = ChatProviders.byName('openai');
+    final provider = ChatProviders.get('openai');
 
 - The capability system remains similar but with different organization, i.e. ChatProvider and EmbeddingsProvider each have their own
 

@@ -17,14 +17,12 @@ void main() async {
   // Note: This example copies from Platform.environment to demonstrate the
   // feature while still working with your existing environment setup.
   Agent.environment['OPENAI_API_KEY'] = Platform.environment['OPENAI_API_KEY']!;
-  Agent.environment['ANTHROPIC_API_KEY'] =
-      Platform.environment['ANTHROPIC_API_KEY']!;
   Agent.environment['GEMINI_API_KEY'] = Platform.environment['GEMINI_API_KEY']!;
 
   print('Multi-Provider Conversation Demo\n');
   final history = <ChatMessage>[];
 
-  // Step 1: Start with Gemini (fast and cheap)
+  // Step 1: Start with Gemini
   print('═══ Step 1: Starting with Gemini ═══');
   final gemini = Agent('google');
   final result1 = await gemini.send(
@@ -34,7 +32,7 @@ void main() async {
   history.addAll(result1.messages);
   print('Gemini: ${result1.output}\n');
 
-  // Step 2: Continue with Claude (good at reasoning)
+  // Step 2: Continue with Claude
   print('═══ Step 2: Switching to Claude ═══');
   final claude = Agent('anthropic');
   final result2 = await claude.send(

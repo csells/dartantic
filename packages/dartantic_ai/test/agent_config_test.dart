@@ -445,11 +445,11 @@ void main() {
 
       test('Provider discovery methods work correctly', () {
         // Discovery by name
-        final openai = Providers.byName('openai');
+        final openai = Providers.get('openai');
         expect(openai.name, equals('openai'));
 
         // Discovery by alias
-        final anthropic = Providers.byName('claude');
+        final anthropic = Providers.get('claude');
         expect(anthropic.name, equals('anthropic'));
 
         // Discovery by capabilities
@@ -565,7 +565,6 @@ class TestProvider extends Provider<TestChatOptions, TestEmbeddingsOptions> {
     String? name,
     List<Tool>? tools,
     double? temperature,
-    String? systemPrompt,
     TestChatOptions? options,
   }) {
     // Provider resolves API key if it has an apiKeyName

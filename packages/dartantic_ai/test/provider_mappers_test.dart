@@ -21,7 +21,7 @@ void main() {
         final providerNames = ['openai', 'anthropic', 'google', 'mistral'];
 
         for (final providerName in providerNames) {
-          final provider = Providers.byName(providerName);
+          final provider = Providers.get(providerName);
           final agent = Agent(provider.name);
 
           final result = await agent.send('Say "mapper test"');

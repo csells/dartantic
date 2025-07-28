@@ -157,7 +157,7 @@ void main() {
         expect(multiCapProviders, isNotEmpty);
 
         // OpenAI should have multiple capabilities
-        final openai = Providers.byName('openai');
+        final openai = Providers.get('openai');
         expect(openai.caps.length, greaterThanOrEqualTo(2));
         expect(openai.caps, contains(ProviderCaps.chat));
         expect(openai.caps, contains(ProviderCaps.multiToolCalls));

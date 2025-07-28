@@ -29,28 +29,28 @@ void main() {
       });
 
       test('finds provider by exact name', () {
-        final openai = Providers.byName('openai');
+        final openai = Providers.get('openai');
         expect(openai, isNotNull);
         expect(openai.name, equals('openai'));
 
-        final anthropic = Providers.byName('anthropic');
+        final anthropic = Providers.get('anthropic');
         expect(anthropic, isNotNull);
         expect(anthropic.name, equals('anthropic'));
       });
 
       test('finds provider by alias', () {
-        final claude = Providers.byName('claude');
+        final claude = Providers.get('claude');
         expect(claude, isNotNull);
         expect(claude.name, equals('anthropic'));
 
-        final gemini = Providers.byName('gemini');
+        final gemini = Providers.get('gemini');
         expect(gemini, isNotNull);
         expect(gemini.name, equals('google'));
       });
 
       test('throws for unknown provider', () {
         expect(
-          () => Providers.byName('unknown-provider'),
+          () => Providers.get('unknown-provider'),
           throwsA(isA<Exception>()),
         );
       });
@@ -154,7 +154,7 @@ void main() {
         final testProviders = ['openai', 'anthropic', 'google'];
 
         for (final providerName in testProviders) {
-          final provider = Providers.byName(providerName);
+          final provider = Providers.get(providerName);
           // For now, just check we can create an agent
           final agent = Agent(provider.name);
           expect(agent, isNotNull);
@@ -181,7 +181,7 @@ void main() {
       test('default model names follow conventions', () {
         final testProviderNames = ['openai', 'google'];
         for (final providerName in testProviderNames) {
-          final provider = Providers.byName(providerName);
+          final provider = Providers.get(providerName);
           final model = provider.defaultModelNames[ModelKind.chat];
 
           expect(model, isNotNull);
@@ -205,7 +205,7 @@ void main() {
       });
 
       test('finds embeddings provider by name', () {
-        final openai = Providers.byName('openai');
+        final openai = Providers.get('openai');
         expect(openai, isNotNull);
         expect(openai.name, equals('openai'));
       });
@@ -227,7 +227,7 @@ void main() {
         final futures = <Future<Provider?>>[];
 
         for (var i = 0; i < 100; i++) {
-          futures.add(Future(() => Providers.byName('openai')));
+          futures.add(Future(() => Providers.get('openai')));
         }
 
         final results = await Future.wait(futures);
@@ -239,14 +239,14 @@ void main() {
 
       test('handles case-insensitive provider names', () {
         // Provider lookup is case-insensitive by design
-        expect(Providers.byName('openai'), isNotNull);
-        expect(Providers.byName('OpenAI'), isNotNull);
-        expect(Providers.byName('OPENAI'), isNotNull);
+        expect(Providers.get('openai'), isNotNull);
+        expect(Providers.get('OpenAI'), isNotNull);
+        expect(Providers.get('OPENAI'), isNotNull);
 
         // All should return the same provider
-        final provider1 = Providers.byName('openai');
-        final provider2 = Providers.byName('OpenAI');
-        final provider3 = Providers.byName('OPENAI');
+        final provider1 = Providers.get('openai');
+        final provider2 = Providers.get('OpenAI');
+        final provider3 = Providers.get('OPENAI');
         expect(provider1, equals(provider2));
         expect(provider2, equals(provider3));
       });
@@ -280,7 +280,7 @@ void main() {
         };
 
         for (final entry in aliases.entries) {
-          final provider = Providers.byName(entry.key);
+          final provider = Providers.get(entry.key);
           expect(provider.name, equals(entry.value));
         }
       });

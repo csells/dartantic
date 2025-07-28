@@ -37,7 +37,7 @@ void main() {
         () async {
           final parts = providerModel.split(':');
           final providerName = parts[0];
-          final provider = Providers.byName(providerName);
+          final provider = Providers.get(providerName);
           await testFunction(provider);
         },
         // Add longer timeout for tool streaming tests

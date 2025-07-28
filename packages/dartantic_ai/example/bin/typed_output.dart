@@ -9,26 +9,22 @@ import 'package:example/example.dart';
 import 'package:json_schema/json_schema.dart';
 
 void main() async {
-  final providers =
-      Providers.all
-          .where((p) => p.caps.contains(ProviderCaps.typedOutputWithTools))
-          .toList();
+  final provider = Providers.openai;
+  assert(provider.caps.contains(ProviderCaps.typedOutputWithTools));
+  final agent = Agent.forProvider(
+    provider,
+    tools: [currentDateTimeTool, temperatureTool, recipeLookupTool],
+  );
 
-  for (final provider in providers) {
-    final agent = Agent.forProvider(
-      provider,
-      tools: [currentDateTimeTool, temperatureTool, recipeLookupTool],
-    );
+  await jsonOutput(agent);
+  await jsonOutputStreaming(agent);
+  await mapOutput(agent);
+  await typedOutput(agent);
+  await typedOutputWithCodeGen(agent);
+  await typedOutputWithToolCalls(agent);
+  await typedOutputWithToolCallsAndMultipleTurns(provider);
+  await typedOutputWithToolCallsAndMultipleTurnsStreaming(provider);
 
-    await jsonOutput(agent);
-    await jsonOutputStreaming(agent);
-    await mapOutput(agent);
-    await typedOutput(agent);
-    await typedOutputWithCodeGen(agent);
-    await typedOutputWithToolCalls(agent);
-    await typedOutputWithToolCallsAndMultipleTurns(provider);
-    await typedOutputWithToolCallsAndMultipleTurnsStreaming(provider);
-  }
   exit(0);
 }
 

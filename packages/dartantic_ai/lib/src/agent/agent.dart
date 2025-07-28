@@ -60,7 +60,7 @@ class Agent {
     _displayName = displayName;
 
     // Store provider and model parameters
-    _provider = Providers.byName(providerName);
+    _provider = Providers.get(providerName);
 
     _chatModelName = chatModelName;
     _embeddingsModelName = embeddingsModelName;

@@ -156,8 +156,8 @@ parameters. These are set at the provider level through the constructor.
 ### 4. Provider Discovery
 
 Providers can be discovered by:
-- **Name**: `Providers.byName('openai')`
-- **Alias**: `Providers.byName('claude')` → resolves to Anthropic
+- **Name**: `Providers.get('openai')`
+- **Alias**: `Providers.get('claude')` → resolves to Anthropic
 - **Capabilities**: `Providers.allWith({ProviderCaps.vision})`
 - **All Providers**: `Providers.all`
 

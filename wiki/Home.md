@@ -110,7 +110,7 @@ sequenceDiagram
     rect rgb(255, 230, 230)
         note over Agent: API Layer
         Agent->>Agent: Parse model string
-        Agent->>Provider: Providers.byName()
+        Agent->>Provider: Providers.get()
         Agent->>Provider: createChatModel()
         Agent->>Orchestrator: Select orchestrator
     end

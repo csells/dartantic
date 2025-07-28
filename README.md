@@ -25,7 +25,7 @@ void main() async {
   // Create an agent with your preferred provider
   final agent = Agent(
     'openai',  // or 'google', 'anthropic', 'ollama', etc.
-    systemPrompt: 'You are a helpful assistant.',
+    history: [ChatMessage.system('You are a helpful assistant.')],
   );
 
   // Generate text

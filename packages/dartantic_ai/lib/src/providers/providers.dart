@@ -169,7 +169,7 @@ class Providers {
 
   /// Looks up a provider by name or alias (case-insensitive). Throws if not
   /// found.
-  static Provider byName(String name) {
+  static Provider get(String name) {
     final providerName = name.toLowerCase();
     final provider = providerMap[providerName];
     if (provider == null) throw Exception('Provider $providerName not found');

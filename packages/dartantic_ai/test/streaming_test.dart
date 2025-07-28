@@ -39,7 +39,7 @@ void main() {
           markTestSkipped('Ollama OpenAI never does well on this test');
           return;
         }
-        final provider = Providers.byName(providerName);
+        final provider = Providers.get(providerName);
         await testFunction(provider);
       });
     }

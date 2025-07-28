@@ -66,7 +66,7 @@ void main() {
     group('Error Handling', () {
       test('Invalid provider name throws', () {
         expect(
-          () => Providers.byName('invalid-provider'),
+          () => Providers.get('invalid-provider'),
           throwsA(
             isA<Exception>().having(
               (e) => e.toString(),

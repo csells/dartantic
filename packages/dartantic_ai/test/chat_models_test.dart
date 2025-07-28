@@ -33,7 +33,7 @@ void main() {
       test('$providerModel: $description', () async {
         final parts = providerModel.split(':');
         final providerName = parts[0];
-        final provider = Providers.byName(providerName);
+        final provider = Providers.get(providerName);
         await testFunction(provider);
       });
     }

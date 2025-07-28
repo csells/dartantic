@@ -6,10 +6,7 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_interface/dartantic_interface.dart';
 
 Future<void> main() async {
-  // looking for system prompt messages in the logs
-  Agent.loggingOptions = const LoggingOptions(filter: 'chat.model');
-
-  print('=== Example 1: System Prompt in History ===');
+  print('=== Example 1: System Message in History ===');
   final agent = Agent('gemini');
 
   final result1 = await agent.send(

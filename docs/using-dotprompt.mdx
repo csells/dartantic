@@ -44,7 +44,7 @@ final prompt = dotPrompt.render({
   'language': 'Spanish',
 });
 
-final agent = Agent('anthropic');
+final agent = Agent(dotPrompt.frontMatter.model!);
 await agent.send(prompt);
 ```
 

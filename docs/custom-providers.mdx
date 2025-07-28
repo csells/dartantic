@@ -5,6 +5,16 @@ title: Custom Providers
 Create your own providers and use them like the built-in providers. You can
 choose to implement either a `ChatModel` or an `EmbeddingsModel` or both.
 
+## Dependencies
+
+You do not need to depend on the `dartantic_ai` package to create a custom
+provider. The `dartantic_interface` package is all you need.
+
+```yaml
+dependencies:
+  dartantic_interface: ^VERSION
+```
+
 ## Creating a Custom Provider
 
 Here's a simple example of a custom provider that exposes a `ChatModel`:

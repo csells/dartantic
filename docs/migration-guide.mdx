@@ -2,89 +2,109 @@
 title: Migration Guide
 ---
 
-TODO
+## Migrating from 0.9.7 to 1.0.0
 
-## Migrating from 0.9.x to 1.0.0
+This release went through a major refactoring to support many more providers for
+both chat and embeddings, as well as to support more features. The API is
+different in a lot of tiny ways, but the core concepts remain largely the same.
 
-This guide provides comprehensive migration instructions from dartantic_ai 0.9.x to dartantic_ai (Dartantic 1.0).
+This is a list of changes (some of them breaking) to help you migrate. And as
+long as this list is, I'm sure I've missed some. If you find something that's
+not here, please let me know!
 
-### Package Name Change
+### Dynamic => Static Provider instances
 
-```yaml
-# OLD
-dependencies:
-  dartantic_ai: ^0.9.x
-
-# NEW
-dependencies:
-  dartantic_ai: ^1.0.0
-```
-
-### Core API Changes
-
-#### 1. Method Name Changes
-
-The main agent methods have been renamed for clarity:
+Provider instances are now static, so you can use the `Providers` class to get
+them by name or alias:
 
 ```dart
-// OLD - dartantic_ai
+// OLD
+final provider = OpenAiProvider();
+final providerFactory = Agent.providers['google'];
+final providerFactoryByAlias = Agent.providers['gemini'];
+
+// NEW
+final provider1 = Providers.openai;
+final provider2 = Providers.get('google');
+final provider3 = Providers.get('gemini');
+```
+
+If you'd like to extend the list of providers dynamically at runtime, you can
+use the `providerMap` property of the `Providers` class:
+
+```dart
+Providers.providerMap['my-provider'] = MyProvider();
+```
+
+### Agent.runXxx => Agent.sendXxx
+
+The `Agent.runXxx` methods have been renamed for consistency with chat models
+and the new `Chat` class:
+
+```dart
+// OLD
 final result = await agent.run('Hello');
 final typedResult = await agent.runFor<T>('Hello', outputSchema: schema);
 await for (final chunk in agent.runStream('Hello')) {...}
 
-// NEW - dartantic_ai (Dartantic 1.0)
+// NEW
 final result = await agent.send('Hello');
 final typedResult = await agent.sendFor<T>('Hello', outputSchema: schema);
 await for (final chunk in agent.sendStream('Hello')) {...}
 ```
 
-#### 2. Constructor Changes
+Also, when you're sending a prompt to the agent, instead of passing a list of
+messages via the messages parameter, you can pass it via the history parameter:
 
 ```dart
-// OLD - dartantic_ai
-final agent = Agent.provider(
-  OpenAiProvider(),
-  systemPrompt: 'Be concise.',
-);
+// OLD
+final result = await agent.run('Hello', messages: messages);
 
-// NEW - dartantic_ai
-final agent = Agent.forProvider(
-  Providers.openai,
-  history: [ChatMessage.system('Be concise.')],
-);
+// NEW
+final result = await agent.send('Hello', history: history);
 ```
 
-#### 3. Message Type Changes
+The subtle difference is that the history is a list of previous messages before
+the prompt + optional attachments, which forms the new message. Love it or
+don't, but it made sense to me at the time...
+
+### Agent.provider => Agent.forProvider
+
+The `Agent.provider` constructor has been renamed to `Agent.forProvider` for
+clarity:
 
 ```dart
-// OLD - dartantic_ai
+// OLD
+final agent = Agent.provider(OpenAiProvider());
+
+// NEW
+final agent = Agent.forProvider(Providers.anthropic);
+```
+
+### Message => ChatMessage
+
+The `Message` type has been renamed to `ChatMessage` for consistency with chat
+models:
+
+```dart
+// OLD
 var messages = <Message>[];
 final response = await agent.run('Hello', messages: messages);
 messages = response.messages.toList();
 
-// NEW - dartantic_ai
+// NEW
 var history = <ChatMessage>[];
 final response = await agent.send('Hello', history: history);
 history.addAll(response.messages);
 ```
 
-#### 4. Provider Access Changes
+### toSchema => JsonSchema.create
+
+The `toSchema` method has been dropped in favor of the built-in
+`JsonSchema.create` method for simplicity:
 
 ```dart
-// OLD - dartantic_ai
-final provider = OpenAiProvider();
-final provider = GeminiProvider();
-
-// NEW - dartantic_ai
-final provider = Providers.openai;
-final provider = Providers.google;
-final provider = Providers.get('openai');
-```
-
-#### 5. Schema Definition Changes
-
-```dart
-// OLD - dartantic_ai
+// OLD
 final schema = <String, dynamic>{
   'type': 'object',
   'properties': {
@@ -94,7 +114,7 @@ final schema = <String, dynamic>{
   'required': ['town', 'country'],
 }.toSchema();
 
-// NEW - dartantic_ai
+// NEW
 final schema = JsonSchema.create({
   'type': 'object',
   'properties': {
@@ -105,45 +125,23 @@ final schema = JsonSchema.create({
 });
 ```
 
-#### 6. Tool Definition Changes
+### systemPrompt + Message.system() => ChatMessage.system()
+
+The `systemPrompt` parameter has been removed from Agent and model constructors.
+It was confusing to have both a system prompt and a system message, so I've
+simplified the implementation to use just an optional `ChatMessage.system()`
+instead. In practice, you'll want to keep the system message in the history
+anyway, so think of this as a "pit of success" thing:
 
 ```dart
-// OLD - dartantic_ai
-Tool(
-  name: 'get_weather',
-  description: 'Get weather for a city',
-  inputSchema: WeatherInput.schemaMap.toSchema(),
-  onCall: onWeatherCall,
-)
-
-// NEW - dartantic_ai
-Tool(
-  name: 'get_weather',
-  description: 'Get weather for a city',
-  inputSchema: JsonSchema.create({
-    'type': 'object',
-    'properties': {
-      'city': {'type': 'string'},
-    },
-    'required': ['city'],
-  }),
-  onCall: (args) async => {'temp': 72, 'conditions': 'Sunny'},
-)
-```
-
-#### 7. System Prompt Removal
-
-The `systemPrompt` parameter has been removed from Agent and model constructors. Use `ChatMessage.system()` instead:
-
-```dart
-// OLD - dartantic_ai
+// OLD
 final agent = Agent(
   'openai',
   systemPrompt: 'You are a helpful assistant.',
 );
 final result = await agent.send('Hello');
 
-// NEW - dartantic_ai
+// NEW
 final agent = Agent('openai');
 final result = await agent.send(
   'Hello',
@@ -153,29 +151,44 @@ final result = await agent.send(
 );
 ```
 
-For reusable system prompts:
+### Agent chat and streaming
+
+The agent now streams new messages as they're created along with the output:
 
 ```dart
-// Define once
-const systemMessage = ChatMessage.system('You are a helpful assistant.');
-
-// Reuse in multiple calls
-await agent.send('Hello', history: [systemMessage]);
-await agent.send('How are you?', history: [systemMessage]);
-
-// Multi-turn conversations
-final history = [systemMessage];
-final result = await agent.send('Hello', history: history);
-history.addAll(result.messages);
+final agent = Agent('openai');
+final history = <ChatMessage>[];
+await for (final chunk in agent.sendStream('Hello', history: history)) {
+  // collect text and messages as they're created
+  print(chunk.output);
+  history.addAll(chunk.messages);
+}
 ```
 
-#### 8. Multi-Media Input Changes
+If you'd prefer not to collect and track the message history manually, you can
+use the `Chat` class to collect messages for you:
 
 ```dart
-// OLD - dartantic_ai
+final chat = Chat(Agent('openai'));
+await for (final chunk in chat.sendStream('Hello')) {
+  print(chunk.output);
+}
+
+// chat.history is a list of ChatMessage objects
+```
+
+### DataPart.file(File) => DataPart.fromFile(XFile)
+
+The `DataPart.file` constructor has been replaced with `DataPart.fromFile` to
+support cross-platform file handling, i.e. the web:
+
+```dart
+// OLD
+import 'dart:io';
+
 final part = await DataPart.file(File('bio.txt'));
 
-// NEW - dartantic_ai (0.9.7+)
+// NEW
 import 'package:cross_file/cross_file.dart';
 
 final file = XFile.fromData(
@@ -183,43 +196,29 @@ final file = XFile.fromData(
   path: 'bio.txt',
 );
 final part = await DataPart.fromFile(file);
-
-// OR for streams:
-final part = await DataPart.stream(
-  file.openRead(), 
-  name: file.path
-);
 ```
 
-#### 9. Environment Variable Access
+### Model String Format Enhanced
+
+The model string format has been enhanced to support chat, embeddings and other
+model names using custom relative URI. This was important to be able to specify
+the model for chat and embeddings separately:
 
 ```dart
-// OLD - dartantic_ai
-// Only system environment variables
-
-// NEW - dartantic_ai
-// Option 1: System environment variables
-final key = Platform.environment['OPENAI_API_KEY'];
-
-// Option 2: Programmatic setting
-Agent.environment['OPENAI_API_KEY'] = 'sk-...';
-```
-
-#### 10. Model String Format Enhanced
-
-```dart
-// OLD - dartantic_ai
+// OLD
 Agent('openai');
 Agent('openai:gpt-4o');
 Agent('openai/gpt-4o');
 
-// NEW - dartantic_ai (all above work plus)
+// NEW - all of the above still work plus:
 Agent('openai?chat=gpt-4o&embeddings=text-embedding-3-large');
 ```
 
-### New Features in 1.0
+### Agent.embedXxx
 
-#### 1. Embeddings Support
+The agent gets new `Agent.embedXxx` methods for creating embeddings for
+documents and queries:
+
 ```dart
 final agent = Agent('openai');
 final embedding = await agent.embedQuery('Hello world');
@@ -227,266 +226,112 @@ final results = await agent.embedDocuments(['Text 1', 'Text 2']);
 final similarity = EmbeddingsModel.cosineSimilarity(e1, e2);
 ```
 
-#### 2. Multi-Provider Conversations
+Also, the `cosineSimilarity` method has been moved to the `EmbeddingsModel`.
+
+### Automatic Retry
+
+The agent now supports automatic retry for rate limits and failures:
+
 ```dart
-final history = <ChatMessage>[];
-
-// Start with Gemini
-final gemini = Agent('google');
-var result = await gemini.send('Hi!', history: history);
-history.addAll(result.messages);
-
-// Continue with Claude
-final claude = Agent('anthropic');
-result = await claude.send('Continue...', history: history);
-```
-
-#### 3. Automatic Retry
-```dart
-// Built-in retry logic for rate limits and failures
 final agent = Agent('openai');
 final result = await agent.send('Hello!'); // Automatically retries on 429
 ```
 
-#### 4. Usage Tracking
+### Agent&lt;TOutput&gt;(outputSchema) => sendForXxx&lt;TOutput&gt;(outputSchema)
+
+Instead of putting the output schema on the `Agent` class, it's now on the
+`sendForXxx` method:
+
+```dart
+// OLD
+final agent = Agent<Map<String, dynamic>>('openai', outputSchema: ...);
+final result = await agent.send('Hello');
+
+// NEW
+final agent = Agent('openai');
+final result = await agent.sendFor<Map<String, dynamic>>('Hello', outputSchema: ...);
+```
+
+This allows you to be more flexible from message to message.
+
+### `AgentResponse` to `ChatResult<MyType>`
+
+The `AgentResponse` type has been renamed to `ChatResult`.
+
+### DotPrompt Support Removed
+
+The dependency on [the dotprompt_dart
+package](https://pub.dev/packages/dotprompt_dart) has been removed from
+dartantic_ai. However, you can still use the `DotPrompt` class to parse
+`.prompt` files:
+
+```dart
+import 'package:dotprompt_dart/dotprompt_dart.dart';
+
+final dotPrompt = DotPrompt(...);
+final prompt = dotPrompt.render();
+final agent = Agent(dotPrompt.frontMatter.model!);
+await agent.send(prompt);
+```
+
+### Tool Calls with Typed Output
+
+The `Agent.sendForXxx` method now supports specifying the output type of the
+tool call:
+
+```dart
+final provider = Providers.openai;
+assert(provider.caps.contains(ProviderCaps.typedOutputWithTools));
+
+// tools
+final agent = Agent.forProvider(
+  provider,
+  tools: [currentDateTimeTool, temperatureTool, recipeLookupTool],
+);
+
+// typed output
+final result = await agent.sendFor<TimeAndTemperature>(
+  'What is the time and temperature in Portland, OR?',
+  outputSchema: TimeAndTemperature.schema,
+  outputFromJson: TimeAndTemperature.fromJson,
+);
+
+// magic!
+print('time: ${result.output.time}');
+print('temperature: ${result.output.temperature}');
+```
+
+Unfortunately, not all providers support this feature. You can check the
+provider's capabilities to see if it does.
+
+### ChatMessage Part Helpers
+
+The `ChatMessage` class has been enhanced with helpers for extracting specific
+types of parts from a list:
+
+```dart
+final message = ChatMessage.system('You are a helpful assistant.');
+final text = message.text; // "You are a helpful assistant."
+final toolCalls = message.toolCalls; // []
+final toolResults = message.toolResults; // []
+```
+
+### Usage Tracking
+
+The agent now supports usage tracking:
+
 ```dart
 final result = await agent.send('Hello');
 print('Tokens used: ${result.usage.totalTokens}');
-print('Cost: ${result.usage.totalTokens * 0.002 / 1000}');
 ```
 
-#### 5. System Prompt Management
-```dart
-final agent = Agent(
-  'openai',
-  systemPrompt: 'You are a helpful assistant.',
-);
+### Logging
 
-// Override with history
-final result = await agent.send(
-  'Hello!',
-  history: [
-    ChatMessage.system('You are a pirate. Speak like one.'),
-  ],
-);
-```
-
-#### 6. MCP Server Support
-```dart
-final mcpClient = McpClient.remote(
-  'huggingface',
-  url: Uri.parse('https://hf.co/mcp'),
-);
-
-final tools = await mcpClient.listTools();
-final agent = Agent('openai', tools: [...tools]);
-```
-
-#### 7. Advanced Model String Format
-```dart
-// Specify different models for chat and embeddings
-Agent('openai?chat=gpt-4o&embeddings=text-embedding-3-large');
-```
-
-#### 8. Cross-Platform File Support
-```dart
-import 'package:cross_file/cross_file.dart';
-
-final file = XFile.fromData(bytes, path: 'file.txt');
-final part = await DataPart.fromFile(file);
-```
-
-### Complete Migration Examples
-
-#### Basic Chat Migration
+The agent now supports logging:
 
 ```dart
-// OLD - dartantic_ai
-import 'package:dartantic_ai/dartantic_ai.dart';
-
-void main() async {
-  final agent = Agent(
-    'openai',
-    systemPrompt: 'Be concise, reply with one sentence.',
-  );
-
-  final response = await agent.run('Where does "hello world" come from?');
-  print(response.output);
-}
-
-// NEW - dartantic_ai
-import 'package:dartantic_ai/dartantic_ai.dart';
-
-void main() async {
-  final agent = Agent(
-    'openai',
-    history: [ChatMessage.system('Be concise, reply with one sentence.')],
-  );
-
-  final response = await agent.send('Where does "hello world" come from?');
-  print(response.output);
-}
+Agent.loggingOptions = const LoggingOptions(level: LogLevel.ALL);
 ```
-
-#### Multi-Turn Chat Migration
-
-```dart
-// OLD - dartantic_ai
-var messages = <Message>[];
-
-final response1 = await agent.run(
-  'What is the capital of France?',
-  messages: messages,
-);
-messages = response1.messages.toList();
-
-final response2 = await agent.run(
-  'What is the population of that city?',
-  messages: messages,
-);
-
-// NEW - dartantic_ai
-var history = <ChatMessage>[];
-
-final response1 = await agent.send(
-  'What is the capital of France?',
-  history: history,
-);
-history.addAll(response1.messages);
-
-final response2 = await agent.send(
-  'What is the population of that city?',
-  history: history,
-);
-```
-
-#### Tool Usage Migration
-
-```dart
-// OLD - dartantic_ai
-final agent = Agent(
-  'openai',
-  tools: [
-    Tool(
-      name: 'time',
-      description: 'Get the current time in a given time zone',
-      inputSchema: TimeFunctionInput.schemaMap.toSchema(),
-      onCall: onTimeCall,
-    ),
-  ],
-);
-
-await agent.runStream('What time is it?')
-  .map((event) => stdout.write(event.output))
-  .drain();
-
-// NEW - dartantic_ai
-final agent = Agent(
-  'openai',
-  tools: [
-    Tool(
-      name: 'time',
-      description: 'Get the current time in a given time zone',
-      inputSchema: JsonSchema.create({
-        'type': 'object',
-        'properties': {
-          'timezone': {'type': 'string'},
-        },
-        'required': ['timezone'],
-      }),
-      onCall: (args) async => {'time': DateTime.now().toIso8601String()},
-    ),
-  ],
-);
-
-await for (final chunk in agent.sendStream('What time is it?')) {
-  stdout.write(chunk.output);
-}
-```
-
-#### Typed Output Migration
-
-```dart
-// OLD - dartantic_ai
-final agent = Agent(
-  'openai',
-  outputSchema: TownAndCountry.schemaMap.toSchema(),
-  outputFromJson: TownAndCountry.fromJson,
-);
-
-final result = await agent.runFor<TownAndCountry>(
-  'The windy city in the US of A.',
-);
-
-// NEW - dartantic_ai
-final agent = Agent('openai');
-
-final result = await agent.sendFor<TownAndCountry>(
-  'The windy city in the US of A.',
-  outputSchema: JsonSchema.create({
-    'type': 'object',
-    'properties': {
-      'town': {'type': 'string'},
-      'country': {'type': 'string'},
-    },
-    'required': ['town', 'country'],
-  }),
-  outputFromJson: TownAndCountry.fromJson,
-);
-```
-
-### Documentation Changes
-
-#### Removed Documentation Files
-- `model-discovery.mdx` → Functionality moved to `providers.mdx`
-- `provider-capabilities.mdx` → Integrated into `providers.mdx`
-- `supported-providers.mdx` → Renamed to `providers.mdx`
-
-#### New Documentation Files
-- `automatic-retry.mdx` - Built-in retry logic documentation
-- `environment-setup.mdx` - API key configuration guide
-- `error-handling.mdx` - Comprehensive error handling
-- `installation.mdx` - Platform-specific installation guide
-- `quick-start.mdx` - 30-second getting started guide
-- `system-prompts.mdx` - System prompt management
-- `tools.mdx` - Dedicated tools reference
-- `usage-tracking.mdx` - Token usage and cost tracking
-
-### Example File Changes
-
-#### Removed Examples
-- `agent_env.dart` - Functionality integrated
-- `env.dart` - Replaced by environment documentation
-- `list_models.dart` → `provider_models.dart`
-- `main.dart` → Split into specific examples
-- `openai_compat.dart` - No longer needed
-- `output_types.dart` → `typed_output.dart`
-- `providers.dart` → `provider_models.dart`
-- `tools.dart` → Split into `single_tool_call.dart` and `multi_tool_call.dart`
-
-#### New Examples
-- `agent.dart` - Comprehensive agent usage with tools
-- `chat.dart` - Multi-turn chat with tools and typed output
-- `model_string.dart` - Model string format examples
-- `multi_provider.dart` - Cross-provider conversations
-- `multi_tool_call.dart` - Multiple tool usage patterns
-- `single_tool_call.dart` - Simple tool usage
-- `single_turn_chat.dart` - Basic chat examples
-- `system_prompt.dart` - System prompt usage
-- `usage_tracking.dart` - Token usage examples
-
-### Migration Checklist
-
-- [ ] Update package dependency to `dartantic_ai: ^1.0.0`
-- [ ] Replace all `agent.run` calls with `agent.send`
-- [ ] Replace all `agent.runFor` calls with `agent.sendFor`
-- [ ] Replace all `agent.runStream` calls with `agent.sendStream`
-- [ ] Update `Message` type to `ChatMessage`
-- [ ] Update `messages` parameter to `history`
-- [ ] Replace provider instantiation with `Provider.xxx`
-- [ ] Update schema definitions to use `JsonSchema`
-- [ ] Update file handling to use `XFile` and `DataPart.fromFile`
-- [ ] Review and adopt new features as needed
 
 ## Migrating from 0.9.6 to 0.9.7
 
@@ -497,144 +342,26 @@ The `DataPart.file` constructor has been **removed** and replaced with
 compatibility with web and WASM platforms, where direct file access is not
 available.
 
-#### What you need to do
+### What you need to do
 - **Replace** all usages of `DataPart.file(File(...))` with `await
   DataPart.stream(file.openRead(), name: file.path)`.
 - Always provide a `name` argument for best results (especially for web/WASM).
 
-#### Before (0.9.6 and earlier)
+### Before (0.9.6 and earlier)
 ```dart
 final file = File('bio.txt');
 final part = await DataPart.file(file);
 ```
 
-#### After (0.9.7 and later)
+### After (0.9.7 and later)
 ```dart
 final file = File('bio.txt');
 final part = await DataPart.stream(file.openRead(), name: file.path);
 ```
 
-#### Why?
+### Why?
 - This approach works on all Dart platforms, including web and WASM, by using
   streams instead of direct file APIs.
 - It also makes it easier to support file uploads from sources other than the
   local filesystem.
 
-### FODDER
-
-- remove systemPrompt
-
-- update model string to support chat, embeddings and other model names using custom relative URI: providerName?chat=...
-as well as `provideName` and `providerName:chatModel` and `providerName/chatModel`
-
-- Add a new Chat helper class for collecting messages for simplified message management
-
-- Create a new Dartantic type for global services:
-    - ChatAgent.environment => Dartantic.environment
-    - ChatAgent.loggingOptions => Dartantic.loggingOptions
-
-- a ChatAgent no longer creates providers, they take existing instances by name or by ref.
-
-  - 11 intrinsic providers, e.g. ChatProviders.google, ChatProviders.openai, etc.
-  - providers and models manage API keys and base URLs
-  - Agents use them by name or by ref, e.g. Agent('openai') or Agent.forProvider(ChatProviders.openai)
-
-- Agents don't manage a single provider that can do chat and embeddings (and future other things)
-
-  - ChatAgents use ChatProviders (and ChatModels) to implement runXxx with streaming, tools and typed output support
-  - use EmbeddingsProviders and EmbeddingModels manually to call embedXxx methods
-  - can be extended in the future for audio, visual and other speciality model providers in the future
-
-- Provider lookup by name or by using intrinsic providers
-
-  - ChatProvider.name, e.g. ChatProviders.anthropic
-  - ChatProviders.get(name|alias), e.g. ChatProviders.get('anthropic') or ChatProviders.get('claude')
-  - EmbeddingsProvider.name, e.g. ChatProviders.openai
-  - EmebeddingsProviders.get(name|alias), e.g. EmbeddingsProvider.forName['openai']
-  - Agent.forProvider(ChatProvider.name), e.g. Agent.forProvider(MyCustomProvider()) or Agent.forProvider(ChatProviders.google)
-  - Can extend a provider type's namespace, e.g.
-    ChatProvider.providerMap['acme'] = AcmeChatProvider();
-    final agent = Agent('acme')
-
-- Moving from TOutput/outputSchema on Agent to TOutput/outputSchema on runForXxx
-
-- Using model-specific ChatModelOptions (is that plumbed through?)
-
-- `AgentResponse` to `ChatResult<String>`
-
-  - ChatResult.output => output (String or TOutput) accumulated during chunk (Future or Stream)
-    - how to accumulate streamed output
-  - ChatResult.messages => messages accumulated during chunk (Future or Stream)
-    - how to accumulate streamed messages
-
-- Message => ChatMessage
-
-  - // Factory constructors now take text as first parameter
-    ChatMessage.user('Hello', parts: [])  // Text required
-    ChatMessage.system('You are helpful')
-    ChatMessage.model('Response text')
-
-- Tools now use generics for type-safe input handling.
-```dart
-  // Generic input type, flexible output
-  class SearchInput {
-  final String query;
-  SearchInput.fromJson(Map<String, dynamic> json) : query = json['query'];
-  }
-
-  final tool = Tool<SearchInput>(
-  name: 'search',
-  inputFromJson: SearchInput.fromJson,
-  onCall: (SearchInput input) async => await search(input.query),
-  );
-```
-
-- prompt + attachments + history vs. messages
-
-- Embeddings No Longer in Agent
-  final provider = EmbeddingsProviders.openai;
-  final model = provider.createModel(name: 'text-embedding-3-small');
-  final result = await model.embedQuery('text');
-
-  // Use provider's similarity functions
-  final similarity = EmbeddingsProvider.cosineSimilarity(embedding1, embedding2);
-
-- DotPrompt Support Removed
-
-  - see example/dot_prompt.dart
-
--The `Agent.providerFor()` static method has been removed.
-    final provider = ChatProviders.get('openai');
-
-- The capability system remains similar but with different organization, i.e. ChatProvider and EmbeddingsProvider each have their own
-
-- DataPart now uses cross-platform `XFile` instead of URL/stream methods.
-  // From XFile (cross-platform)
-  const path = 'bin/files/bio.txt';
-  final file = XFile.fromData(await File(path).readAsBytes(), path: path);
-  final part = await DataPart.fromFile(file);
-
-```dart
-
-/// Static helper methods for extracting specific types of parts from a list.
-extension MessagePartHelpers on Iterable<Part> {
-  /// Extracts and concatenates all text content from TextPart instances.
-  ///
-  /// Returns a single string with all text content concatenated together
-  /// without any separators. Empty text parts are included in the result.
-  String get text => whereType<TextPart>().map((p) => p.text).join();
-
-  /// Extracts all tool call parts from the list.
-  ///
-  /// Returns only ToolPart instances where kind == ToolPartKind.call.
-  List<ToolPart> get toolCalls =>
-      whereType<ToolPart>().where((p) => p.kind == ToolPartKind.call).toList();
-
-  /// Extracts all tool result parts from the list.
-  ///
-  /// Returns only ToolPart instances where kind == ToolPartKind.result.
-  List<ToolPart> get toolResults => whereType<ToolPart>()
-      .where((p) => p.kind == ToolPartKind.result)
-      .toList();
-}
-```

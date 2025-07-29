@@ -63,8 +63,9 @@ class Tool<TInput extends Object> {
     _logger.fine('Invoking tool: $name with arguments: $arguments');
     try {
       dynamic result;
-      if (_inputFromJson != null) {
-        final input = _inputFromJson(arguments);
+      final inputFromJson = _inputFromJson; // workaround for web compiler error
+      if (inputFromJson != null) {
+        final input = inputFromJson(arguments);
         result = await onCall(input);
       } else {
         // No parameters expected - for tools like Tool<String> with no params,

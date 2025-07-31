@@ -114,7 +114,7 @@ class OpenAIChatModel extends ChatModel<OpenAIChatOptions> {
       )) {
         chunkCount++;
         _logger.fine('Received OpenAI stream chunk $chunkCount');
-        final delta = completion.choices.firstOrNull?.delta;
+        final delta = completion.choices?.firstOrNull?.delta;
         if (delta == null) continue;
 
         // Get the message with any text content (tool calls are only
@@ -129,7 +129,7 @@ class OpenAIChatModel extends ChatModel<OpenAIChatOptions> {
           output: message,
           messages: [message],
           finishReason: mapFinishReason(
-            completion.choices.firstOrNull?.finishReason,
+            completion.choices?.firstOrNull?.finishReason,
           ),
           metadata: {
             'created': completion.created,

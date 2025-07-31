@@ -2,14 +2,14 @@ name: dartantic_ai
 description: >
   Dartantic is an agentic framework designed to make building client and
   server-side apps in Dart with generative AI easier and more fun!
-version: 1.0.3
+version: 1.0.4
 repository: https://github.com/csells/dartantic_ai
 
 environment:
   sdk: ^3.8.1
 
 dependencies:
-  anthropic_sdk_dart: ^0.2.1
+  anthropic_sdk_dart: ^0.2.2
   collection: ^1.19.1
   dartantic_interface: ^1.0.2
   google_generative_ai: ^0.4.7
@@ -19,9 +19,9 @@ dependencies:
   logging: ^1.3.0
   mcp_dart: ^0.5.3
   meta: ^1.16.0
-  mistralai_dart: ^0.0.4
-  ollama_dart: ^0.2.3
-  openai_dart: ^0.5.2
+  mistralai_dart: ^0.0.5
+  ollama_dart: ^0.2.4
+  openai_dart: ^0.5.3
   rxdart: ^0.28.0
   uuid: ^4.2.2
 

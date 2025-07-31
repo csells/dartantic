@@ -1,3 +1,11 @@
+## 1.0.4
+
+- Updated LLM SDK dependencies:
+  - `anthropic_sdk_dart`: 0.2.1 → 0.2.2
+  - `openai_dart`: 0.5.2 → 0.5.3 (adds nullable choices field support for Groq compatibility)
+  - `mistralai_dart`: 0.0.4 → 0.0.5
+  - `ollama_dart`: 0.2.3 → 0.2.4
+
 ## 1.0.3
 
 - Fixed quickstart example code and updated README

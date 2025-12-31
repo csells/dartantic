@@ -1,0 +1,44 @@
+name: dartantic_chat
+description: >-
+  AI chat widget for Flutter apps targeting mobile, desktop, and web supporting
+  text, image, and voice input.
+version: 0.1.0
+repository: https://github.com/csells/dartantic_chat
+resolution: workspace
+
+topics:
+  - ai
+  - chat
+  - gemini
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  cross_file: ^0.3.4+2
+  dartantic_ai: ^2.2.0
+  dartantic_interface: ^2.0.0
+  file_selector: ^1.0.3
+  flutter:
+    sdk: flutter
+  flutter_context_menu: ^0.4.0
+  flutter_markdown_plus: ^1.0.3
+  flutter_picture_taker: ^0.2.0
+  google_fonts: ^6.2.1
+  image_picker: ^1.1.2
+  mime: ^2.0.0
+  universal_platform: ^1.1.0
+  url_launcher: ^6.3.2
+  uuid: ^4.4.2
+  waveform_recorder: ^1.8.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  fonts:
+   - family: FatIcons
+     fonts:
+      - asset: lib/fonts/FatIcons.ttf

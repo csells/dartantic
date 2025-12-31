@@ -200,6 +200,166 @@
       "type": "dart",
       "program": "samples/chatarang/bin/chatarang.dart",
       "console": "terminal"
+    },
+    {
+      "name": "chat: main",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: demo",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/demo/demo.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: welcome",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/welcome/welcome.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: cupertino",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/cupertino/cupertino.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: custom styles",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/custom_styles/custom_styles.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: dark mode",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/dark_mode/dark_mode.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: history",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/history/history.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: suggestions",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/suggestions/suggestions.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: logging",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/logging/logging.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: on cancel",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/callbacks/on_cancel.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: on error",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/callbacks/on_error.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: function calls",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/function_calls/function_calls.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: restricted",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/restricted/restricted.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: image upload (simulated)",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/image_upload/image_upload.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: custom stt",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/custom_stt/custom_stt.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: recipes",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/recipes/recipes.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
     }
   ]
 }

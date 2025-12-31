@@ -9,6 +9,7 @@ Dartantic is an agentic AI framework for Dart that provides easy integration wit
 The project is organized as a monorepo with multiple packages:
 - `packages/dartantic_interface/` - Core interfaces and types shared across all Dartantic packages
 - `packages/dartantic_ai/` - Main implementation with provider integrations (primary development focus)
+- `packages/dartantic_chat/` - Flutter chat UI widgets for AI applications (fork of flutter/ai toolkit)
 - `samples/dartantic_cli/` - Command-line interface for the Dartantic framework
 
 ## Documentation
@@ -49,6 +50,9 @@ cd packages/dartantic_ai && dart format --set-exit-if-changed .
 cd packages/dartantic_ai && dart run example/bin/single_turn_chat.dart
 cd packages/dartantic_ai && dart run example/bin/typed_output.dart
 cd packages/dartantic_ai && dart run example/bin/tool_calling.dart
+
+# Run dartantic_chat Flutter examples (requires API key)
+cd packages/dartantic_chat/example && flutter run --dart-define=GEMINI_API_KEY=$GEMINI_API_KEY
 ```
 
 ### Debugging
@@ -244,3 +248,11 @@ See `wiki/Provider-Implementation-Guide.md` for detailed guide.
 - **No Try-Catch in Implementation**: Only catch exceptions to add context before re-throwing, never to suppress errors
 - **Scratch Files**: Use `tmp/` folder at project root for temporary/test files
 - **Silent Tests**: Successful tests produce no output; failures reported via `expect()`. Remove diagnostic `print()` statements before committing.
+
+## Dartantic Chat
+
+The `packages/dartantic_chat/` package provides Flutter chat UI widgets. See `packages/dartantic_chat/CLAUDE.md` for package-specific guidance including:
+- Widget architecture (AgentChatView, ChatHistoryProvider, DartanticProvider)
+- Input state machine and action button patterns
+- Testing patterns (EchoProvider timing, finding action buttons by tooltip)
+- Example apps in `packages/dartantic_chat/example/lib/`

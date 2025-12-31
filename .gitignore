@@ -8,6 +8,27 @@ pubspec.lock
 .vscode/settings.json
 .DS_Store
 packages/dartantic_ai/example/.env
+packages/dartantic_chat/example/.env
 
 # IDE files
 .idea/
+*.iml
+*.ipr
+*.iws
+
+# Flutter build artifacts
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Misc
+*.class
+*.log
+*.pyc
+*.swp
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+AGENT.md

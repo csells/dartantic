@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
 
+import 'tool_middleware.dart';
+
 /// Result of executing a single tool
 class ToolExecutionResult {
   /// Creates a new ToolExecutionResult
@@ -36,9 +38,15 @@ class ToolExecutionResult {
 /// - Executes tools sequentially
 /// - Formats results as JSON strings
 /// - Includes error details in results for LLM consumption
+/// - Supports middleware for intercepting tool calls
 class ToolExecutor {
   /// Creates a new ToolExecutor
-  const ToolExecutor();
+  ///
+  /// [middleware] - Optional list of middleware to intercept tool calls
+  const ToolExecutor({this.middleware});
+
+  /// Optional middleware to intercept tool calls
+  final List<ToolMiddleware>? middleware;
 
   static final _logger = Logger('dartantic.executor.tool');
 
@@ -74,13 +82,46 @@ class ToolExecutor {
     ToolPart toolCall,
     Map<String, Tool> toolMap,
   ) async {
+    // Look up the tool first
     final tool = toolMap[toolCall.name];
 
+    // If middleware exists, chain through it
+    if (middleware != null && middleware!.isNotEmpty) {
+      return _executeWithMiddleware(toolCall, tool, toolMap);
+    }
+
+    // Otherwise, execute directly (existing behavior)
+    return _executeDirectly(toolCall, tool);
+  }
+
+  /// Executes a tool call through the middleware chain.
+  Future<ToolExecutionResult> _executeWithMiddleware(
+    ToolPart toolCall,
+    Tool? tool,
+    Map<String, Tool> toolMap,
+  ) async {
+    int index = 0;
+
+    Future<ToolExecutionResult> next() {
+      if (index < middleware!.length) {
+        final current = middleware![index++];
+        return current.intercept(toolCall, tool, next);
+      } else {
+        // Last middleware - execute actual tool (if found)
+        return _executeDirectly(toolCall, tool);
+      }
+    }
+
+    return next();
+  }
+
+  /// Executes a tool call directly without middleware.
+  Future<ToolExecutionResult> _executeDirectly(
+    ToolPart toolCall,
+    Tool? tool,
+  ) async {
     if (tool == null) {
-      _logger.warning(
-        'Tool ${toolCall.name} not found in available tools: '
-        '${toolMap.keys.join(', ')}',
-      );
+      _logger.warning('Tool ${toolCall.name} not found in available tools');
 
       final error = Exception('Tool ${toolCall.name} not found');
       return ToolExecutionResult(

@@ -41,6 +41,26 @@ void main() {
         expect(toolResults.first.result, equals('String result: hello'));
       });
 
+      test('calls a simple string tool requiring thought signatures', () async {
+        final agent = Agent(
+          'google:gemini-3-flash-preview',
+          tools: [stringTool],
+        );
+
+        final response = await agent.send(
+          'Use the string_tool with input "hello"',
+        );
+
+        print(response.messages.map((msg) => msg.toJson()).toList());
+
+        // Check that tool was executed and result is in messages
+        final toolResults = response.messages
+            .expand((msg) => msg.toolResults)
+            .toList();
+        expect(toolResults, hasLength(1));
+        expect(toolResults.first.result, equals('String result: hello'));
+      });
+
       test('calls a tool with numeric return', () async {
         final agent = Agent('openai:gpt-4o-mini', tools: [intTool]);
 

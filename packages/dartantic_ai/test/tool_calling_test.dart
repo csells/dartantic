@@ -51,8 +51,6 @@ void main() {
           'Use the string_tool with input "hello"',
         );
 
-        print(response.messages.map((msg) => msg.toJson()).toList());
-
         // Check that tool was executed and result is in messages
         final toolResults = response.messages
             .expand((msg) => msg.toolResults)

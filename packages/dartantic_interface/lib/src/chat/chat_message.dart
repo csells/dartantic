@@ -360,6 +360,7 @@ class ToolPart extends Part {
     required this.id,
     required this.name,
     required this.arguments,
+    this.thoughtSignature,
   }) : kind = ToolPartKind.call,
        result = null;
 
@@ -368,6 +369,7 @@ class ToolPart extends Part {
     required this.id,
     required this.name,
     required this.result,
+    this.thoughtSignature,
   }) : kind = ToolPartKind.result,
        arguments = null;
 
@@ -385,6 +387,9 @@ class ToolPart extends Part {
 
   /// The result of a tool execution (null for calls).
   final dynamic result;
+
+  /// The thought signature for the tool call.
+  final Uint8List? thoughtSignature;
 
   /// The arguments as a JSON string.
   String get argumentsRaw => arguments != null

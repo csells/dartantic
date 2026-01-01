@@ -72,6 +72,7 @@ gl.Part _mapToolCallPart(ToolPart part) {
       name: part.name,
       args: ProtobufValueHelpers.structFromJson(arguments),
     ),
+    thoughtSignature: part.thoughtSignature,
   );
 }
 
@@ -85,6 +86,7 @@ gl.Part _mapToolResultPart(ToolPart part) {
       name: part.name,
       response: ProtobufValueHelpers.structFromJson(responseMap),
     ),
+    thoughtSignature: part.thoughtSignature,
   );
 }
 
@@ -258,7 +260,12 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
                 arguments: args,
               );
         parts.add(
-          ToolPart.call(id: callId, name: functionCall.name, arguments: args),
+          ToolPart.call(
+            id: callId,
+            name: functionCall.name,
+            arguments: args,
+            thoughtSignature: part.thoughtSignature,
+          ),
         );
       }
 
@@ -279,6 +286,7 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
             id: responseId,
             name: functionResponse.name,
             result: responseMap,
+            thoughtSignature: part.thoughtSignature,
           ),
         );
       }

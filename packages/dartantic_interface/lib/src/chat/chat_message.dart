@@ -389,7 +389,7 @@ class ToolPart extends Part {
   final dynamic result;
 
   /// The thought signature for the tool call.
-  final Uint8List? thoughtSignature;
+  final dynamic thoughtSignature;
 
   /// The arguments as a JSON string.
   String get argumentsRaw => arguments != null
@@ -405,7 +405,8 @@ class ToolPart extends Part {
           id == other.id &&
           name == other.name &&
           _mapEquals(arguments, other.arguments) &&
-          result == other.result;
+          result == other.result &&
+          thoughtSignature == other.thoughtSignature;
 
   @override
   int get hashCode =>
@@ -413,14 +414,17 @@ class ToolPart extends Part {
       id.hashCode ^
       name.hashCode ^
       arguments.hashCode ^
-      result.hashCode;
+      result.hashCode ^
+      thoughtSignature.hashCode;
 
   @override
   String toString() {
     if (kind == ToolPartKind.call) {
-      return 'ToolPart.call(id: $id, name: $name, arguments: $arguments)';
+      return 'ToolPart.call(id: $id, name: $name, arguments: $arguments, '
+          'thoughtSignature: $thoughtSignature)';
     } else {
-      return 'ToolPart.result(id: $id, name: $name, result: $result)';
+      return 'ToolPart.result(id: $id, name: $name, result: $result, '
+          'thoughtSignature: $thoughtSignature)';
     }
   }
 }

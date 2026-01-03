@@ -134,6 +134,10 @@ contains the following:
 </manifest>
 ```
 
+- **Clipboard access:** To enable clipboard functionality, refer to the
+  [super_clipboard documentation][clipboard-setup] for
+  `package:super_clipboard`
+
 - **Microphone access:** To enable voice input for users, update configs
   according to the [permission and setup instructions][record-setup] for
   `package:record`.
@@ -151,6 +155,7 @@ contains the following:
 [record-setup]: https://pub.dev/packages/record#setup-permissions-and-others
 [file-setup]: https://pub.dev/packages/file_selector#usage
 [image-setup]: https://pub.dev/packages/image_picker#installation
+[clipboard-setup]: https://pub.dev/packages/super_clipboard
 
 ## User experience
 
@@ -215,6 +220,20 @@ it to the clipboard as normal. In addition, at the bottom of each prompt or
 response, the user can select the **Copy** button that pops up when they hover
 their mouse. On mobile platforms, the user can long-tap a prompt or response and
 choose the Copy option.
+
+### Pasting from Clipboard
+
+Users can paste content directly into the chat input field using standard keyboard shortcuts or context menus:
+
+- **Text**: Paste formatted or plain text
+- **Images**: Paste images directly from the clipboard (supports PNG, JPEG, GIF, WebP, and other common image formats)
+- **Files**: Paste files of various types including documents (PDF, DOCX, XLSX, etc.), audio, and video files
+
+The chat input field automatically detects the content type and handles it appropriately. For images and files, they will be added as attachments to the message.
+
+On mobile devices, use the standard paste option from the context menu that appears when long-pressing the input field.
+
+> **Note**: On some platforms, you may need to grant clipboard access permissions for the paste functionality to work with certain content types.
 
 ### Message editing
 

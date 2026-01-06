@@ -18,11 +18,7 @@ void main() {
     late MediaGenerationModel model;
 
     setUp(() {
-      final apiKey = Platform.environment['ANTHROPIC_API_KEY'];
-      if (apiKey == null || apiKey.isEmpty) {
-        throw StateError('ANTHROPIC_API_KEY environment variable not set');
-      }
-      provider = AnthropicProvider(apiKey: apiKey);
+      provider = AnthropicProvider();
       model = provider.createMediaModel();
     });
 
@@ -93,7 +89,7 @@ void main() {
         const textPart = TextPart('Additional context for generation');
 
         final stream = model.generateMediaStream(
-          'Create a colorful variation of this robot',
+          'Create a colorful variation of this robot as a PNG image',
           mimeTypes: ['image/png'],
           attachments: [imagePart, textPart],
         );

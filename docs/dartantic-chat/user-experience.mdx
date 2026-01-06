@@ -1,0 +1,70 @@
+---
+title: User Experience
+description: "Built-in chat features and interactions"
+---
+
+The `AgentChatView` widget is the entry point for the interactive chat
+experience. Hosting an instance enables these features automatically:
+
+* **Multiline text input**: Paste long text or insert new lines
+* **Voice input**: Input prompts using speech
+* **Multimedia input**: Take pictures, send images, attach files and URLs
+* **Image zoom**: Tap thumbnails to zoom
+* **Copy to clipboard**: Copy message text
+* **Paste from clipboard**: Paste text or images from the clipboard
+* **Message editing**: Edit the most recent message
+* **Material and Cupertino**: Adapts to both design languages
+
+## Multiline Text Input
+
+Submitting prompts:
+* **Mobile**: Tap the **Submit** button
+* **Web/Desktop**: Press **Enter** or tap the **Submit** button
+
+Embedding newlines:
+* **Mobile**: Tap Return key on the virtual keyboard
+* **Web/Desktop**: Press `Shift+Enter`
+
+## Voice Input
+
+Tap the **Mic** button (visible when no text entered) to start recording. Select
+**Stop** to translate voice input to text, which can then be edited and
+submitted.
+
+## Multimedia Input
+
+Select the **Plus** button to choose from **Take Photo**, **Image Gallery**,
+**Attach File**, and **Attach Link** options.
+
+## Image Zoom
+
+Tap an image thumbnail to zoom. Press **Esc** or tap outside to dismiss.
+
+## Copy to Clipboard
+
+On desktop/web, select text to copy, or use the **Copy** button on hover. On
+mobile, long-tap a message and choose Copy.
+
+## Pasting from Clipboard
+
+Users can paste content using standard keyboard shortcuts or context menus:
+
+- **Text**: Paste formatted or plain text
+- **Images**: Paste images (PNG, JPEG, GIF, WebP, etc.)
+
+The input field automatically detects content type and adds images/files as
+attachments.
+
+<Note> On some platforms, you may need to grant clipboard access permissions for
+paste functionality to work with certain content types. See the [clipboard
+access](/dartantic-chat/getting-started#clipboard-access) section for more information.</Note>
+
+## Message Editing
+
+On desktop, tap the **Edit** button alongside **Copy** for your most recent
+prompt. On mobile, long-tap and select **Edit**.
+
+## Material and Cupertino
+
+`AgentChatView` supports both Material and Cupertino apps. Theming is controlled
+via the `style` property.

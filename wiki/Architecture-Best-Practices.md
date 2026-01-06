@@ -32,3 +32,4 @@
 - **Prefer Async Notifications** when possible over inefficient polling.
 - **Consider First Principles** to assess your current architecture against the
   one you'd use if you started over from scratch.
+- **Eliminate Race Condtions** that might cause dropped or corrupted data

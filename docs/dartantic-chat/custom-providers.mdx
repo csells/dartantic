@@ -1,0 +1,79 @@
+---
+title: Custom History Providers
+description: "Build your own LLM provider for the chat widget"
+---
+
+The `ChatHistoryProvider` interface connects any LLM to `AgentChatView`:
+
+```dart
+abstract class ChatHistoryProvider implements Listenable {
+  Stream<String> transcribeAudio(XFile audioFile);
+  Stream<String> sendMessageStream(String prompt, {Iterable<Part> attachments});
+  Iterable<ChatMessage> get history;
+  set history(Iterable<ChatMessage> history);
+}
+```
+
+Built-in providers:
+* **DartanticProvider**: Wraps dartantic_ai for multi-provider support
+* **EchoProvider**: Minimal example, useful for testing
+
+## Implementation Guide
+
+To build your own provider:
+
+1. **Configuration**: Allow model creation as a parameter
+2. **History**: Manage history, notify listeners, support serialization
+3. **Messages**: Map `ChatMessage` and `Part` types to your LLM format
+4. **LLM calls**: Implement `sendMessageStream` and `transcribeAudio`
+
+Example structure:
+
+```dart
+class MyProvider extends ChatHistoryProvider with ChangeNotifier {
+  MyProvider({
+    required MyLlmModel model,
+    Iterable<ChatMessage>? history,
+  }) : _model = model,
+       _history = history?.toList() ?? [];
+
+  final MyLlmModel _model;
+  final List<ChatMessage> _history;
+
+  @override
+  Stream<String> sendMessageStream(
+    String prompt, {
+    Iterable<Part> attachments = const [],
+  }) async* {
+    final userMessage = ChatMessage.user(prompt);
+    _history.add(userMessage);
+
+    // Call your LLM here and stream the response
+    final response = await _model.generate(prompt);
+
+    _history.add(ChatMessage.model(response));
+    yield response;
+    notifyListeners();
+  }
+
+  @override
+  Iterable<ChatMessage> get history => _history;
+
+  @override
+  set history(Iterable<ChatMessage> history) {
+    _history.clear();
+    _history.addAll(history);
+    notifyListeners();
+  }
+
+  @override
+  Stream<String> transcribeAudio(XFile audioFile) async* {
+    // Implement audio transcription
+    yield 'Transcribed text';
+  }
+}
+```
+
+See the [EchoProvider
+implementation](https://github.com/csells/dartantic/tree/main/packages/dartantic_chat/blob/main/lib/src/providers/implementations/echo_provider.dart)
+for a complete example.

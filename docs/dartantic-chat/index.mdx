@@ -1,0 +1,35 @@
+---
+title: Overview
+description: "Flutter chat UI widgets for AI applications"
+---
+
+The dartantic_chat package provides the widgets to make it easy to add an AI
+chat window to your Flutter app. The package is organized around an abstract
+chat history provider API that makes it easy to swap out the agentic SDK or REST
+endpoint that you'd like your chat widget to use. Out of the box, it comes with
+support for [dartantic_ai](https://pub.dev/packages/dartantic_ai), which
+provides access to multiple LLM providers including Google Gemini, OpenAI,
+Anthropic, Mistral, and Ollama.
+
+<img src="/images/dartantic-chat-screenshot.png" alt="Dartantic Chat Screenshot"
+/>
+
+## Key Features
+
+* **Multi-turn chat:** Maintains context across multiple interactions.
+* **Streaming responses:** Displays AI responses in real-time as they're
+  generated.
+* **Rich text display:** Supports formatted text in chat messages.
+* **Voice input:** Allows users to input prompts using speech.
+* **Multimedia attachments:** Enables sending and receiving various media types.
+* **Custom styling:** Offers extensive customization to match your app's design.
+* **Chat serialization/deserialization:** Store and retrieve conversations
+  between app sessions.
+* **Custom response widgets:** Introduce specialized UI components to present
+  LLM responses.
+* **Pluggable LLM support:** Implement a simple interface to plug in your own
+  LLM.
+* **Cross-platform support:** Compatible with Android, iOS, web, and macOS
+  platforms.
+* **Function calling/Tools:** Support for LLM function calling via dartantic_ai
+  tools.

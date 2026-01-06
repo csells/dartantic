@@ -15,18 +15,18 @@ dependencies:
   dartantic_chat:
     path: ..
   cupertino_icons: ^1.0.8
-  shared_preferences: ^2.3.2
-  url_launcher: ^6.3.0
+  shared_preferences: ^2.5.4
+  url_launcher: ^6.3.2
   go_router: ^17.0.1
-  uuid: ^4.5.1
-  path: ^1.9.0
-  path_provider: ^2.1.4
-  flutter_markdown_plus: ^1.0.3
-  google_fonts: ^6.2.1
+  uuid: ^4.5.2
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  flutter_markdown_plus: ^1.0.7
+  google_fonts: ^6.3.3
   future_builder_ex: ^5.0.0
   split_view: ^3.2.1
-  dartantic_ai: ^2.2.0
-  cross_file: ^0.3.4+2
+  dartantic_ai: ^2.2.1
+  cross_file: ^0.3.5+1
   json_schema: ^5.2.2
 
 dev_dependencies:

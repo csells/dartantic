@@ -252,9 +252,14 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
         .toList();
 
     if (toolResultParts.isNotEmpty) {
+      // Copy provider-specific metadata (e.g., Google's thoughtSignatures)
+      // from the model's tool call message to the tool result message
+      final toolCallMessageMetadata = _findToolCallMessageMetadata(state);
+
       final toolResultMessage = ChatMessage(
         role: ChatMessageRole.user,
         parts: toolResultParts,
+        metadata: toolCallMessageMetadata,
       );
 
       state.addToHistory(toolResultMessage);
@@ -280,6 +285,26 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
       thinking: null,
       usage: state.lastResult.usage,
     );
+  }
+
+  /// Finds provider-specific metadata from the model message containing
+  /// tool calls. This allows providers like Google to pass through thought
+  /// signatures required by Gemini 3+ models.
+  Map<String, dynamic> _findToolCallMessageMetadata(StreamingState state) {
+    // Find the most recent model message with tool calls
+    for (var i = state.conversationHistory.length - 1; i >= 0; i--) {
+      final message = state.conversationHistory[i];
+      if (message.role == ChatMessageRole.model && message.hasToolCalls) {
+        // Return metadata that should be passed to tool results
+        // Currently supports Google's thought signatures
+        final thoughtSigs = message.metadata['_google_thought_signatures'];
+        if (thoughtSigs != null) {
+          return {'_google_thought_signatures': thoughtSigs};
+        }
+        break;
+      }
+    }
+    return const {};
   }
 
   /// Executes the batch of tools via the shared tool executor.

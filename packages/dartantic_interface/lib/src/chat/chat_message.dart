@@ -360,7 +360,6 @@ class ToolPart extends Part {
     required this.id,
     required this.name,
     required this.arguments,
-    this.thoughtSignature,
   }) : kind = ToolPartKind.call,
        result = null;
 
@@ -369,7 +368,6 @@ class ToolPart extends Part {
     required this.id,
     required this.name,
     required this.result,
-    this.thoughtSignature,
   }) : kind = ToolPartKind.result,
        arguments = null;
 
@@ -388,9 +386,6 @@ class ToolPart extends Part {
   /// The result of a tool execution (null for calls).
   final dynamic result;
 
-  /// The thought signature for the tool call.
-  final dynamic thoughtSignature;
-
   /// The arguments as a JSON string.
   String get argumentsRaw => arguments != null
       ? (arguments!.isEmpty ? '{}' : _jsonEncode(arguments))
@@ -405,8 +400,7 @@ class ToolPart extends Part {
           id == other.id &&
           name == other.name &&
           _mapEquals(arguments, other.arguments) &&
-          result == other.result &&
-          thoughtSignature == other.thoughtSignature;
+          result == other.result;
 
   @override
   int get hashCode =>
@@ -414,17 +408,14 @@ class ToolPart extends Part {
       id.hashCode ^
       name.hashCode ^
       arguments.hashCode ^
-      result.hashCode ^
-      thoughtSignature.hashCode;
+      result.hashCode;
 
   @override
   String toString() {
     if (kind == ToolPartKind.call) {
-      return 'ToolPart.call(id: $id, name: $name, arguments: $arguments, '
-          'thoughtSignature: $thoughtSignature)';
+      return 'ToolPart.call(id: $id, name: $name, arguments: $arguments)';
     } else {
-      return 'ToolPart.result(id: $id, name: $name, result: $result, '
-          'thoughtSignature: $thoughtSignature)';
+      return 'ToolPart.result(id: $id, name: $name, result: $result)';
     }
   }
 }

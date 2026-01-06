@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:waveform_recorder/waveform_recorder.dart';
-
+import 'package:dartantic_interface/dartantic_interface.dart';
 import '../../styles/styles.dart';
 import '../../utility.dart';
 import '../chat_text_field.dart';
@@ -30,6 +30,7 @@ class TextOrAudioInput extends StatelessWidget {
     super.key,
     required ChatInputStyle inputStyle,
     required WaveformRecorderController waveController,
+    required void Function(Iterable<Part> attachments)? onAttachments,
     required void Function()? onCancelEdit,
     required void Function() onRecordingStopped,
     required void Function() onSubmitPrompt,
@@ -45,6 +46,7 @@ class TextOrAudioInput extends StatelessWidget {
        _focusNode = focusNode,
        _textController = textController,
        _onSubmitPrompt = onSubmitPrompt,
+       _onAttachments = onAttachments,
        _onRecordingStopped = onRecordingStopped,
        _onCancelEdit = onCancelEdit,
        _waveController = waveController,
@@ -53,6 +55,7 @@ class TextOrAudioInput extends StatelessWidget {
 
   final ChatInputStyle _inputStyle;
   final WaveformRecorderController _waveController;
+  final void Function(Iterable<Part> attachments)? _onAttachments;
   final void Function()? _onCancelEdit;
   final void Function() _onRecordingStopped;
   final void Function() _onSubmitPrompt;
@@ -110,6 +113,7 @@ class TextOrAudioInput extends StatelessWidget {
                       horizontal: 12,
                       vertical: 8,
                     ),
+                    onAttachments: _onAttachments,
                   ),
           ),
         ),

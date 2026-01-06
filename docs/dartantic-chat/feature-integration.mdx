@@ -1,0 +1,163 @@
+---
+title: Feature Integration
+description: "Customize and extend the chat experience"
+---
+
+## Welcome Messages
+
+Display an initial greeting:
+
+```dart
+AgentChatView(
+  welcomeMessage: 'Hello and welcome to Dartantic Chat!',
+  provider: DartanticProvider(
+    agent: Agent('gemini'),
+  ),
+)
+```
+
+## Suggested Prompts
+
+Show predefined prompts (only when no history exists):
+
+```dart
+AgentChatView(
+  suggestions: [
+    'I\'m a Star Wars fan. What should I wear for Halloween?',
+    'I\'m allergic to peanuts. What candy should I avoid at Halloween?',
+    'What\'s the difference between a pumpkin and a squash?',
+  ],
+  provider: DartanticProvider(
+    agent: Agent('gemini'),
+  ),
+)
+```
+
+## Disable Attachments and Audio Input
+
+```dart
+AgentChatView(
+  provider: DartanticProvider(agent: Agent('gemini')),
+  enableAttachments: false,
+  enableVoiceNotes: false,
+)
+```
+
+## Custom Speech-to-Text
+
+Provide your own implementation:
+
+```dart
+AgentChatView(
+  provider: DartanticProvider(agent: Agent('gemini')),
+  speechToText: MyCustomSpeechToText(),
+)
+```
+
+## Cancel and Error Behavior
+
+Override default cancel/error handling:
+
+```dart
+AgentChatView(
+  provider: DartanticProvider(agent: Agent('gemini')),
+  onCancelCallback: (context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Chat cancelled')),
+    );
+  },
+  cancelMessage: 'Request cancelled',
+)
+```
+
+## Manage History
+
+Access and modify history via the provider:
+
+```dart
+void _clearHistory() => _provider.history = [];
+```
+
+## Chat Serialization/Deserialization
+
+Save history:
+
+```dart
+Future<void> _saveHistory() async {
+  final history = _provider.history.toList();
+  for (var i = 0; i != history.length; ++i) {
+    final file = await _messageFile(i);
+    if (file.existsSync()) continue;
+    final map = history[i].toJson();
+    final json = JsonEncoder.withIndent('  ').convert(map);
+    await file.writeAsString(json);
+  }
+}
+```
+
+Restore history:
+
+```dart
+Future<void> _loadHistory() async {
+  final history = <ChatMessage>[];
+  for (var i = 0;; ++i) {
+    final file = await _messageFile(i);
+    if (!file.existsSync()) break;
+    final map = jsonDecode(await file.readAsString());
+    history.add(ChatMessage.fromJson(map));
+  }
+  _provider.history = history;
+}
+```
+
+## Custom Response Widgets
+
+Replace default Markdown rendering:
+
+```dart
+AgentChatView(
+  provider: _provider,
+  welcomeMessage: _welcomeMessage,
+  responseBuilder: (context, response) => RecipeResponseView(response),
+)
+```
+
+## Custom Styling
+
+Fully customize the appearance:
+
+```dart
+AgentChatView(
+  provider: DartanticProvider(agent: Agent('gemini')),
+  style: ChatViewStyle(...),
+)
+```
+
+See the [styles
+example](https://github.com/csells/dartantic/tree/main/packages/dartantic_chat/blob/main/example/lib/styles/styles.dart)
+for complete options.
+
+## Rerouting Prompts
+
+Debug, log, or manipulate the connection:
+
+```dart
+AgentChatView(
+  provider: _provider,
+  messageSender: _logMessage,
+)
+
+Stream<String> _logMessage(
+  String prompt, {
+  required Iterable<Part> attachments,
+}) async* {
+  debugPrint('# Sending Message');
+  debugPrint('## Prompt\n$prompt');
+
+  final response = _provider.sendMessageStream(prompt, attachments: attachments);
+  final text = await response.join();
+  debugPrint('## Response\n$text');
+
+  yield text;
+}
+```

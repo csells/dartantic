@@ -45,9 +45,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: AgentChatView(provider: EchoProvider()),
-          ),
+          home: Scaffold(body: AgentChatView(provider: EchoProvider())),
         ),
       );
 
@@ -67,9 +65,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: AgentChatView(provider: provider),
-          ),
+          home: Scaffold(body: AgentChatView(provider: provider)),
         ),
       );
 
@@ -153,9 +149,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: AgentChatView(provider: EchoProvider()),
-          ),
+          home: Scaffold(body: AgentChatView(provider: EchoProvider())),
         ),
       );
 
@@ -339,9 +333,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: AgentChatView(provider: provider),
-          ),
+          home: Scaffold(body: AgentChatView(provider: provider)),
         ),
       );
 
@@ -364,9 +356,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: AgentChatView(provider: provider),
-          ),
+          home: Scaffold(body: AgentChatView(provider: provider)),
         ),
       );
 
@@ -389,9 +379,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: AgentChatView(provider: provider),
-          ),
+          home: Scaffold(body: AgentChatView(provider: provider)),
         ),
       );
 
@@ -414,9 +402,7 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: AgentChatView(
-              provider: EchoProvider(
-                history: [ChatMessage.user('Test')],
-              ),
+              provider: EchoProvider(history: [ChatMessage.user('Test')]),
               style: ChatViewStyle(progressIndicatorColor: Colors.purple),
             ),
           ),
@@ -546,10 +532,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: AgentChatView(
-              provider: EchoProvider(),
-              suggestions: [],
-            ),
+            body: AgentChatView(provider: EchoProvider(), suggestions: []),
           ),
         ),
       );
@@ -619,10 +602,7 @@ void main() {
               suggestions: ['Test suggestion'],
               style: ChatViewStyle(
                 suggestionStyle: SuggestionStyle(
-                  textStyle: const TextStyle(
-                    color: Colors.red,
-                    fontSize: 20,
-                  ),
+                  textStyle: const TextStyle(color: Colors.red, fontSize: 20),
                 ),
               ),
             ),
@@ -677,9 +657,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: AgentChatView(provider: provider),
-          ),
+          home: Scaffold(body: AgentChatView(provider: provider)),
         ),
       );
 
@@ -706,9 +684,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: AgentChatView(provider: provider),
-          ),
+          home: Scaffold(body: AgentChatView(provider: provider)),
         ),
       );
 
@@ -743,10 +719,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: AgentChatView(
-              provider: provider,
-              welcomeMessage: 'Welcome!',
-            ),
+            body: AgentChatView(provider: provider, welcomeMessage: 'Welcome!'),
           ),
         ),
       );

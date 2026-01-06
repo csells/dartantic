@@ -29,3 +29,7 @@
 - **Layered Architecture** - organize code into clear tiers where each layer
   depends only on the one(s) below it, keeping logic cleanly separated.
 - **Prefer Non-Nullable Variables** when possible; use nullability sparingly.
+- **Prefer Async Notifications** when possible over inefficient polling.
+- **Consider First Principles** to assess your current architecture against the
+  one you'd use if you started over from scratch.
+- **Eliminate Race Condtions** that might cause dropped or corrupted data

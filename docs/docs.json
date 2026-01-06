@@ -46,6 +46,21 @@
             ]
           },
           {
+            "group": "Chat Widget",
+            "pages": [
+              {
+                "group": "Dartantic Chat",
+                "pages": [
+                  "dartantic-chat/index",
+                  "dartantic-chat/getting-started",
+                  "dartantic-chat/user-experience",
+                  "dartantic-chat/feature-integration",
+                  "dartantic-chat/custom-providers"
+                ]
+              }
+            ]
+          },
+          {
             "group": "Advanced",
             "pages": [
               "embeddings",

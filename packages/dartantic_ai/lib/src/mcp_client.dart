@@ -96,7 +96,7 @@ class McpClient {
   final Map<String, String>? headers;
 
   // Internal connection state
-  mcp.Client? _client;
+  mcp.McpClient? _client;
   mcp.Transport? _transport;
 
   /// Whether the server is connected.
@@ -115,7 +115,7 @@ class McpClient {
       headers: headers,
     );
 
-    _client = mcp.Client(
+    _client = mcp.McpClient(
       const mcp.Implementation(name: 'dartantic_ai', version: 'any'),
     );
 

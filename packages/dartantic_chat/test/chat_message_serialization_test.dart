@@ -106,7 +106,11 @@ void main() {}
         final message = ChatMessage.user(
           'Binary data',
           parts: [
-            DataPart(bytes, mimeType: 'application/octet-stream', name: 'data.bin'),
+            DataPart(
+              bytes,
+              mimeType: 'application/octet-stream',
+              name: 'data.bin',
+            ),
           ],
         );
 
@@ -137,7 +141,10 @@ void main() {}
         final restored = ChatMessage.fromJson(json);
 
         final linkPart = restored.parts.whereType<LinkPart>().first;
-        expect(linkPart.url.toString(), equals('https://example.com/image.png'));
+        expect(
+          linkPart.url.toString(),
+          equals('https://example.com/image.png'),
+        );
         expect(linkPart.mimeType, equals('image/png'));
         expect(linkPart.name, equals('example.png'));
       });
@@ -271,9 +278,9 @@ void main() {}
         final jsonHistory = history.map((m) => m.toJson()).toList();
         final jsonString = jsonEncode(jsonHistory);
         final decoded = jsonDecode(jsonString) as List;
-        final restored = decoded.map(
-          (json) => ChatMessage.fromJson(json as Map<String, dynamic>),
-        ).toList();
+        final restored = decoded
+            .map((json) => ChatMessage.fromJson(json as Map<String, dynamic>))
+            .toList();
 
         expect(restored.length, equals(5));
         expect(restored[0].role, equals(ChatMessageRole.user));
@@ -301,7 +308,10 @@ void main() {}
         final decoded = jsonDecode(jsonString);
         final restored = ChatMessage.fromJson(decoded);
 
-        expect(restored.text, equals('Test with special chars: "quotes" & <tags>'));
+        expect(
+          restored.text,
+          equals('Test with special chars: "quotes" & <tags>'),
+        );
         expect(restored.metadata['special'], equals('value with "quotes"'));
       });
     });

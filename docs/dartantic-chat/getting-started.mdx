@@ -1,0 +1,155 @@
+---
+title: Getting Started
+description: "Installation, configuration, and device permissions"
+---
+
+## Installation
+
+Add the following dependencies to your `pubspec.yaml` file:
+
+```sh
+$ flutter pub add dartantic_chat
+```
+
+## Configuration
+
+Get your API key from the [Google AI Studio](https://aistudio.google.com/apikey)
+or your preferred LLM provider.
+
+Run your app with the API key:
+
+```bash
+flutter run --dart-define=GEMINI_API_KEY=your-api-key-here
+```
+
+In your Dart code, initialize the agent:
+
+```dart
+import 'package:dartantic_ai/dartantic_ai.dart';
+import 'package:dartantic_chat/dartantic_chat.dart';
+
+const _apiKey = String.fromEnvironment('GEMINI_API_KEY');
+
+void main() {
+  assert(_apiKey.isNotEmpty, 'GEMINI_API_KEY not provided via --dart-define');
+  Agent.environment['GEMINI_API_KEY'] = _apiKey;
+  runApp(const App());
+}
+```
+
+Then create your chat interface:
+
+```dart
+class ChatPage extends StatelessWidget {
+  const ChatPage({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Chat')),
+    body: AgentChatView(
+      provider: DartanticProvider(
+        agent: Agent('gemini'),
+      ),
+    ),
+  );
+}
+```
+
+For a complete usage example, check out the [`gemini.dart`
+sample](https://github.com/csells/dartantic/tree/main/packages/dartantic_chat/blob/main/example/lib/gemini/gemini.dart).
+
+## Using Other LLM Providers
+
+dartantic_ai supports multiple providers. Set the appropriate API key and
+configure the Agent:
+
+```dart
+// OpenAI
+Agent.environment['OPENAI_API_KEY'] = openaiKey;
+final agent = Agent('openai-responses:gpt-4o');
+
+// Anthropic
+Agent.environment['ANTHROPIC_API_KEY'] = anthropicKey;
+final agent = Agent('anthropic:claude-3-5-sonnet');
+
+// Ollama (local, no API key needed)
+final agent = Agent('ollama:llama3.2');
+```
+
+## Device Permissions
+
+To enable your users to take advantage of features like voice input and media
+attachments, ensure that your app has the necessary permissions:
+
+### Network Access
+
+On macOS, add the following to your `*.entitlements` files:
+
+```xml
+<plist version="1.0">
+    <dict>
+      ...
+      <key>com.apple.security.network.client</key>
+      <true/>
+    </dict>
+</plist>
+```
+
+On Android, ensure your `AndroidManifest.xml` contains:
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    ...
+    <uses-permission android:name="android.permission.INTERNET"/>
+</manifest>
+```
+
+### Clipboard Access
+
+To enable copying and pasting images and other custom data to and from the
+Android clipboard, add the following content provider to your
+`AndroidManifest.xml` inside the `<application>` tag:
+
+```xml
+<manifest>
+    <application>
+        ...
+        <provider
+            android:name="com.superlist.super_native_extensions.DataProvider"
+            android:authorities="<your-package-name>.SuperClipboardDataProvider"
+            android:exported="true"
+            android:grantUriPermissions="true">
+        </provider>
+        ...
+    </application>
+</manifest>
+```
+
+Be sure to replace `<your-package-name>` with your actual package name (e.g.,
+`com.example.myapp`).
+
+### Other Permissions
+
+- **Microphone access:** To enable voice input, update configs according to the
+  [permission and setup
+  instructions](https://pub.dev/packages/record#setup-permissions-and-others)
+  for `package:record`.
+- **File selection:** To enable file attachments, follow the [usage
+  instructions](https://pub.dev/packages/file_selector#usage) for
+  `package:file_selector`.
+- **Image selection:** To enable taking or selecting pictures, refer to the
+  [installation
+  instructions](https://pub.dev/packages/image_picker#installation) for
+  `package:image_picker`.
+
+## Running Examples
+
+Provide your API key via `--dart-define`:
+
+```bash
+cd packages/dartantic_chat/example
+flutter run --dart-define=GEMINI_API_KEY=your-api-key-here
+```
+
+See the [example
+apps](https://github.com/csells/dartantic/tree/main/packages/dartantic_chat/tree/main/example/lib).

@@ -43,7 +43,7 @@ Future<void> handlePasteWeb({
 
     _events!.registerPasteEventListener((event) async {
       final reader = await event.getClipboardReader();
-      await _pasteOperation(
+      await pasteOperation(
         controller: controller,
         onAttachments: onAttachments,
         insertText: insertText,
@@ -66,7 +66,8 @@ Future<void> handlePasteWeb({
 ///   - [onAttachments]: Callback to handle file/image attachments.
 ///   - [insertText]: Function to handle text insertion.
 ///   - [reader]: The [ClipboardReader] containing the clipboard data.
-Future<void> _pasteOperation({
+@visibleForTesting
+Future<void> pasteOperation({
   required TextEditingController controller,
   required void Function(Iterable<Part> attachments)? onAttachments,
   required void Function({

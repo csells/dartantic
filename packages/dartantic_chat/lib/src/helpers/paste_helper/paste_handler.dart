@@ -37,11 +37,12 @@ Future<void> handlePaste({
     required String text,
   })
   insertText,
+  ClipboardReader? readerOverride,
 }) async {
   try {
     final clipboard = SystemClipboard.instance;
-    if (clipboard == null) return;
-    final reader = await clipboard.read();
+    if (clipboard == null && readerOverride == null) return;
+    final reader = readerOverride ?? await clipboard!.read();
 
     if (onAttachments != null) {
       final imageFormats = [

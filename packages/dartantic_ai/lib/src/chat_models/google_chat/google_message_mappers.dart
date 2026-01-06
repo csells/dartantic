@@ -16,12 +16,20 @@ import 'google_chat.dart'
 final Logger _logger = Logger('dartantic.chat.mappers.google');
 
 /// Maps Dartantic Parts to Google gl.Parts (public helper for reuse).
+///
+/// The [messageMetadata] parameter should contain thought signatures when
+/// available, keyed as `'_google_thought_signatures'` with a map of
+/// tool call ID → signature.
 List<gl.Part> mapPartsToGoogle(
   Iterable<Part> parts, {
   bool includeToolCalls = false,
   bool includeToolResults = false,
+  Map<String, dynamic> messageMetadata = const {},
 }) {
   final mappedParts = <gl.Part>[];
+  final thoughtSignatures =
+      messageMetadata['_google_thought_signatures'] as Map<String, dynamic>? ??
+      const {};
 
   for (final part in parts) {
     switch (part) {
@@ -44,9 +52,9 @@ List<gl.Part> mapPartsToGoogle(
         );
       case ToolPart(:final kind):
         if (includeToolCalls && kind == ToolPartKind.call) {
-          mappedParts.add(_mapToolCallPart(part));
+          mappedParts.add(_mapToolCallPart(part, thoughtSignatures));
         } else if (includeToolResults && kind == ToolPartKind.result) {
-          mappedParts.add(_mapToolResultPart(part));
+          mappedParts.add(_mapToolResultPart(part, thoughtSignatures));
         }
       default:
         break;
@@ -56,7 +64,10 @@ List<gl.Part> mapPartsToGoogle(
   return mappedParts;
 }
 
-gl.Part _mapToolCallPart(ToolPart part) {
+gl.Part _mapToolCallPart(
+  ToolPart part,
+  Map<String, dynamic> thoughtSignatures,
+) {
   final arguments = part.arguments ?? const <String, dynamic>{};
   final callId = part.id.isNotEmpty
       ? part.id
@@ -72,10 +83,14 @@ gl.Part _mapToolCallPart(ToolPart part) {
       name: part.name,
       args: ProtobufValueHelpers.structFromJson(arguments),
     ),
+    thoughtSignature: thoughtSignatures[callId],
   );
 }
 
-gl.Part _mapToolResultPart(ToolPart part) {
+gl.Part _mapToolResultPart(
+  ToolPart part,
+  Map<String, dynamic> thoughtSignatures,
+) {
   final responseMap = ToolResultHelpers.ensureMap(part.result);
   _logger.fine('Creating function response for tool: ${part.name}');
 
@@ -85,6 +100,7 @@ gl.Part _mapToolResultPart(ToolPart part) {
       name: part.name,
       response: ProtobufValueHelpers.structFromJson(responseMap),
     ),
+    thoughtSignature: thoughtSignatures[part.id],
   );
 }
 
@@ -151,6 +167,7 @@ extension MessageListMapper on List<ChatMessage> {
         message.parts,
         includeToolCalls: false,
         includeToolResults: true,
+        messageMetadata: message.metadata,
       ),
       role: 'user',
     );
@@ -163,6 +180,7 @@ extension MessageListMapper on List<ChatMessage> {
         message.parts,
         includeToolCalls: true,
         includeToolResults: false,
+        messageMetadata: message.metadata,
       ),
       role: 'model',
     );
@@ -181,6 +199,7 @@ extension MessageListMapper on List<ChatMessage> {
           message.parts,
           includeToolCalls: false,
           includeToolResults: true,
+          messageMetadata: message.metadata,
         ),
       );
     }
@@ -192,10 +211,12 @@ extension MessageListMapper on List<ChatMessage> {
     Iterable<Part> parts, {
     required bool includeToolCalls,
     required bool includeToolResults,
+    Map<String, dynamic> messageMetadata = const {},
   }) => mapPartsToGoogle(
     parts,
     includeToolCalls: includeToolCalls,
     includeToolResults: includeToolResults,
+    messageMetadata: messageMetadata,
   );
 }
 
@@ -213,6 +234,8 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
     final executableCodeParts = <gl.ExecutableCode>[];
     final executionResults = <gl.CodeExecutionResult>[];
     final thinkingBuffer = StringBuffer();
+    // Collect thought signatures keyed by tool call ID for Gemini 3+ models
+    final thoughtSignatures = <String, dynamic>{};
 
     final contentParts = candidate.content?.parts ?? const <gl.Part>[];
     _logger.fine(
@@ -260,6 +283,11 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
         parts.add(
           ToolPart.call(id: callId, name: functionCall.name, arguments: args),
         );
+        // Store thought signature in message metadata keyed by tool call ID
+        final sig = part.thoughtSignature;
+        if (sig.isNotEmpty) {
+          thoughtSignatures[callId] = sig;
+        }
       }
 
       final functionResponse = part.functionResponse;
@@ -281,6 +309,11 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
             result: responseMap,
           ),
         );
+        // Store thought signature for function responses too
+        final sig = part.thoughtSignature;
+        if (sig.isNotEmpty) {
+          thoughtSignatures[responseId] = sig;
+        }
       }
 
       final executableCode = part.executableCode;
@@ -294,7 +327,17 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
       }
     }
 
-    final message = ChatMessage(role: ChatMessageRole.model, parts: parts);
+    // Build message metadata including thought signatures if present
+    final messageMetadata = <String, dynamic>{
+      if (thoughtSignatures.isNotEmpty)
+        '_google_thought_signatures': thoughtSignatures,
+    };
+
+    final message = ChatMessage(
+      role: ChatMessageRole.model,
+      parts: parts,
+      metadata: messageMetadata,
+    );
 
     final metadata = <String, dynamic>{
       'model': model,

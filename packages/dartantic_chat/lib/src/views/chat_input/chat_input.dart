@@ -6,11 +6,13 @@ import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:universal_platform/universal_platform.dart';
 import 'package:waveform_recorder/waveform_recorder.dart';
 
 import '../../chat_view_model/chat_view_model.dart';
 import '../../chat_view_model/chat_view_model_provider.dart';
 import '../../dialogs/adaptive_snack_bar/adaptive_snack_bar.dart';
+import '../../helpers/paste_helper/drag_and_drop_handler.dart';
 import '../../styles/styles.dart';
 import 'attachments_action_bar.dart';
 import 'attachments_view.dart';
@@ -33,6 +35,9 @@ class ChatInput extends StatefulWidget {
   const ChatInput({
     required this.onSendMessage,
     required this.onTranslateStt,
+    required this.attachments,
+    required this.onAttachments,
+    required this.onRemoveAttachment,
     this.initialMessage,
     this.onCancelEdit,
     this.onCancelMessage,
@@ -79,6 +84,30 @@ class ChatInput extends StatefulWidget {
   /// Whether the input should automatically focus
   final bool autofocus;
 
+  /// The current list of attachments associated with the message.
+  ///
+  /// This list contains all the files, images, or other media that have been
+  /// attached to the current message. The parent widget is responsible for
+  /// maintaining and updating this list.
+  final List<Part> attachments;
+
+  /// Callback function called when new attachments are added.
+  ///
+  /// This is triggered when the user adds attachments through any supported method
+  /// (drag and drop, file picker, etc.). The parent widget would update its
+  /// state to include these new attachments.
+  ///
+  /// The [attachments] parameter contains the newly added attachment parts.
+  final void Function(Iterable<Part> attachments) onAttachments;
+
+  /// Callback function called when an attachment is removed.
+  ///
+  /// This is triggered when the user removes a previously added attachment.
+  /// The parent widget would update its state to remove the specified attachment.
+  ///
+  /// The [attachment] parameter specifies which attachment was removed.
+  final void Function(Part attachment) onRemoveAttachment;
+
   @override
   State<ChatInput> createState() => _ChatInputState();
 }
@@ -110,7 +139,7 @@ class _ChatInputState extends State<ChatInput> {
 
   final _textController = TextEditingController();
   final _waveController = WaveformRecorderController();
-  final _attachments = <Part>[];
+  // final _attachments = <Part>[];
 
   ChatViewModel? _viewModel;
   ChatInputStyle? _inputStyle;
@@ -134,9 +163,9 @@ class _ChatInputState extends State<ChatInput> {
       //    attachments)
       // 3. Selecting a suggestion from the chat interface
       _textController.text = widget.initialMessage!.text;
-      _attachments.clear();
+      widget.attachments.clear();
       // Extract non-text parts as attachments
-      _attachments.addAll(
+      widget.attachments.addAll(
         widget.initialMessage!.parts.where((p) => p is! TextPart),
       );
     } else if (oldWidget.initialMessage != null) {
@@ -144,7 +173,7 @@ class _ChatInputState extends State<ChatInput> {
       // This happens when the user cancels an edit operation, ensuring
       // the input field returns to a clean state
       _textController.clear();
-      _attachments.clear();
+      widget.attachments.clear();
     }
   }
 
@@ -157,62 +186,77 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   @override
-  Widget build(BuildContext context) => Container(
-    color: _inputStyle!.backgroundColor,
-    padding: const EdgeInsets.all(16),
-    child: Column(
-      children: [
-        AttachmentsView(
-          attachments: _attachments,
-          onRemove: onRemoveAttachment,
-        ),
-        if (_attachments.isNotEmpty) const SizedBox(height: 6),
-        ValueListenableBuilder(
-          valueListenable: _textController,
-          builder: (context, value, child) => ListenableBuilder(
-            listenable: _waveController,
-            builder: (context, child) => Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (_viewModel!.enableAttachments)
+  Widget build(BuildContext context) => _buildAttachmentsView();
+
+  Widget _buildAttachmentsView() {
+    final attachmentView = Container(
+      color: _inputStyle!.backgroundColor,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          AttachmentsView(
+            attachments: widget.attachments,
+            onRemove: widget.onRemoveAttachment,
+          ),
+          if (widget.attachments.isNotEmpty) const SizedBox(height: 6),
+          ValueListenableBuilder(
+            valueListenable: _textController,
+            builder: (context, value, child) => ListenableBuilder(
+              listenable: _waveController,
+              builder: (context, child) => Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (_viewModel!.enableAttachments)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: AttachmentActionBar(
+                        onAttachments: widget.onAttachments,
+                      ),
+                    ),
+                  Expanded(
+                    child: TextOrAudioInput(
+                      inputStyle: _inputStyle!,
+                      waveController: _waveController,
+                      onCancelEdit: widget.onCancelEdit,
+                      onRecordingStopped: onRecordingStopped,
+                      onSubmitPrompt: onSubmitPrompt,
+                      textController: _textController,
+                      focusNode: _focusNode,
+                      autofocus: widget.autofocus,
+                      inputState: _inputState,
+                      cancelButtonStyle: _chatStyle!.cancelButtonStyle!,
+                      voiceNoteRecorderStyle:
+                          _chatStyle!.voiceNoteRecorderStyle!,
+                      onAttachments: widget.onAttachments,
+                    ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 14),
-                    child: AttachmentActionBar(onAttachments: onAttachments),
+                    child: InputButton(
+                      inputState: _inputState,
+                      chatStyle: _chatStyle!,
+                      onSubmitPrompt: onSubmitPrompt,
+                      onCancelPrompt: onCancelPrompt,
+                      onStartRecording: onStartRecording,
+                      onStopRecording: onStopRecording,
+                    ),
                   ),
-                Expanded(
-                  child: TextOrAudioInput(
-                    inputStyle: _inputStyle!,
-                    waveController: _waveController,
-                    onCancelEdit: widget.onCancelEdit,
-                    onRecordingStopped: onRecordingStopped,
-                    onSubmitPrompt: onSubmitPrompt,
-                    textController: _textController,
-                    focusNode: _focusNode,
-                    autofocus: widget.autofocus,
-                    inputState: _inputState,
-                    cancelButtonStyle: _chatStyle!.cancelButtonStyle!,
-                    voiceNoteRecorderStyle: _chatStyle!.voiceNoteRecorderStyle!,
-                    onAttachments: onAttachments,
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: InputButton(
-                    inputState: _inputState,
-                    chatStyle: _chatStyle!,
-                    onSubmitPrompt: onSubmitPrompt,
-                    onCancelPrompt: onCancelPrompt,
-                    onStartRecording: onStartRecording,
-                    onStopRecording: onStopRecording,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+
+    if (UniversalPlatform.isAndroid || UniversalPlatform.isIOS) {
+      return attachmentView;
+    } else {
+      return DragAndDropHandler(
+        onAttachments: widget.onAttachments,
+      ).buildDropRegion(child: attachmentView);
+    }
+  }
 
   InputState get _inputState {
     if (_waveController.isRecording) return InputState.isRecording;
@@ -233,8 +277,8 @@ class _ChatInputState extends State<ChatInput> {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
-    widget.onSendMessage(text, List.from(_attachments));
-    _attachments.clear();
+    widget.onSendMessage(text, List.from(widget.attachments));
+    widget.attachments.clear();
     _textController.clear();
     _focusNode.requestFocus();
   }
@@ -262,14 +306,6 @@ class _ChatInputState extends State<ChatInput> {
     }
 
     // Pass current attachments to onTranslateStt
-    widget.onTranslateStt(file, List.from(_attachments));
+    widget.onTranslateStt(file, List.from(widget.attachments));
   }
-
-  void onAttachments(Iterable<Part> attachments) {
-    assert(_viewModel!.enableAttachments);
-    setState(() => _attachments.addAll(attachments));
-  }
-
-  void onRemoveAttachment(Part attachment) =>
-      setState(() => _attachments.remove(attachment));
 }

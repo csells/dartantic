@@ -77,6 +77,22 @@ Future<void> pasteOperation({
   insertText,
   required ClipboardReader reader,
 }) async {
+  if (reader.canProvide(Formats.plainText)) {
+    final text = await reader.readValue(Formats.plainText);
+    if (text != null && text.isNotEmpty) {
+      insertText(controller: controller, text: text);
+      return;
+    }
+  }
+
+  if (reader.canProvide(Formats.htmlText)) {
+    final html = await reader.readValue(Formats.htmlText);
+    if (html != null && html.isNotEmpty) {
+      insertText(controller: controller, text: html);
+      return;
+    }
+  }
+
   if (onAttachments != null) {
     final imageFormats = [
       Formats.png,
@@ -145,22 +161,6 @@ Future<void> pasteOperation({
             return;
           });
         });
-        return;
-      }
-    }
-
-    if (reader.canProvide(Formats.plainText)) {
-      final text = await reader.readValue(Formats.plainText);
-      if (text != null && text.isNotEmpty) {
-        insertText(controller: controller, text: text);
-        return;
-      }
-    }
-
-    if (reader.canProvide(Formats.htmlText)) {
-      final html = await reader.readValue(Formats.htmlText);
-      if (html != null && html.isNotEmpty) {
-        insertText(controller: controller, text: html);
         return;
       }
     }

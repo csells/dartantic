@@ -35,6 +35,9 @@ class ChatInput extends StatefulWidget {
   const ChatInput({
     required this.onSendMessage,
     required this.onTranslateStt,
+    required this.attachments,
+    required this.onAttachments,
+    required this.onRemoveAttachment,
     this.initialMessage,
     this.onCancelEdit,
     this.onCancelMessage,
@@ -81,6 +84,30 @@ class ChatInput extends StatefulWidget {
   /// Whether the input should automatically focus
   final bool autofocus;
 
+  /// The current list of attachments associated with the message.
+  ///
+  /// This list contains all the files, images, or other media that have been
+  /// attached to the current message. The parent widget is responsible for
+  /// maintaining and updating this list.
+  final List<Part> attachments;
+
+  /// Callback function called when new attachments are added.
+  ///
+  /// This is triggered when the user adds attachments through any supported method
+  /// (drag and drop, file picker, etc.). The parent widget would update its
+  /// state to include these new attachments.
+  ///
+  /// The [attachments] parameter contains the newly added attachment parts.
+  final void Function(Iterable<Part> attachments) onAttachments;
+
+  /// Callback function called when an attachment is removed.
+  ///
+  /// This is triggered when the user removes a previously added attachment.
+  /// The parent widget would update its state to remove the specified attachment.
+  ///
+  /// The [attachment] parameter specifies which attachment was removed.
+  final void Function(Part attachment) onRemoveAttachment;
+
   @override
   State<ChatInput> createState() => _ChatInputState();
 }
@@ -112,7 +139,7 @@ class _ChatInputState extends State<ChatInput> {
 
   final _textController = TextEditingController();
   final _waveController = WaveformRecorderController();
-  final _attachments = <Part>[];
+  // final _attachments = <Part>[];
 
   ChatViewModel? _viewModel;
   ChatInputStyle? _inputStyle;
@@ -136,9 +163,9 @@ class _ChatInputState extends State<ChatInput> {
       //    attachments)
       // 3. Selecting a suggestion from the chat interface
       _textController.text = widget.initialMessage!.text;
-      _attachments.clear();
+      widget.attachments.clear();
       // Extract non-text parts as attachments
-      _attachments.addAll(
+      widget.attachments.addAll(
         widget.initialMessage!.parts.where((p) => p is! TextPart),
       );
     } else if (oldWidget.initialMessage != null) {
@@ -146,7 +173,7 @@ class _ChatInputState extends State<ChatInput> {
       // This happens when the user cancels an edit operation, ensuring
       // the input field returns to a clean state
       _textController.clear();
-      _attachments.clear();
+      widget.attachments.clear();
     }
   }
 
@@ -168,10 +195,10 @@ class _ChatInputState extends State<ChatInput> {
       child: Column(
         children: [
           AttachmentsView(
-            attachments: _attachments,
-            onRemove: onRemoveAttachment,
+            attachments: widget.attachments,
+            onRemove: widget.onRemoveAttachment,
           ),
-          if (_attachments.isNotEmpty) const SizedBox(height: 6),
+          if (widget.attachments.isNotEmpty) const SizedBox(height: 6),
           ValueListenableBuilder(
             valueListenable: _textController,
             builder: (context, value, child) => ListenableBuilder(
@@ -182,7 +209,9 @@ class _ChatInputState extends State<ChatInput> {
                   if (_viewModel!.enableAttachments)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 14),
-                      child: AttachmentActionBar(onAttachments: onAttachments),
+                      child: AttachmentActionBar(
+                        onAttachments: widget.onAttachments,
+                      ),
                     ),
                   Expanded(
                     child: TextOrAudioInput(
@@ -198,7 +227,7 @@ class _ChatInputState extends State<ChatInput> {
                       cancelButtonStyle: _chatStyle!.cancelButtonStyle!,
                       voiceNoteRecorderStyle:
                           _chatStyle!.voiceNoteRecorderStyle!,
-                      onAttachments: onAttachments,
+                      onAttachments: widget.onAttachments,
                     ),
                   ),
                   Padding(
@@ -224,7 +253,7 @@ class _ChatInputState extends State<ChatInput> {
       return attachmentView;
     } else {
       return DragAndDropHandler(
-        onAttachments: onAttachments,
+        onAttachments: widget.onAttachments,
       ).buildDropRegion(child: attachmentView);
     }
   }
@@ -248,8 +277,8 @@ class _ChatInputState extends State<ChatInput> {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
-    widget.onSendMessage(text, List.from(_attachments));
-    _attachments.clear();
+    widget.onSendMessage(text, List.from(widget.attachments));
+    widget.attachments.clear();
     _textController.clear();
     _focusNode.requestFocus();
   }
@@ -277,14 +306,6 @@ class _ChatInputState extends State<ChatInput> {
     }
 
     // Pass current attachments to onTranslateStt
-    widget.onTranslateStt(file, List.from(_attachments));
+    widget.onTranslateStt(file, List.from(widget.attachments));
   }
-
-  void onAttachments(Iterable<Part> attachments) {
-    assert(_viewModel!.enableAttachments);
-    setState(() => _attachments.addAll(attachments));
-  }
-
-  void onRemoveAttachment(Part attachment) =>
-      setState(() => _attachments.remove(attachment));
 }

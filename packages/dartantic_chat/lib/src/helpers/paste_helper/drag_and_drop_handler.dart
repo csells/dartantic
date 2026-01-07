@@ -12,6 +12,13 @@ import 'package:universal_platform/universal_platform.dart';
 
 import '../paste_helper/paste_extensions.dart';
 
+final _formats = [
+  ...Formats.standardFormats.whereType<FileFormat>(),
+  Formats.epub,
+  Formats.md,
+  Formats.opus,
+];
+
 /// Handles drag and drop operations for the chat input field.
 ///
 /// This class manages the drag and drop functionality, including:
@@ -57,10 +64,7 @@ class DragAndDropHandler {
     MouseCursor cursor = SystemMouseCursors.copy,
   }) {
     return DropRegion(
-      formats: [
-        Formats.fileUri,
-        ...Formats.standardFormats.whereType<FileFormat>(),
-      ],
+      formats: [Formats.fileUri, ..._formats],
       hitTestBehavior: hitTestBehavior,
       onDropOver: (event) {
         return DropOperation.copy;
@@ -80,34 +84,36 @@ class DragAndDropHandler {
                 }
               });
             } else {
-              for (final format
-                  in Formats.standardFormats.whereType<FileFormat>()) {
+              for (final format in _formats) {
                 if (item.dataReader!.canProvide(format)) {
                   item.dataReader!.getFile(format, (file) async {
                     final stream = file.getStream();
-                    await stream.toList().then((chunks) {
-                      final attachmentBytes = Uint8List.fromList(
-                        chunks.expand((e) => e).toList(),
-                      );
-                      final mimeType =
-                          lookupMimeType(
-                            file.fileName ?? '',
-                            headerBytes: attachmentBytes,
-                          ) ??
-                          'application/octet-stream';
-                      final fileName =
-                          file.fileName ??
-                          'pasted_file_${DateTime.now().millisecondsSinceEpoch}.${getExtensionFromMime(mimeType)}';
-                      final dataPart = DataPart(
-                        attachmentBytes,
-                        mimeType: mimeType,
-                        name: fileName,
-                      );
-                      onAttachments([dataPart]);
-                      return;
-                    });
+                    await stream
+                        .toList()
+                        .then((chunks) {
+                          final attachmentBytes = Uint8List.fromList(
+                            chunks.expand((e) => e).toList(),
+                          );
+                          final mimeType =
+                              lookupMimeType(
+                                file.fileName ?? '',
+                                headerBytes: attachmentBytes,
+                              ) ??
+                              'application/octet-stream';
+                          final fileName =
+                              file.fileName ??
+                              'pasted_file_${DateTime.now().millisecondsSinceEpoch}.${getExtensionFromMime(mimeType)}';
+                          final dataPart = DataPart(
+                            attachmentBytes,
+                            mimeType: mimeType,
+                            name: fileName,
+                          );
+                          onAttachments([dataPart]);
+                        })
+                        .onError((error, stackTrace) {
+                          debugPrint('Error handling dropped file -> $error');
+                        });
                   });
-                  return;
                 }
               }
             }
@@ -125,8 +131,19 @@ class DragAndDropHandler {
       final path = data.toFilePath();
       final file = XFile(path);
       final bytes = await file.readAsBytes();
-      final mimeType =
-          file.mimeType ?? lookupMimeType(path, headerBytes: bytes);
+
+      String? mimeType = file.mimeType;
+      if (mimeType == null || mimeType == 'application/octet-stream') {
+        mimeType = lookupMimeType(path, headerBytes: bytes);
+
+        if (mimeType == null || mimeType == 'application/octet-stream') {
+          final extension = path.split('.').last.toLowerCase();
+          if (extension == 'md' || extension == 'markdown') {
+            mimeType = 'text/markdown';
+          }
+        }
+      }
+
       return DataPart(
         bytes,
         name: file.name,

@@ -20,6 +20,7 @@ import 'media_response_accumulator.dart';
 import 'model_string_parser.dart';
 import 'orchestrators/default_streaming_orchestrator.dart';
 import 'streaming_state.dart';
+import 'tool_middleware.dart';
 
 /// An agent that manages chat models and provides tool execution and message
 /// collection capabilities.
@@ -42,6 +43,7 @@ class Agent {
   /// - [tools]: List of tools the agent can use
   /// - [temperature]: Model temperature (0.0 to 1.0)
   /// - [enableThinking]: Enable extended thinking/reasoning (default: false)
+  /// - [middleware]: List of middleware to intercept tool calls
   /// - [chatModelOptions]: Provider-specific chat model configuration
   /// - [embeddingsModelOptions]: Provider-specific embeddings configuration
   /// - [mediaModelOptions]: Provider-specific media generation configuration
@@ -51,6 +53,7 @@ class Agent {
     double? temperature,
     bool enableThinking = false,
     String? displayName,
+    List<ToolMiddleware>? middleware,
     this.chatModelOptions,
     this.embeddingsModelOptions,
     this.mediaModelOptions,
@@ -86,10 +89,12 @@ class Agent {
     _tools = tools;
     _temperature = temperature;
     _enableThinking = enableThinking;
+    _middleware = middleware;
 
     _logger.fine(
       'Agent created successfully with ${tools?.length ?? 0} tools, '
-      'temperature: $temperature, enableThinking: $enableThinking',
+      'temperature: $temperature, enableThinking: $enableThinking, '
+      'middleware: ${middleware?.length ?? 0}',
     );
   }
 
@@ -103,6 +108,7 @@ class Agent {
     double? temperature,
     bool enableThinking = false,
     String? displayName,
+    List<ToolMiddleware>? middleware,
     this.chatModelOptions,
     this.embeddingsModelOptions,
     this.mediaModelOptions,
@@ -129,10 +135,12 @@ class Agent {
     _tools = tools;
     _temperature = temperature;
     _enableThinking = enableThinking;
+    _middleware = middleware;
 
     _logger.fine(
       'Agent created from provider with ${tools?.length ?? 0} tools, '
-      'temperature: $temperature, enableThinking: $enableThinking',
+      'temperature: $temperature, enableThinking: $enableThinking, '
+      'middleware: ${middleware?.length ?? 0}',
     );
   }
 
@@ -189,6 +197,7 @@ class Agent {
   late final double? _temperature;
   late final bool _enableThinking;
   late final String? _displayName;
+  late final List<ToolMiddleware>? _middleware;
 
   static final Logger _logger = Logger('dartantic.chat_agent');
 
@@ -320,6 +329,7 @@ class Agent {
       final state = StreamingState(
         conversationHistory: conversationHistory,
         toolMap: {for (final tool in toolsToUse ?? <Tool>[]) tool.name: tool},
+        middleware: _middleware,
       );
 
       orchestrator.initialize(state);

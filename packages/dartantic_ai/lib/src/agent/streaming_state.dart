@@ -4,6 +4,7 @@ import 'package:logging/logging.dart';
 import '../chat_models/helpers/tool_id_helpers.dart';
 import 'message_accumulator.dart';
 import 'tool_executor.dart';
+import 'tool_middleware.dart';
 
 /// Encapsulates all mutable state required during streaming operations
 class StreamingState {
@@ -11,8 +12,10 @@ class StreamingState {
   StreamingState({
     required List<ChatMessage> conversationHistory,
     required Map<String, Tool> toolMap,
+    List<ToolMiddleware>? middleware,
   }) : _conversationHistory = conversationHistory,
-       _toolMap = toolMap;
+       _toolMap = toolMap,
+       executor = ToolExecutor(middleware: middleware);
 
   /// Logger for state.streaming operations.
   static final Logger _logger = Logger('dartantic.state.streaming');
@@ -34,7 +37,7 @@ class StreamingState {
   final MessageAccumulator accumulator = const MessageAccumulator();
 
   /// Tool executor for provider-specific tool execution
-  final ToolExecutor executor = const ToolExecutor();
+  final ToolExecutor executor;
 
   /// Coordinator for managing tool IDs across the conversation
   final ToolIdCoordinator toolIdCoordinator = ToolIdCoordinator();

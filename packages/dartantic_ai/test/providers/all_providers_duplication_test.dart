@@ -1,36 +1,15 @@
 // ignore_for_file: avoid_print
 
-import 'dart:io' show Platform;
-
 import 'package:dartantic_ai/dartantic_ai.dart';
-
 import 'package:test/test.dart';
 
 void main() {
   group('All Providers Text Duplication Tests', () {
-    setUpAll(() {
-      // Set up API keys for available providers
-      final openaiKey = Platform.environment['OPENAI_API_KEY'];
-      if (openaiKey != null && openaiKey.isNotEmpty) {
-        Agent.environment['OPENAI_API_KEY'] = openaiKey;
-      }
-
-      final anthropicKey = Platform.environment['ANTHROPIC_API_KEY'];
-      if (anthropicKey != null && anthropicKey.isNotEmpty) {
-        Agent.environment['ANTHROPIC_API_KEY'] = anthropicKey;
-      }
-
-      final googleKey = Platform.environment['GOOGLE_API_KEY'];
-      if (googleKey != null && googleKey.isNotEmpty) {
-        Agent.environment['GOOGLE_API_KEY'] = googleKey;
-      }
-    });
-
     final providersToTest = [
       'openai',
       'openai-responses',
-      if (Platform.environment['ANTHROPIC_API_KEY'] != null) 'anthropic',
-      if (Platform.environment['GOOGLE_API_KEY'] != null) 'google',
+      'anthropic',
+      'google',
     ];
 
     for (final provider in providersToTest) {

@@ -1,3 +1,11 @@
+## 2.2.1
+
+- **Gemini 3 Tool Calling Fix**: Fixed "Function call is missing a
+  thought_signature" error when using tools with Gemini 3 models like
+  `gemini-3-flash-preview`. No code changes required - just upgrade and it
+  works. ([#85](https://github.com/csells/dartantic/issues/85)). Thanks to
+  @ElectricCookie for [the PR](https://github.com/csells/dartantic/pull/86)!
+
 ## 2.2.0
 
 - **Mistral Tool Calling Support**: Enhanced Mistral provider with robust tool

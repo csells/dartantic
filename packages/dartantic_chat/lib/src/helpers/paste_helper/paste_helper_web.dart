@@ -173,6 +173,6 @@ Future<void> pasteOperation({
 /// (e.g., when a widget is disposed).
 void unregisterPasteListener() {
   if (_events != null) {
-    _events!.unregisterPasteEventListener;
+    _events!.unregisterPasteEventListener((event) {});
   }
 }

@@ -38,6 +38,8 @@ class ChatInput extends StatefulWidget {
     required this.attachments,
     required this.onAttachments,
     required this.onRemoveAttachment,
+    required this.onClearAttachments,
+    required this.onReplaceAttachments,
     this.initialMessage,
     this.onCancelEdit,
     this.onCancelMessage,
@@ -108,6 +110,18 @@ class ChatInput extends StatefulWidget {
   /// The [attachment] parameter specifies which attachment was removed.
   final void Function(Part attachment) onRemoveAttachment;
 
+  /// Callback function called when all attachments should be cleared.
+  final VoidCallback onClearAttachments;
+
+  /// Callback function called when attachments should be replaced.
+  ///
+  /// This is triggered when the user replaces attachments through any supported
+  /// method (drag and drop, file picker, etc.). The parent widget would update
+  /// its state to replace the attachments.
+  ///
+  /// The [attachments] parameter contains the newly added attachment parts.
+  final ValueChanged<List<DataPart>> onReplaceAttachments;
+
   @override
   State<ChatInput> createState() => _ChatInputState();
 }
@@ -139,7 +153,6 @@ class _ChatInputState extends State<ChatInput> {
 
   final _textController = TextEditingController();
   final _waveController = WaveformRecorderController();
-  // final _attachments = <Part>[];
 
   ChatViewModel? _viewModel;
   ChatInputStyle? _inputStyle;
@@ -163,17 +176,16 @@ class _ChatInputState extends State<ChatInput> {
       //    attachments)
       // 3. Selecting a suggestion from the chat interface
       _textController.text = widget.initialMessage!.text;
-      widget.attachments.clear();
       // Extract non-text parts as attachments
-      widget.attachments.addAll(
-        widget.initialMessage!.parts.where((p) => p is! TextPart),
+      widget.onReplaceAttachments(
+        widget.initialMessage!.parts.whereType<DataPart>().toList(),
       );
     } else if (oldWidget.initialMessage != null) {
       // Clear both text and attachments when initialMessage becomes null
       // This happens when the user cancels an edit operation, ensuring
       // the input field returns to a clean state
       _textController.clear();
-      widget.attachments.clear();
+      widget.onClearAttachments();
     }
   }
 
@@ -278,8 +290,8 @@ class _ChatInputState extends State<ChatInput> {
     if (text.isEmpty) return;
 
     widget.onSendMessage(text, List.from(widget.attachments));
-    widget.attachments.clear();
     _textController.clear();
+    widget.onClearAttachments();
     _focusNode.requestFocus();
   }
 

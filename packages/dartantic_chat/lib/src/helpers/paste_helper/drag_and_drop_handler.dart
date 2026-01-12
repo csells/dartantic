@@ -84,8 +84,11 @@ class DragAndDropHandler {
                 }
               });
             } else {
+              bool handled = false;
               for (final format in _formats) {
+                if (handled) break;
                 if (item.dataReader!.canProvide(format)) {
+                  handled = true;
                   item.dataReader!.getFile(format, (file) async {
                     final stream = file.getStream();
                     await stream

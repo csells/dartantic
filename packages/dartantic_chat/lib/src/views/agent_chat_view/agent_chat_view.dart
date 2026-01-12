@@ -234,6 +234,8 @@ class _AgentChatViewState extends State<AgentChatView>
             attachments: attachments,
             onRemoveAttachment: _onRemoveAttachment,
             onAttachments: _onAttachments,
+            onClearAttachments: _onClearAttachments,
+            onReplaceAttachments: _onReplaceAttachments,
           ),
         ),
       ],
@@ -430,6 +432,17 @@ class _AgentChatViewState extends State<AgentChatView>
     assert(widget.viewModel.enableAttachments);
     _isDragging = false;
     attachments.addAll(newAttachments);
+  });
+
+  void _onClearAttachments() => setState(() {
+    attachments.clear();
+  });
+
+  void _onReplaceAttachments(List<Part> newAttachments) => setState(() {
+    assert(widget.viewModel.enableAttachments);
+    attachments
+      ..clear()
+      ..addAll(newAttachments);
   });
 
   void _onRemoveAttachment(Part attachment) => setState(() {

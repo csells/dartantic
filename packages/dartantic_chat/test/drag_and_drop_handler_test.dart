@@ -9,6 +9,9 @@ void main() {
   group('DragAndDropHandler.handleDroppedFile', () {
     test('returns DataPart for a plain text file', () async {
       final tempDir = await Directory.systemTemp.createTemp('dd_test_text_');
+      addTearDown(() async {
+        if (await tempDir.exists()) await tempDir.delete(recursive: true);
+      });
       final file = File('${tempDir.path}/sample.txt');
       final contents = 'hello world';
       await file.writeAsString(contents);
@@ -34,6 +37,9 @@ void main() {
       'returns DataPart for a small PNG file and has matching extension',
       () async {
         final tempDir = await Directory.systemTemp.createTemp('dd_test_img_');
+        addTearDown(() async {
+          if (await tempDir.exists()) await tempDir.delete(recursive: true);
+        });
         final filePath = '${tempDir.path}/img.png';
         final file = File(filePath);
 
@@ -58,9 +64,6 @@ void main() {
         final expectedExt = mime.split('/').last;
         expect(dataPart.name, isNotNull);
         expect(dataPart.name!.toLowerCase(), endsWith('.$expectedExt'));
-
-        await file.delete();
-        await tempDir.delete();
       },
     );
 

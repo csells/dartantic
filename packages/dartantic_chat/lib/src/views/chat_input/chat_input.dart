@@ -6,13 +6,11 @@ import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:universal_platform/universal_platform.dart';
 import 'package:waveform_recorder/waveform_recorder.dart';
 
 import '../../chat_view_model/chat_view_model.dart';
 import '../../chat_view_model/chat_view_model_provider.dart';
 import '../../dialogs/adaptive_snack_bar/adaptive_snack_bar.dart';
-import '../../helpers/paste_helper/drag_and_drop_handler.dart';
 import '../../styles/styles.dart';
 import 'attachments_action_bar.dart';
 import 'attachments_view.dart';
@@ -198,77 +196,64 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   @override
-  Widget build(BuildContext context) => _buildAttachmentsView();
-
-  Widget _buildAttachmentsView() {
-    final attachmentView = Container(
-      color: _inputStyle!.backgroundColor,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          AttachmentsView(
-            attachments: widget.attachments,
-            onRemove: widget.onRemoveAttachment,
-          ),
-          if (widget.attachments.isNotEmpty) const SizedBox(height: 6),
-          ValueListenableBuilder(
-            valueListenable: _textController,
-            builder: (context, value, child) => ListenableBuilder(
-              listenable: _waveController,
-              builder: (context, child) => Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  if (_viewModel!.enableAttachments)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: AttachmentActionBar(
-                        onAttachments: widget.onAttachments,
-                      ),
-                    ),
-                  Expanded(
-                    child: TextOrAudioInput(
-                      inputStyle: _inputStyle!,
-                      waveController: _waveController,
-                      onCancelEdit: widget.onCancelEdit,
-                      onRecordingStopped: onRecordingStopped,
-                      onSubmitPrompt: onSubmitPrompt,
-                      textController: _textController,
-                      focusNode: _focusNode,
-                      autofocus: widget.autofocus,
-                      inputState: _inputState,
-                      cancelButtonStyle: _chatStyle!.cancelButtonStyle!,
-                      voiceNoteRecorderStyle:
-                          _chatStyle!.voiceNoteRecorderStyle!,
+  Widget build(BuildContext context) => Container(
+    color: _inputStyle!.backgroundColor,
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      children: [
+        AttachmentsView(
+          attachments: widget.attachments,
+          onRemove: widget.onRemoveAttachment,
+        ),
+        if (widget.attachments.isNotEmpty) const SizedBox(height: 6),
+        ValueListenableBuilder(
+          valueListenable: _textController,
+          builder: (context, value, child) => ListenableBuilder(
+            listenable: _waveController,
+            builder: (context, child) => Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (_viewModel!.enableAttachments)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: AttachmentActionBar(
                       onAttachments: widget.onAttachments,
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: InputButton(
-                      inputState: _inputState,
-                      chatStyle: _chatStyle!,
-                      onSubmitPrompt: onSubmitPrompt,
-                      onCancelPrompt: onCancelPrompt,
-                      onStartRecording: onStartRecording,
-                      onStopRecording: onStopRecording,
-                    ),
+                Expanded(
+                  child: TextOrAudioInput(
+                    inputStyle: _inputStyle!,
+                    waveController: _waveController,
+                    onCancelEdit: widget.onCancelEdit,
+                    onRecordingStopped: onRecordingStopped,
+                    onSubmitPrompt: onSubmitPrompt,
+                    textController: _textController,
+                    focusNode: _focusNode,
+                    autofocus: widget.autofocus,
+                    inputState: _inputState,
+                    cancelButtonStyle: _chatStyle!.cancelButtonStyle!,
+                    voiceNoteRecorderStyle: _chatStyle!.voiceNoteRecorderStyle!,
+                    onAttachments: widget.onAttachments,
                   ),
-                ],
-              ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: InputButton(
+                    inputState: _inputState,
+                    chatStyle: _chatStyle!,
+                    onSubmitPrompt: onSubmitPrompt,
+                    onCancelPrompt: onCancelPrompt,
+                    onStartRecording: onStartRecording,
+                    onStopRecording: onStopRecording,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
-    );
-
-    if (UniversalPlatform.isAndroid || UniversalPlatform.isIOS) {
-      return attachmentView;
-    } else {
-      return DragAndDropHandler(
-        onAttachments: widget.onAttachments,
-      ).buildDropRegion(child: attachmentView);
-    }
-  }
+        ),
+      ],
+    ),
+  );
 
   InputState get _inputState {
     if (_waveController.isRecording) return InputState.isRecording;

@@ -161,46 +161,4 @@ class DragAndDropHandler {
   /// Test-only wrapper to expose file drop handling for unit tests.
   @visibleForTesting
   Future<Part?> handleDroppedFile(Uri data) => _handleDroppedFile(data);
-
-  /// Creates a [DragTarget] widget for platforms where [DropRegion] is not supported.
-  ///
-  /// This is a fallback for platforms that don't support the full drag and drop API.
-  /// It provides basic file dropping functionality with less visual feedback.
-  Widget buildLegacyDropTarget({
-    required Widget child,
-    required BuildContext context,
-  }) {
-    return DragTarget<XFile>(
-      onAcceptWithDetails: (file) async {
-        try {
-          final bytes = await file.data.readAsBytes();
-          final mimeType =
-              lookupMimeType(file.data.name) ?? 'application/octet-stream';
-          final part = DataPart(
-            bytes,
-            name: file.data.name,
-            mimeType: mimeType,
-          );
-          onAttachments([part]);
-        } catch (e) {
-          debugPrint('Error handling dropped file: $e');
-        }
-      },
-      onWillAcceptWithDetails: (_) => true,
-      builder: (context, candidateData, rejectedData) {
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            border: candidateData.isNotEmpty
-                ? Border.all(
-                    color: Theme.of(context).colorScheme.primary,
-                    width: 2,
-                  )
-                : null,
-          ),
-          child: child,
-        );
-      },
-    );
-  }
 }

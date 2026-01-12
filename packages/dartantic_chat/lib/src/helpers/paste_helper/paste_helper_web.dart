@@ -11,6 +11,7 @@ import 'package:dartantic_interface/dartantic_interface.dart';
 
 bool _isListenerRegistered = false;
 final _events = ClipboardEvents.instance;
+void Function(ClipboardReadEvent)? _registeredCallback;
 
 /// Handles paste events in a web environment, supporting both text, file, and image pasting.
 ///
@@ -41,7 +42,7 @@ Future<void> handlePasteWeb({
 
     if (_events == null) return;
 
-    _events!.registerPasteEventListener((event) async {
+    _registeredCallback = (event) async {
       final reader = await event.getClipboardReader();
       await pasteOperation(
         controller: controller,
@@ -49,7 +50,8 @@ Future<void> handlePasteWeb({
         insertText: insertText,
         reader: reader,
       );
-    });
+    };
+    _events!.registerPasteEventListener(_registeredCallback!);
   } catch (e, s) {
     debugPrint('Error in handlePasteWeb: $e');
     debugPrintStack(stackTrace: s);
@@ -173,6 +175,10 @@ Future<void> pasteOperation({
 /// (e.g., when a widget is disposed).
 void unregisterPasteListener() {
   if (_events != null) {
-    _events!.unregisterPasteEventListener((event) {});
+    if (_registeredCallback != null) {
+      _events!.unregisterPasteEventListener(_registeredCallback!);
+      _registeredCallback = null;
+    }
   }
+  _isListenerRegistered = false;
 }

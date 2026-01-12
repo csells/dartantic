@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:cross_file/cross_file.dart';
 import 'package:dartantic_chat/src/helpers/paste_helper/drag_and_drop_handler.dart';
 import 'package:dartantic_interface/dartantic_interface.dart';
+import 'package:flutter/material.dart' show Theme, Icons;
 import 'package:flutter/widgets.dart';
 import 'package:universal_platform/universal_platform.dart';
 
@@ -166,6 +167,7 @@ class _AgentChatViewState extends State<AgentChatView>
   AgentResponse? _pendingSttResponse;
 
   List<Part> attachments = [];
+  bool _isDragging = false;
 
   @override
   void initState() {
@@ -200,45 +202,70 @@ class _AgentChatViewState extends State<AgentChatView>
 
   Widget _buildContent() {
     final chatStyle = ChatViewStyle.resolve(widget.viewModel.style);
-    final child = Container(
-      color: chatStyle.backgroundColor,
-      child: Column(
-        children: [
-          Expanded(
-            child: Stack(
-              children: [
-                ChatHistoryView(
-                  // can only edit if we're not waiting on the agent or if
-                  // we're not already editing an agent response
-                  onEditMessage:
-                      _pendingPromptResponse == null &&
-                          _associatedResponse == null
-                      ? _onEditMessage
-                      : null,
-                  onSelectSuggestion: _onSelectSuggestion,
+    Widget content = Column(
+      children: [
+        Expanded(
+          child: Stack(
+            children: [
+              ChatHistoryView(
+                // can only edit if we're not waiting on the agent or if
+                // we're not already editing an agent response
+                onEditMessage:
+                    _pendingPromptResponse == null &&
+                        _associatedResponse == null
+                    ? _onEditMessage
+                    : null,
+                onSelectSuggestion: _onSelectSuggestion,
+              ),
+            ],
+          ),
+        ),
+        SafeArea(
+          child: ChatInput(
+            initialMessage: _initialMessage,
+            autofocus: widget.autofocus ?? widget.viewModel.suggestions.isEmpty,
+            onCancelEdit: _associatedResponse != null ? _onCancelEdit : null,
+            onSendMessage: _onSendMessage,
+            onCancelMessage: _pendingPromptResponse == null
+                ? null
+                : _onCancelMessage,
+            onTranslateStt: _onTranslateStt,
+            onCancelStt: _pendingSttResponse == null ? null : _onCancelStt,
+            attachments: attachments,
+            onRemoveAttachment: _onRemoveAttachment,
+            onAttachments: _onAttachments,
+          ),
+        ),
+      ],
+    );
+
+    final child = Stack(
+      children: [
+        Container(color: chatStyle.backgroundColor, child: content),
+        if (_isDragging && widget.viewModel.enableAttachments)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: _isDragging ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: Container(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surface.withAlpha((0.6 * 255).round()),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.max,
+                    children: [
+                      Icon(Icons.upload_file_rounded, size: 64),
+                      Text('Drop files here'),
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ),
           ),
-          SafeArea(
-            child: ChatInput(
-              initialMessage: _initialMessage,
-              autofocus:
-                  widget.autofocus ?? widget.viewModel.suggestions.isEmpty,
-              onCancelEdit: _associatedResponse != null ? _onCancelEdit : null,
-              onSendMessage: _onSendMessage,
-              onCancelMessage: _pendingPromptResponse == null
-                  ? null
-                  : _onCancelMessage,
-              onTranslateStt: _onTranslateStt,
-              onCancelStt: _pendingSttResponse == null ? null : _onCancelStt,
-              attachments: attachments,
-              onRemoveAttachment: _onRemoveAttachment,
-              onAttachments: _onAttachments,
-            ),
-          ),
-        ],
-      ),
+      ],
     );
 
     if (UniversalPlatform.isAndroid || UniversalPlatform.isIOS) {
@@ -246,6 +273,8 @@ class _AgentChatViewState extends State<AgentChatView>
     } else {
       return DragAndDropHandler(
         onAttachments: _onAttachments,
+        onDragEnter: () => setState(() => _isDragging = true),
+        onDragExit: () => setState(() => _isDragging = false),
       ).buildDropRegion(child: child);
     }
   }
@@ -398,6 +427,8 @@ class _AgentChatViewState extends State<AgentChatView>
   }
 
   void _onAttachments(Iterable<Part> newAttachments) => setState(() {
+    assert(widget.viewModel.enableAttachments);
+    _isDragging = false;
     attachments.addAll(newAttachments);
   });
 

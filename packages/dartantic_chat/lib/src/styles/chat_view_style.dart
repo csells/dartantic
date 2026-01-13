@@ -9,6 +9,7 @@ import 'action_button_type.dart';
 import 'chat_input_style.dart';
 import 'file_attachment_style.dart';
 import 'message_style.dart';
+import 'file_drop_overlay_style.dart';
 import 'suggestion_style.dart';
 import 'toolkit_colors.dart';
 import 'user_message_style.dart';
@@ -43,6 +44,7 @@ class ChatViewStyle {
     this.suggestionStyle,
     this.voiceNoteRecorderStyle,
     this.urlButtonStyle,
+    this.fileDropOverlayStyle,
     this.padding,
     this.margin,
     this.messageSpacing,
@@ -150,6 +152,10 @@ class ChatViewStyle {
         style?.urlButtonStyle,
         defaultStyle: ActionButtonStyle.defaultStyle(ActionButtonType.url),
       ),
+      fileDropOverlayStyle: FileDropOverlayStyle.resolve(
+        style?.fileDropOverlayStyle,
+        defaultStyle: defaultStyle.fileDropOverlayStyle,
+      ),
       padding: style?.padding ?? defaultStyle.padding,
       margin: style?.margin ?? defaultStyle.margin,
       messageSpacing: style?.messageSpacing ?? defaultStyle.messageSpacing,
@@ -193,6 +199,7 @@ class ChatViewStyle {
     suggestionStyle: SuggestionStyle.defaultStyle(),
     voiceNoteRecorderStyle: VoiceNoteRecorderStyle.defaultStyle(),
     urlButtonStyle: ActionButtonStyle.defaultStyle(ActionButtonType.url),
+    fileDropOverlayStyle: FileDropOverlayStyle.defaultStyle(),
   );
 
   /// Creates a copy of this style with the given fields replaced by the new
@@ -221,6 +228,7 @@ class ChatViewStyle {
     SuggestionStyle? suggestionStyle,
     VoiceNoteRecorderStyle? voiceNoteRecorderStyle,
     ActionButtonStyle? urlButtonStyle,
+    FileDropOverlayStyle? fileDropOverlayStyle,
     EdgeInsetsGeometry? padding,
     EdgeInsetsGeometry? margin,
     double? messageSpacing,
@@ -254,6 +262,7 @@ class ChatViewStyle {
       voiceNoteRecorderStyle:
           voiceNoteRecorderStyle ?? this.voiceNoteRecorderStyle,
       urlButtonStyle: urlButtonStyle ?? this.urlButtonStyle,
+      fileDropOverlayStyle: fileDropOverlayStyle ?? this.fileDropOverlayStyle,
       padding: padding ?? this.padding,
       margin: margin ?? this.margin,
       messageSpacing: messageSpacing ?? this.messageSpacing,
@@ -331,6 +340,9 @@ class ChatViewStyle {
 
   /// Style for the URL button.
   final ActionButtonStyle? urlButtonStyle;
+
+  /// The style for the file drop overlay.
+  final FileDropOverlayStyle? fileDropOverlayStyle;
 
   /// Default padding around the chat view.
   final EdgeInsetsGeometry? padding;

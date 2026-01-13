@@ -6,6 +6,7 @@ export 'action_button_style.dart';
 export 'action_button_type.dart';
 export 'chat_input_style.dart';
 export 'file_attachment_style.dart';
+export 'file_drop_overlay_style.dart';
 export 'chat_view_style.dart';
 export 'message_style.dart';
 export 'suggestion_style.dart';

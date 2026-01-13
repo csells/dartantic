@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:async';
+
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -71,18 +73,24 @@ class DragAndDropHandler {
       },
       onPerformDrop: (event) async {
         final items = event.session.items;
+        final parts = <Part>[];
+        final futures = <Future<void>>[];
 
         for (final item in items) {
           if (item.dataReader != null) {
             if (!UniversalPlatform.isWeb) {
+              final completer = Completer<void>();
               item.dataReader!.getValue(Formats.fileUri, (val) async {
                 if (val != null) {
                   final file = await _handleDroppedFile(val);
                   if (file != null) {
-                    onAttachments([file]);
+                    // onAttachments([file]);
+                    parts.add(file);
                   }
                 }
+                completer.complete();
               });
+              futures.add(completer.future);
             } else {
               bool handled = false;
               for (final format in _formats) {
@@ -122,6 +130,8 @@ class DragAndDropHandler {
             }
           }
         }
+        await Future.wait(futures);
+        onAttachments(parts);
       },
       onDropEnter: (_) => onDragEnter?.call(),
       onDropEnded: (_) => onDragExit?.call(),

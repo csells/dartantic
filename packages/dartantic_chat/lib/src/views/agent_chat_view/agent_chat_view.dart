@@ -7,7 +7,7 @@ import 'dart:async';
 import 'package:cross_file/cross_file.dart';
 import 'package:dartantic_chat/src/helpers/paste_helper/drag_and_drop_handler.dart';
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:flutter/material.dart' show Theme, Icons;
+import 'package:flutter/material.dart' show Icons, Material, Theme;
 import 'package:flutter/widgets.dart';
 import 'package:universal_platform/universal_platform.dart';
 
@@ -244,29 +244,7 @@ class _AgentChatViewState extends State<AgentChatView>
     final child = Stack(
       children: [
         Container(color: chatStyle.backgroundColor, child: content),
-        if (_isDragging && widget.viewModel.enableAttachments)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: AnimatedOpacity(
-                opacity: _isDragging ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 200),
-                child: Container(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.surface.withAlpha((0.6 * 255).round()),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.max,
-                    children: [
-                      Icon(Icons.upload_file_rounded, size: 64),
-                      Text('Drop files here'),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+        if (_isDragging && widget.viewModel.enableAttachments) overlayWidget(),
       ],
     );
 
@@ -279,6 +257,47 @@ class _AgentChatViewState extends State<AgentChatView>
         onDragExit: () => setState(() => _isDragging = false),
       ).buildDropRegion(child: child);
     }
+  }
+
+  Widget overlayWidget() {
+    final style = ChatViewStyle.defaultStyle().fileDropOverlayStyle!;
+
+    return Positioned.fill(
+      child: Material(
+        color:
+            style.backgroundColor ??
+            Theme.of(
+              context,
+            ).colorScheme.surface.withAlpha((0.6 * 255).round()),
+        child: Center(
+          child: Container(
+            width: 200,
+            height: 200,
+            decoration: BoxDecoration(
+              color:
+                  style.backgroundColor?.withAlpha((0.6 * 255).round()) ??
+                  Theme.of(
+                    context,
+                  ).colorScheme.surface.withAlpha((0.6 * 255).round()),
+              borderRadius: BorderRadius.circular(16.0),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                Icon(
+                  Icons.upload_file_rounded,
+                  size: style.iconSize,
+                  color: style.iconColor,
+                ),
+                Text('Drop files here', style: style.textStyle),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _onSendMessage(String prompt, Iterable<Part> attachments) async {

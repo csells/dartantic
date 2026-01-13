@@ -13,6 +13,7 @@ class FileDropOverlayStyle {
     this.iconColor,
     this.textStyle,
     this.backgroundColor,
+    this.text,
   });
 
   /// The size of the upload icon.
@@ -27,18 +28,23 @@ class FileDropOverlayStyle {
   /// The background color of the overlay.
   final Color? backgroundColor;
 
+  /// The text to display for the drop hint.
+  final String? text;
+
   /// Creates a copy of this style with the given fields replaced by the new values.
   FileDropOverlayStyle copyWith({
     double? iconSize,
     Color? iconColor,
     TextStyle? textStyle,
     Color? backgroundColor,
+    String? text,
   }) {
     return FileDropOverlayStyle(
       iconSize: iconSize ?? this.iconSize,
       iconColor: iconColor ?? this.iconColor,
       textStyle: textStyle ?? this.textStyle,
       backgroundColor: backgroundColor ?? this.backgroundColor,
+      text: text ?? this.text,
     );
   }
 
@@ -55,6 +61,7 @@ class FileDropOverlayStyle {
       iconColor: style.iconColor ?? defaultStyle.iconColor,
       textStyle: style.textStyle ?? defaultStyle.textStyle,
       backgroundColor: style.backgroundColor ?? defaultStyle.backgroundColor,
+      text: style.text ?? defaultStyle.text,
     );
   }
 
@@ -66,6 +73,7 @@ class FileDropOverlayStyle {
     return const FileDropOverlayStyle(
       iconSize: 64.0,
       textStyle: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
+      text: 'Drop files here',
     );
   }
 }

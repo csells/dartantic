@@ -287,7 +287,7 @@ class _AgentChatViewState extends State<AgentChatView>
                   size: style.iconSize,
                   color: style.iconColor,
                 ),
-                Text('Drop files here', style: style.textStyle),
+                Text(style.text!, style: style.textStyle),
               ],
             ),
           ),

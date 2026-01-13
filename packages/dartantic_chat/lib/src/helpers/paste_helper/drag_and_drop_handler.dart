@@ -130,7 +130,9 @@ class DragAndDropHandler {
           }
         }
         await Future.wait(futures);
-        onAttachments(parts);
+        if (parts.isNotEmpty) {
+          onAttachments(parts);
+        }
       },
       onDropEnter: (_) => onDragEnter?.call(),
       onDropLeave: (_) => onDragExit?.call(),
@@ -193,7 +195,11 @@ class DragAndDropHandler {
         originalName?.contains('.') == true) {
       // Try to get extension from original filename
       final extension = originalName!.substring(originalName.lastIndexOf('.'));
-      fileName = '${fileName.split('.').first}$extension';
+      final lastDotIndex = originalName.lastIndexOf('.');
+      final baseName = lastDotIndex > 0
+          ? fileName.substring(0, lastDotIndex)
+          : fileName;
+      fileName = '$baseName$extension';
     } else {
       final extension = getExtensionFromMime(mimeType);
       if (extension.isNotEmpty && !fileName.endsWith('.$extension')) {

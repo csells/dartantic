@@ -244,7 +244,8 @@ class _AgentChatViewState extends State<AgentChatView>
     final child = Stack(
       children: [
         Container(color: chatStyle.backgroundColor, child: content),
-        if (_isDragging && widget.viewModel.enableAttachments) overlayWidget(),
+        if (_isDragging && widget.viewModel.enableAttachments)
+          overlayWidget(chatStyle),
       ],
     );
 
@@ -259,8 +260,8 @@ class _AgentChatViewState extends State<AgentChatView>
     }
   }
 
-  Widget overlayWidget() {
-    final style = ChatViewStyle.defaultStyle().fileDropOverlayStyle!;
+  Widget overlayWidget(ChatViewStyle chatStyle) {
+    final style = chatStyle.fileDropOverlayStyle!;
 
     return Positioned.fill(
       child: Material(

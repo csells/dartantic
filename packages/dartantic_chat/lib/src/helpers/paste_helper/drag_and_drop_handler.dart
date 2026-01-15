@@ -151,24 +151,12 @@ class DragAndDropHandler {
       final path = data.toFilePath();
       final file = XFile(path);
       final bytes = await file.readAsBytes();
-
-      String? mimeType = file.mimeType;
-      if (mimeType == null || mimeType == 'application/octet-stream') {
-        mimeType = lookupMimeType(path, headerBytes: bytes);
-
-        if (mimeType == null || mimeType == 'application/octet-stream') {
-          final extension = path.split('.').last.toLowerCase();
-          if (extension == 'md' || extension == 'markdown') {
-            mimeType = 'text/markdown';
-          }
-        }
-      }
-
-      return DataPart(
-        bytes,
-        name: file.name,
-        mimeType: mimeType ?? 'application/octet-stream',
+      final (mimeType, fileName) = _determineMimeAndFilename(
+        originalName: file.name,
+        bytes: bytes,
       );
+
+      return DataPart(bytes, name: fileName, mimeType: mimeType);
     } catch (e) {
       debugPrint('Error handling dropped file: $e');
       return null;

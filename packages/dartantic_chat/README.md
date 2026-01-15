@@ -14,6 +14,7 @@ Mistral, and Ollama.
 - **Streaming responses** - Real-time AI response display
 - **Voice input** - Speech-to-text prompt entry
 - **Multimedia attachments** - Images, files, and URLs
+- **Drag and drop** - Drop files directly into the chat (desktop/web)
 - **Custom styling** - Match your app's design
 - **Chat serialization** - Save and restore conversations
 - **Custom response widgets** - Specialized UI for responses

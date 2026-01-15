@@ -137,6 +137,30 @@ See the [styles
 example](https://github.com/csells/dartantic/tree/main/packages/dartantic_chat/blob/main/example/lib/styles/styles.dart)
 for complete options.
 
+## Drag and Drop
+
+On desktop and web platforms, users can drag and drop files directly into the
+chat to attach them. The drop zone overlay can be customized:
+
+```dart
+AgentChatView(
+  provider: DartanticProvider(agent: Agent('gemini')),
+  style: ChatViewStyle(
+    fileDropOverlayStyle: FileDropOverlayStyle(
+      iconSize: 64.0,
+      iconColor: Colors.blue,
+      backgroundColor: Colors.blue.withOpacity(0.1),
+      text: 'Drop files here',
+      textStyle: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
+    ),
+  ),
+)
+```
+
+Drag and drop is automatically enabled when `enableAttachments` is true (the
+default). It's not available on mobile platforms (Android/iOS) where users
+should use the attachment buttons instead.
+
 ## Rerouting Prompts
 
 Debug, log, or manipulate the connection:

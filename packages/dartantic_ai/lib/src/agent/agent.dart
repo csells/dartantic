@@ -197,7 +197,7 @@ class Agent {
   /// This method internally uses [sendStream] and accumulates all results.
   Future<ChatResult<String>> send(
     String prompt, {
-    List<ChatMessage> history = const [],
+    Iterable<ChatMessage> history = const [],
     List<Part> attachments = const [],
     JsonSchema? outputSchema,
   }) async {
@@ -234,7 +234,7 @@ class Agent {
     String prompt, {
     required JsonSchema outputSchema,
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
-    List<ChatMessage> history = const [],
+    Iterable<ChatMessage> history = const [],
     List<Part> attachments = const [],
   }) async {
     final response = await send(
@@ -271,7 +271,7 @@ class Agent {
   /// - [ChatResult.messages] contains new messages since the last result
   Stream<ChatResult<String>> sendStream(
     String prompt, {
-    List<ChatMessage> history = const [],
+    Iterable<ChatMessage> history = const [],
     List<Part> attachments = const [],
     JsonSchema? outputSchema,
   }) async* {
@@ -302,10 +302,10 @@ class Agent {
       _assertNoMultipleTextParts([newUserMessage]);
 
       // Initialize state BEFORE yielding to prevent race conditions
-      final conversationHistory = List<ChatMessage>.from([
+      final conversationHistory = [
         ...history,
         newUserMessage,
-      ]);
+      ];
 
       // Now yield the user message
       yield ChatResult<String>(

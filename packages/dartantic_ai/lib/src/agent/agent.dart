@@ -397,7 +397,7 @@ class Agent {
   Future<MediaGenerationResult> generateMedia(
     String prompt, {
     required List<String> mimeTypes,
-    List<ChatMessage> history = const [],
+    Iterable<ChatMessage> history = const [],
     List<Part> attachments = const [],
     MediaGenerationModelOptions? options,
     JsonSchema? outputSchema,
@@ -440,7 +440,7 @@ class Agent {
   Stream<MediaGenerationResult> generateMediaStream(
     String prompt, {
     required List<String> mimeTypes,
-    List<ChatMessage> history = const [],
+    Iterable<ChatMessage> history = const [],
     List<Part> attachments = const [],
     MediaGenerationModelOptions? options,
     JsonSchema? outputSchema,
@@ -466,10 +466,13 @@ class Agent {
 
     yield MediaGenerationResult(messages: [newUserMessage], id: '');
 
+    // Convert history to List for the underlying model interface
+    final historyList = history.toList();
+
     await for (final chunk in model.generateMediaStream(
       prompt,
       mimeTypes: mimeTypes,
-      history: history,
+      history: historyList,
       attachments: attachments,
       options: options ?? mediaModelOptions,
       outputSchema: outputSchema,
@@ -497,14 +500,14 @@ class Agent {
       )
       .embedDocuments(texts);
 
-  /// Asserts that no message in the list contains more than one TextPart.
+  /// Asserts that no message in the iterable contains more than one TextPart.
   ///
   /// This helps catch streaming consolidation issues where text content gets
   /// split into multiple TextPart objects instead of being properly accumulated
   /// into a single TextPart.
   ///
   /// Throws an AssertionError in debug mode if any message violates this rule.
-  void _assertNoMultipleTextParts(List<ChatMessage> messages) {
+  void _assertNoMultipleTextParts(Iterable<ChatMessage> messages) {
     assert(() {
       for (final message in messages) {
         final textParts = message.parts.whereType<TextPart>().toList();

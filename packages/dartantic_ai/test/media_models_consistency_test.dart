@@ -1,6 +1,4 @@
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:dartantic_ai/src/media_gen_models/anthropic/anthropic_files_client.dart';
-import 'package:dartantic_ai/src/media_gen_models/anthropic/anthropic_tool_deliverable_tracker.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
@@ -13,16 +11,7 @@ class _NeverHttpClient extends http.BaseClient {
 
 void main() {
   group('Media model metadata consistency', () {
-    test('Anthropic media mapping includes standard metadata', () async {
-      final tracker = AnthropicToolDeliverableTracker(
-        AnthropicFilesClient(
-          apiKey: 'fake',
-          betaFeatures: const [],
-          client: _NeverHttpClient(),
-        ),
-        targetMimeTypes: {'application/pdf'},
-      );
-
+    test('Anthropic media mapping includes standard metadata', () {
       final chatModel = AnthropicChatModel(
         name: 'anthropic',
         apiKey: 'fake',
@@ -33,11 +22,9 @@ void main() {
         name: 'anthropic',
         defaultOptions: const AnthropicMediaGenerationModelOptions(),
         chatModel: chatModel,
-        apiKey: 'fake',
-        httpClient: _NeverHttpClient(),
       );
 
-      final result = await model.mapChunkForTest(
+      final result = model.mapChunkForTest(
         ChatResult<ChatMessage>(
           output: ChatMessage.model('output'),
           messages: const [
@@ -48,7 +35,6 @@ void main() {
           ],
           finishReason: FinishReason.unspecified,
         ),
-        tracker,
         requestedMimeTypes: const ['application/pdf'],
         chunkIndex: 2,
       );

@@ -1,18 +1,18 @@
-import 'dart:async';
-
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:http/http.dart' as http;
 import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 
 import '../../chat_models/anthropic_chat/anthropic_chat_model.dart';
 import '../../chat_models/anthropic_chat/anthropic_chat_options.dart';
-import 'anthropic_files_client.dart';
 import 'anthropic_media_gen_model_options.dart';
-import 'anthropic_tool_deliverable_tracker.dart';
 
 /// Media generation model backed by the Anthropic code execution tool.
+///
+/// This model delegates to [AnthropicChatModel] for streaming and file
+/// downloading. The chat model's built-in auto-download functionality handles
+/// retrieving files from the Anthropic Files API and adding them as [DataPart]s
+/// to messages.
 class AnthropicMediaGenerationModel
     extends MediaGenerationModel<AnthropicMediaGenerationModelOptions> {
   /// Creates a new Anthropic media model instance.
@@ -20,24 +20,11 @@ class AnthropicMediaGenerationModel
     required super.name,
     required super.defaultOptions,
     required AnthropicChatModel chatModel,
-    required String apiKey,
-    Uri? baseUrl,
-    http.Client? httpClient,
-    Map<String, String>? headers,
-    List<String> betaFeatures = const [],
-  }) : _chatModel = chatModel,
-       _filesClient = AnthropicFilesClient(
-         apiKey: apiKey,
-         betaFeatures: betaFeatures,
-         baseUrl: baseUrl,
-         client: httpClient,
-         headers: headers,
-       );
+  }) : _chatModel = chatModel;
 
   static final Logger _logger = Logger('dartantic.media.models.anthropic');
 
   final AnthropicChatModel _chatModel;
-  final AnthropicFilesClient _filesClient;
 
   @override
   Stream<MediaGenerationResult> generateMediaStream(
@@ -69,10 +56,6 @@ class AnthropicMediaGenerationModel
 
     final resolved = _resolve(defaultOptions, options);
     final chatOptions = _toChatOptions(resolved);
-    final tracker = AnthropicToolDeliverableTracker(
-      _filesClient,
-      targetMimeTypes: mimeTypes.toSet(),
-    );
     final augmentedPrompt = _augmentPrompt(prompt, mimeTypes);
 
     final messages = <ChatMessage>[
@@ -97,52 +80,51 @@ file names in your final response.
     )) {
       chunkIndex++;
       _logger.fine('Anthropic media chunk $chunkIndex received');
-      final mapped = await _mapChunk(chunk, tracker, mimeTypes, chunkIndex);
-      yield mapped;
+      yield _mapChunk(chunk, mimeTypes, chunkIndex);
     }
   }
 
   @override
   void dispose() {
     _chatModel.dispose();
-    _filesClient.close();
   }
 
   /// Test-only hook to expose chunk mapping without network calls.
   @visibleForTesting
-  Future<MediaGenerationResult> mapChunkForTest(
-    ChatResult<ChatMessage> result,
-    AnthropicToolDeliverableTracker tracker, {
+  MediaGenerationResult mapChunkForTest(
+    ChatResult<ChatMessage> result, {
     required List<String> requestedMimeTypes,
     required int chunkIndex,
-  }) => _mapChunk(result, tracker, requestedMimeTypes, chunkIndex);
+  }) => _mapChunk(result, requestedMimeTypes, chunkIndex);
 
-  Future<MediaGenerationResult> _mapChunk(
+  MediaGenerationResult _mapChunk(
     ChatResult<ChatMessage> result,
-    AnthropicToolDeliverableTracker tracker,
     List<String> requestedMimeTypes,
     int chunkIndex,
-  ) async {
+  ) {
     _logger.fine('Processing Anthropic chunk for result id ${result.id}');
     if (result.metadata.isNotEmpty) {
       _logger.finer('Anthropic chunk metadata: ${result.metadata}');
     }
+
     final assets = <Part>[];
     final links = <LinkPart>[];
     final metadata = Map<String, dynamic>.from(result.metadata);
 
-    assets.addAll(tracker.collectMessageAssets(result.messages));
-    links.addAll(tracker.collectMessageLinks(result.messages));
-
-    final metadataDeliverables = await tracker.handleMetadata(result.metadata);
-    assets.addAll(metadataDeliverables.assets);
-    links.addAll(metadataDeliverables.links);
-    final isComplete = result.finishReason != FinishReason.unspecified;
-
-    if (isComplete && assets.isEmpty) {
-      final remoteAssets = await tracker.collectRecentFiles();
-      assets.addAll(remoteAssets);
+    // Extract DataParts and LinkParts from chat messages.
+    // The chat model's auto-download handles retrieving files from the
+    // Anthropic Files API and adding them as DataParts to messages.
+    for (final message in result.messages) {
+      for (final part in message.parts) {
+        if (part is DataPart) {
+          assets.add(part);
+        } else if (part is LinkPart) {
+          links.add(part);
+        }
+      }
     }
+
+    final isComplete = result.finishReason != FinishReason.unspecified;
 
     if (isComplete && assets.isEmpty) {
       _logger.warning(
@@ -155,10 +137,6 @@ file names in your final response.
         'Anthropic media generation completed with ${assets.length} assets '
         'and ${links.length} links',
       );
-      final toolMetadata = tracker.buildToolMetadata();
-      for (final entry in toolMetadata.entries) {
-        metadata[entry.key] = entry.value;
-      }
     }
 
     metadata['generation_mode'] = 'code_execution';

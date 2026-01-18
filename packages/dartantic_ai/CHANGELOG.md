@@ -1,3 +1,13 @@
+## 2.2.3
+
+- moved Agent method input params to take Iterable instead of List per
+  [@d-markey's PR](https://github.com/csells/dartantic/pull/90). Thank you,
+  David!
+- Fixed duplicate file downloads in Anthropic media generation. The media gen
+  model now delegates file downloading to the chat model's built-in
+  auto-download functionality, matching the pattern used by Google and OpenAI
+  providers.
+
 ## 2.2.2
 
 - Updated mcp_dart dependency to 1.2.1 to fix a null issue.

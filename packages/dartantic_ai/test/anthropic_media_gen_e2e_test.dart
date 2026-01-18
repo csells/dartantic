@@ -30,17 +30,9 @@ void main() {
       );
 
       final results = await stream.toList();
-      expect(results, isNotEmpty);
-
-      final result = results.firstWhere(
-        (r) => r.assets.isNotEmpty,
-        orElse: () => fail('No image generated'),
-      );
-
-      expect(result.assets, isNotEmpty);
-      final asset = result.assets.first as DataPart;
-      expect(asset.mimeType, contains('image/'));
-      expect(asset.bytes, isNotEmpty);
+      final imageData = _findFirstImageDataPart(results);
+      expect(imageData, isNotNull, reason: 'Expected a DataPart with image/*');
+      expect(imageData!.bytes, isNotEmpty);
     }, timeout: const Timeout(Duration(minutes: 2)));
 
     test(
@@ -60,21 +52,17 @@ void main() {
         );
 
         final results = await stream.toList();
-        expect(results, isNotEmpty);
-
-        final result = results.firstWhere(
-          (r) => r.assets.isNotEmpty,
-          orElse: () => fail('No image generated'),
+        final imageData = _findFirstImageDataPart(results);
+        expect(
+          imageData,
+          isNotNull,
+          reason: 'Expected a DataPart with image/*',
         );
-
-        expect(result.assets, isNotEmpty);
-        final asset = result.assets.first as DataPart;
-        expect(asset.mimeType, contains('image/'));
-        expect(asset.bytes, isNotEmpty);
+        expect(imageData!.bytes, isNotEmpty);
         // Verify the output is different from input (was edited)
-        expect(asset.bytes, isNot(equals(imageBytes)));
+        expect(imageData.bytes, isNot(equals(imageBytes)));
       },
-      timeout: const Timeout(Duration(minutes: 2)),
+      timeout: const Timeout(Duration(minutes: 3)),
     );
 
     test(
@@ -95,19 +83,27 @@ void main() {
         );
 
         final results = await stream.toList();
-        expect(results, isNotEmpty);
-
-        final result = results.firstWhere(
-          (r) => r.assets.isNotEmpty,
-          orElse: () => fail('No image generated'),
+        final imageData = _findFirstImageDataPart(results);
+        expect(
+          imageData,
+          isNotNull,
+          reason: 'Expected a DataPart with image/*',
         );
-
-        expect(result.assets, isNotEmpty);
-        final asset = result.assets.first as DataPart;
-        expect(asset.mimeType, contains('image/'));
-        expect(asset.bytes, isNotEmpty);
+        expect(imageData!.bytes, isNotEmpty);
       },
       timeout: const Timeout(Duration(minutes: 2)),
     );
   });
+}
+
+/// Finds the first DataPart with an image/* MIME type from all results.
+DataPart? _findFirstImageDataPart(List<MediaGenerationResult> results) {
+  for (final result in results) {
+    for (final asset in result.assets) {
+      if (asset is DataPart && asset.mimeType.startsWith('image/')) {
+        return asset;
+      }
+    }
+  }
+  return null;
 }

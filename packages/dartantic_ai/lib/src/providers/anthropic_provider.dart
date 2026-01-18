@@ -251,10 +251,6 @@ class AnthropicProvider
       name: modelName,
       defaultOptions: resolvedOptions,
       chatModel: chatModel,
-      apiKey: apiKey!,
-      baseUrl: baseUrl,
-      headers: headers,
-      betaFeatures: betaFeatures,
     );
   }
 }

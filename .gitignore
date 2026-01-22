@@ -10,6 +10,9 @@ pubspec.lock
 packages/dartantic_ai/example/.env
 packages/dartantic_chat/example/.env
 
+# Claude Code local settings
+.claude/
+
 # IDE files
 .idea/
 *.iml

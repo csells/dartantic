@@ -1,4 +1,5 @@
 # Architecture Best Practices
+
 - **TDD (Test-Driven Development)** - write the tests first; the implementation
   code isn't done until the tests pass.
 - **DRY (Don’t Repeat Yourself)** – eliminate duplicated logic by extracting
@@ -33,3 +34,8 @@
 - **Consider First Principles** to assess your current architecture against the
   one you'd use if you started over from scratch.
 - **Eliminate Race Condtions** that might cause dropped or corrupted data
+- **Write for Maintainability** so that the code is clear and readable and easy
+  to maintain by future developers.
+- **Arrange Project Idiomatically** for the language and framework being used,
+  including recommended lints, static analysis tools, folder structure and
+  gitignore entries.

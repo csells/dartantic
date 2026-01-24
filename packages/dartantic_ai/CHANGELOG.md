@@ -8,9 +8,12 @@ with other GenAI tooling in the Dart ecosystem.
 
 Types now re-exported from `genai_primitives`:
 - `ChatMessage`, `ChatMessageRole`
-- `Part`, `TextPart`, `DataPart`, `LinkPart`, `ThinkingPart`
+- `Part` (alias for `StandardPart`), `TextPart`, `DataPart`, `LinkPart`, `ThinkingPart`
 - `ToolPart`, `ToolPartKind`
 - `ToolDefinition`
+
+Note: `Part` is a typedef alias for `StandardPart` from genai_primitives 0.2.0.
+See dartantic_interface CHANGELOG for details on custom Part implementations.
 
 ### Breaking Change: Migrated to json_schema_builder for Schemas
 

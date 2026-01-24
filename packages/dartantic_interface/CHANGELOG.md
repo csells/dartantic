@@ -8,9 +8,24 @@ interoperability with other GenAI tooling in the Dart ecosystem.
 
 Types re-exported from `genai_primitives`:
 - `ChatMessage`, `ChatMessageRole`
-- `Part`, `TextPart`, `DataPart`, `LinkPart`, `ThinkingPart`
+- `StandardPart`, `TextPart`, `DataPart`, `LinkPart`, `ThinkingPart`
 - `ToolPart`, `ToolPartKind`
 - `ToolDefinition`
+
+### Part Type Alias (genai_primitives 0.2.0 compatibility)
+
+In genai_primitives 0.2.0, the Part type hierarchy was reorganized:
+- `Part` became the extendable base class
+- `StandardPart` is the sealed class containing built-in part types
+
+Dartantic provides `Part` as a typedef alias for `StandardPart`, so existing
+code continues to work unchanged. If you need to create a custom Part that
+extends the base class, import genai_primitives directly:
+
+```dart
+import 'package:genai_primitives/genai_primitives.dart' as gaip;
+class MyCustomPart extends gaip.Part { ... }
+```
 
 ### Breaking Change: Migrated to json_schema_builder for Schemas
 

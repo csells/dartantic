@@ -12,11 +12,26 @@ export 'package:genai_primitives/genai_primitives.dart'
         ChatMessageRole,
         DataPart,
         LinkPart,
-        Part,
+        StandardPart,
         TextPart,
         ThinkingPart,
         ToolPart,
         ToolPartKind;
+
+/// Alias for [StandardPart] to maintain backward compatibility.
+///
+/// In genai_primitives 0.2.0, the type hierarchy was reorganized:
+/// - `Part` is now the extendable base class
+/// - `StandardPart` is the sealed class containing built-in part types
+///
+/// Dartantic APIs use `Part` as an alias for `StandardPart` for convenience.
+/// If you need to create a custom Part that extends the base class, import
+/// genai_primitives directly:
+/// ```dart
+/// import 'package:genai_primitives/genai_primitives.dart' as gaip;
+/// class MyCustomPart extends gaip.Part { ... }
+/// ```
+typedef Part = StandardPart;
 
 /// Helper utilities for Part-related operations.
 ///

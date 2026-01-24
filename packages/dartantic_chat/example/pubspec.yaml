@@ -22,7 +22,7 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   flutter_markdown_plus: ^1.0.7
-  google_fonts: ^7.0.0
+  google_fonts: ^8.0.0
   future_builder_ex: ^5.0.0
   split_view: ^3.2.1
   dartantic_ai: ^3.0.0

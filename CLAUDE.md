@@ -115,7 +115,8 @@ Dartantic uses a six-layer architecture with clear separation of concerns:
    - Clean contracts independent of implementation
    - Provider interface with capability declarations
    - ChatModel and EmbeddingsModel interfaces
-   - Message and part types
+   - Core types re-exported from `genai_primitives` (ChatMessage, Part types, ToolDefinition)
+   - Schema construction via `json_schema_builder` (use `S.*` builder methods)
 
 4. **Provider Implementation Layer** (`lib/src/providers/`, `lib/src/chat_models/`, `lib/src/embeddings_models/`)
    - Provider-specific implementations isolated
@@ -264,6 +265,21 @@ Each provider implementation includes:
 - Response model classes (if needed)
 
 See `wiki/Provider-Implementation-Guide.md` for detailed guide.
+
+### Thinking (Extended Reasoning)
+
+Thinking support is unified across providers via `ThinkingPart`. Enable with `enableThinking: true` on the Agent.
+
+**How it works:**
+- Thinking text is stored in `ThinkingPart` within the model message
+- During streaming, `ThinkingPart`s are emitted for real-time display, then consolidated into a single part
+- Provider-specific signatures for multi-turn tool calling are stored in message metadata:
+  - **Anthropic**: `_anthropic_thinking_signature` - signature string for ThinkingBlock continuity
+  - **Google**: `_google_thought_signatures` - base64-encoded signatures keyed by tool call ID
+
+These signatures are automatically preserved in conversation history and sent back to the provider when tool results are returned. This allows the model to maintain reasoning context across tool call boundaries.
+
+See `wiki/Thinking.md` for full architecture documentation.
 
 ## Important Implementation Notes
 

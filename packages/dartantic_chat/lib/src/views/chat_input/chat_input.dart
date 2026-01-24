@@ -175,15 +175,19 @@ class _ChatInputState extends State<ChatInput> {
       // 3. Selecting a suggestion from the chat interface
       _textController.text = widget.initialMessage!.text;
       // Extract non-text parts as attachments
-      widget.onReplaceAttachments(
-        widget.initialMessage!.parts.whereType<DataPart>().toList(),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onReplaceAttachments(
+          widget.initialMessage!.parts.whereType<DataPart>().toList(),
+        );
+      });
     } else if (oldWidget.initialMessage != null) {
       // Clear both text and attachments when initialMessage becomes null
       // This happens when the user cancels an edit operation, ensuring
       // the input field returns to a clean state
       _textController.clear();
-      widget.onClearAttachments();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onClearAttachments();
+      });
     }
   }
 

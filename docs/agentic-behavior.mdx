@@ -24,8 +24,8 @@ final tools = [
   Tool(
     name: 'find_events',
     description: 'Find events for a date',
-    inputSchema: JsonSchema.object({
-      'date': JsonSchema.string(),
+    inputSchema: S.object(properties: {
+      'date': S.string(),
     }),
     onCall: (args) async => {
       'events': ['Team Meeting at 11am', 'Lunch at 12pm'],

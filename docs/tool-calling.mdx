@@ -21,7 +21,7 @@ type. The `onCall` function is called when the tool is invoked.
 final timeTool = Tool(
   name: 'get_time',
   description: 'Get current time in a location',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'location': {'type': 'string'},
@@ -86,7 +86,7 @@ error message so it can handle it gracefully (ideally).
 final tool = Tool(
   name: 'divide',
   description: 'Divide numbers',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'a': {'type': 'number'},
@@ -126,7 +126,7 @@ class WeatherInput {
 final weatherTool = Tool(
   name: 'get_weather',
   description: 'Get weather for a city',
-  inputSchema: JsonSchema.create(WeatherInput.schemaMap),
+  inputSchema: Schema.fromMap(WeatherInput.schemaMap),
   onCall: (args) async {
     final input = WeatherInput.fromJson(args);
     return {'temp': 72, 'city': input.city};

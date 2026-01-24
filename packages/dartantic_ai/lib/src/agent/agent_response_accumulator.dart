@@ -2,16 +2,14 @@ import 'package:dartantic_interface/dartantic_interface.dart';
 
 /// Accumulates streaming chat results into a final consolidated result.
 ///
-/// Handles accumulation of output text, messages, metadata (including
-/// thinking), and usage statistics from streaming chunks into a final
-/// ChatResult.
+/// Handles accumulation of output text, messages, metadata, and usage
+/// statistics from streaming chunks into a final ChatResult.
 class AgentResponseAccumulator {
   /// Creates a new response accumulator.
   AgentResponseAccumulator();
 
   final List<ChatMessage> _allNewMessages = <ChatMessage>[];
   final StringBuffer _finalOutputBuffer = StringBuffer();
-  final StringBuffer _thinkingBuffer = StringBuffer();
   final Map<String, dynamic> _accumulatedMetadata = <String, dynamic>{};
 
   ChatResult<String> _finalResult = ChatResult<String>(
@@ -28,16 +26,20 @@ class AgentResponseAccumulator {
       _finalOutputBuffer.write(result.output);
     }
 
-    // Accumulate messages
-    _allNewMessages.addAll(result.messages);
+    // Accumulate messages, filtering out streaming ThinkingPart-only messages.
+    // These are emitted during streaming for real-time display but the thinking
+    // is already included in the consolidated model message.
+    for (final message in result.messages) {
+      final hasTextOrTools = message.parts.any(
+        (p) => p is TextPart || p is ToolPart,
+      );
+      if (hasTextOrTools || message.role == ChatMessageRole.user) {
+        _allNewMessages.add(message);
+      }
+    }
 
     // Store the latest result for final metadata/usage/finishReason
     _finalResult = result;
-
-    // Accumulate thinking from streaming chunks
-    if (result.thinking != null && result.thinking!.isNotEmpty) {
-      _thinkingBuffer.write(result.thinking);
-    }
 
     // Merge metadata (preserving response-level info from final chunk)
     for (final entry in result.metadata.entries) {
@@ -46,19 +48,12 @@ class AgentResponseAccumulator {
   }
 
   /// Builds the final accumulated ChatResult.
-  ChatResult<String> buildFinal() {
-    final thinking = _thinkingBuffer.isNotEmpty
-        ? _thinkingBuffer.toString()
-        : null;
-
-    return ChatResult<String>(
-      id: _finalResult.id,
-      output: _finalOutputBuffer.toString(),
-      messages: _allNewMessages,
-      thinking: thinking,
-      finishReason: _finalResult.finishReason,
-      metadata: _accumulatedMetadata,
-      usage: _finalResult.usage,
-    );
-  }
+  ChatResult<String> buildFinal() => ChatResult<String>(
+    id: _finalResult.id,
+    output: _finalOutputBuffer.toString(),
+    messages: _allNewMessages,
+    finishReason: _finalResult.finishReason,
+    metadata: _accumulatedMetadata,
+    usage: _finalResult.usage,
+  );
 }

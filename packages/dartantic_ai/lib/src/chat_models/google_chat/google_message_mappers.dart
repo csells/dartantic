@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:google_cloud_ai_generativelanguage_v1beta/generativelanguage.dart'
     as gl;
@@ -56,7 +59,9 @@ List<gl.Part> mapPartsToGoogle(
         } else if (includeToolResults && kind == ToolPartKind.result) {
           mappedParts.add(_mapToolResultPart(part, thoughtSignatures));
         }
-      default:
+      case ThinkingPart():
+        // ThinkingPart is filtered out here - Google doesn't need thinking
+        // content sent back. Skip it during mapping.
         break;
     }
   }
@@ -69,21 +74,25 @@ gl.Part _mapToolCallPart(
   Map<String, dynamic> thoughtSignatures,
 ) {
   final arguments = part.arguments ?? const <String, dynamic>{};
-  final callId = part.id.isNotEmpty
-      ? part.id
+  final callId = part.callId.isNotEmpty
+      ? part.callId
       : ToolIdHelpers.generateToolCallId(
-          toolName: part.name,
+          toolName: part.toolName,
           providerHint: 'google',
           arguments: arguments,
         );
 
+  // Decode base64 signature back to Uint8List for Google API
+  final sigBase64 = thoughtSignatures[callId] as String?;
+  final sig = sigBase64 != null ? base64Decode(sigBase64) : null;
+
   return gl.Part(
     functionCall: gl.FunctionCall(
       id: callId,
-      name: part.name,
+      name: part.toolName,
       args: ProtobufValueHelpers.structFromJson(arguments),
     ),
-    thoughtSignature: thoughtSignatures[callId],
+    thoughtSignature: sig != null ? Uint8List.fromList(sig) : null,
   );
 }
 
@@ -92,15 +101,19 @@ gl.Part _mapToolResultPart(
   Map<String, dynamic> thoughtSignatures,
 ) {
   final responseMap = ToolResultHelpers.ensureMap(part.result);
-  _logger.fine('Creating function response for tool: ${part.name}');
+  _logger.fine('Creating function response for tool: ${part.toolName}');
+
+  // Decode base64 signature back to Uint8List for Google API
+  final sigBase64 = thoughtSignatures[part.callId] as String?;
+  final sig = sigBase64 != null ? base64Decode(sigBase64) : null;
 
   return gl.Part(
     functionResponse: gl.FunctionResponse(
-      id: part.id,
-      name: part.name,
+      id: part.callId,
+      name: part.toolName,
       response: ProtobufValueHelpers.structFromJson(responseMap),
     ),
-    thoughtSignature: thoughtSignatures[part.id],
+    thoughtSignature: sig != null ? Uint8List.fromList(sig) : null,
   );
 }
 
@@ -110,6 +123,9 @@ extension MessageListMapper on List<ChatMessage> {
   ///
   /// Groups consecutive tool result messages into a single `Content` so we can
   /// attach all [gl.FunctionResponse] parts in one payload.
+  ///
+  /// ThinkingPart is skipped during mapping since Google doesn't need thinking
+  /// content sent back in conversation history.
   List<gl.Content> toContentList() {
     final nonSystemMessages = where(
       (message) => message.role != ChatMessageRole.system,
@@ -233,7 +249,6 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
     final parts = <Part>[];
     final executableCodeParts = <gl.ExecutableCode>[];
     final executionResults = <gl.CodeExecutionResult>[];
-    final thinkingBuffer = StringBuffer();
     // Collect thought signatures keyed by tool call ID for Gemini 3+ models
     final thoughtSignatures = <String, dynamic>{};
 
@@ -249,9 +264,11 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
       final text = part.text;
       if (text != null && text.isNotEmpty) {
         if (isThought) {
-          // Accumulate thinking content, don't add to regular parts
-          thinkingBuffer.write(text);
-          _logger.fine('Accumulated thinking text: ${text.length} chars');
+          // Add thinking content as ThinkingPart
+          parts.add(ThinkingPart(text));
+          _logger.fine(
+            'Added thinking text as ThinkingPart: ${text.length} chars',
+          );
         } else {
           parts.add(TextPart(text));
         }
@@ -281,12 +298,16 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
                 arguments: args,
               );
         parts.add(
-          ToolPart.call(id: callId, name: functionCall.name, arguments: args),
+          ToolPart.call(
+            callId: callId,
+            toolName: functionCall.name,
+            arguments: args,
+          ),
         );
-        // Store thought signature in message metadata keyed by tool call ID
+        // Store thought signature as base64 in message metadata
         final sig = part.thoughtSignature;
         if (sig.isNotEmpty) {
-          thoughtSignatures[callId] = sig;
+          thoughtSignatures[callId] = base64Encode(sig);
         }
       }
 
@@ -304,15 +325,15 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
               );
         parts.add(
           ToolPart.result(
-            id: responseId,
-            name: functionResponse.name,
+            callId: responseId,
+            toolName: functionResponse.name,
             result: responseMap,
           ),
         );
-        // Store thought signature for function responses too
+        // Store thought signature as base64 for function responses too
         final sig = part.thoughtSignature;
         if (sig.isNotEmpty) {
-          thoughtSignatures[responseId] = sig;
+          thoughtSignatures[responseId] = base64Encode(sig);
         }
       }
 
@@ -390,18 +411,9 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
       (_, value) => value == null || (value is List && value.isEmpty),
     );
 
-    // Add thinking as first-class field
-    final thinking = thinkingBuffer.isNotEmpty
-        ? thinkingBuffer.toString()
-        : null;
-    if (thinking != null) {
-      _logger.fine('Added thinking: ${thinking.length} chars');
-    }
-
     return ChatResult<ChatMessage>(
       output: message,
       messages: [message],
-      thinking: thinking,
       finishReason: _mapFinishReason(candidate.finishReason),
       metadata: metadata,
       usage: usageMetadata != null
@@ -500,13 +512,9 @@ extension ChatToolListMapper on List<Tool>? {
                   name: tool.name,
                   description: tool.description,
                   // Use native JSON Schema support via parametersJsonSchema
-                  parametersJsonSchema: tool.inputSchema.schemaMap != null
-                      ? ProtobufValueHelpers.valueFromJson(
-                          Map<String, dynamic>.from(
-                            tool.inputSchema.schemaMap!,
-                          ),
-                        )
-                      : null,
+                  parametersJsonSchema: ProtobufValueHelpers.valueFromJson(
+                    Map<String, dynamic>.from(tool.inputSchema.value),
+                  ),
                 ),
               )
               .toList(growable: false)

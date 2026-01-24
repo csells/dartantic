@@ -54,7 +54,8 @@ class FileAttachmentView extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    dataPart.name ?? Part.nameFromMimeType(dataPart.mimeType),
+                    dataPart.name ??
+                        PartHelpers.nameFromMimeType(dataPart.mimeType),
                     style: attachmentStyle.filenameStyle,
                     overflow: TextOverflow.ellipsis,
                   ),

@@ -1,6 +1,5 @@
 import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart' as a;
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 
 import '../agent/orchestrators/default_streaming_orchestrator.dart';
@@ -140,7 +139,7 @@ class AnthropicProvider
 
   @override
   (StreamingOrchestrator, List<Tool>?) getChatOrchestratorAndTools({
-    required JsonSchema? outputSchema,
+    required Schema? outputSchema,
     required List<Tool>? tools,
   }) => (
     outputSchema == null
@@ -154,7 +153,7 @@ class AnthropicProvider
   // required for typed output and it's what the orchestrator will use to
   // return the final result.
   static List<Tool>? _toolsToUse({
-    required JsonSchema? outputSchema,
+    required Schema? outputSchema,
     required List<Tool>? tools,
   }) {
     if (outputSchema == null) return tools;

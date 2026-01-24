@@ -20,7 +20,7 @@ extension ToolListMapper on List<Tool> {
         function: mistral.FunctionDefinition(
           name: tool.name,
           description: tool.description,
-          parameters: tool.inputSchema.schemaMap! as Map<String, dynamic>,
+          parameters: tool.inputSchema.value as Map<String, dynamic>,
         ),
       ),
     ).toList(growable: false);
@@ -32,6 +32,9 @@ extension ToolListMapper on List<Tool> {
 extension MessageListMapper on List<ChatMessage> {
   /// Converts this list of [ChatMessage]s to a list of Mistral SDK
   /// [mistral.ChatCompletionMessage]s.
+  ///
+  /// ThinkingPart is implicitly filtered out since only TextPart content
+  /// is extracted for the message text.
   List<mistral.ChatCompletionMessage> toChatCompletionMessages() {
     _logger.fine('Converting $length messages to Mistral format');
 
@@ -49,7 +52,7 @@ extension MessageListMapper on List<ChatMessage> {
               mistral.ChatCompletionMessage(
                 role: mistral.ChatCompletionMessageRole.tool,
                 content: content,
-                toolCallId: toolResult.id,
+                toolCallId: toolResult.callId,
               ),
             );
           }
@@ -89,7 +92,7 @@ extension MessageListMapper on List<ChatMessage> {
           return mistral.ChatCompletionMessage(
             role: mistral.ChatCompletionMessageRole.tool,
             content: content,
-            toolCallId: toolResult.id,
+            toolCallId: toolResult.callId,
           );
         }
 
@@ -105,10 +108,10 @@ extension MessageListMapper on List<ChatMessage> {
         final toolCalls = message.parts.toolCalls
             .map(
               (p) => mistral.ToolCall(
-                id: p.id,
+                id: p.callId,
                 type: mistral.ToolCallType.function,
                 function: mistral.FunctionCall(
-                  name: p.name,
+                  name: p.toolName,
                   arguments: json.encode(p.arguments ?? {}),
                 ),
               ),
@@ -151,8 +154,8 @@ extension ChatResultMapper on mistral.ChatCompletionResponse {
             ?.where((tc) => tc.id != null && tc.function?.name != null)
             .map(
               (tc) => ToolPart.call(
-                id: tc.id!,
-                name: tc.function!.name!,
+                callId: tc.id!,
+                toolName: tc.function!.name!,
                 arguments: tc.function!.arguments != null
                     ? json.decode(tc.function!.arguments!)
                           as Map<String, dynamic>
@@ -212,8 +215,8 @@ extension CreateChatCompletionStreamResponseMapper
             .map((tc) {
               final args = tc.function?.arguments;
               return ToolPart.call(
-                id: tc.id!,
-                name: tc.function!.name!,
+                callId: tc.id!,
+                toolName: tc.function!.name!,
                 arguments: args != null && args.isNotEmpty
                     ? json.decode(args) as Map<String, dynamic>
                     : {},

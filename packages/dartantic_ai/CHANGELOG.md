@@ -1,3 +1,85 @@
+## 3.0.0
+
+### Breaking Change: Migrated to genai_primitives Types
+
+The core message types have been migrated from custom implementations to the
+standardized `genai_primitives` package. This provides better interoperability
+with other GenAI tooling in the Dart ecosystem.
+
+Types now re-exported from `genai_primitives`:
+- `ChatMessage`, `ChatMessageRole`
+- `Part`, `TextPart`, `DataPart`, `LinkPart`, `ThinkingPart`
+- `ToolPart`, `ToolPartKind`
+- `ToolDefinition`
+
+### Breaking Change: Migrated to json_schema_builder for Schemas
+
+The `Schema` type is now provided by the `json_schema_builder` package instead
+of a custom implementation. This provides a more robust JSON Schema builder with
+better validation.
+
+```dart
+// NEW: Use S.object() for empty schemas, S.* for building schemas
+import 'package:dartantic_ai/dartantic_ai.dart';
+
+final tool = Tool(
+  name: 'my_tool',
+  description: 'Does something',
+  inputSchema: S.object(properties: {
+    'name': S.string(description: 'The name'),
+  }),
+  onCall: (args) => 'Hello ${args['name']}',
+);
+```
+
+### Breaking Change: ThinkingPart Replaces result.thinking
+
+Extended thinking (chain-of-thought reasoning) content is now represented as
+`ThinkingPart` instances in message parts, replacing the previous
+`result.thinking` property. This provides a unified representation across all
+providers that support thinking:
+
+```dart
+// OLD
+final thinking = result.thinking; // No longer available
+
+// NEW
+final agent = Agent('anthropic', enableThinking: true);
+final result = await agent.send('Solve this puzzle...');
+
+// Access thinking via parts
+final thinking = result.messages
+    .expand((m) => m.parts)
+    .whereType<ThinkingPart>()
+    .map((p) => p.text)
+    .join();
+
+// Or use the convenience getter on parts
+print('Thinking: ${result.output.parts.thinkingText}');
+```
+
+### Provider Changes
+
+- **Mistral Default Model**: Changed default from `mistral-small-latest` to
+  `mistral-medium-latest` for more reliable tool calling. The small model was
+  truncating string arguments in certain scenarios.
+
+### Fixes
+
+- **OpenAI Tool Schema Requirement**: OpenAI's API now requires `properties`
+  field in object schemas, even for tools with no parameters. Tools without an
+  explicit `inputSchema` will fail with "object schema missing properties". Fix
+  by adding `inputSchema: S.object()` to tools that don't take parameters.
+
+- **Anthropic Thinking Metadata**: The thinking signature is now stored
+  separately in metadata while the thinking text is only stored in
+  `ThinkingPart`.
+
+- **ThinkingPart Filtering**: Each provider's message mapper now correctly
+  handles `ThinkingPart` - Anthropic converts it to thinking blocks for the API,
+  while other providers filter it out during mapping since they don't need
+  thinking content sent back.
+
 ## 2.2.3
 
 - moved Agent method input params to take Iterable instead of List per
@@ -123,6 +205,7 @@ final provider2 = OpenAIProvider();
 
 Removed the following intrinsic providers from dartantic to the
 `openai_compat.dart` example:
+
 - `google-openai`
 - `together`
 - `ollama-openai`
@@ -214,6 +297,7 @@ final agent = Agent(
 ```
 
 Available modes:
+
 - `auto` (default): Model decides when to call functions
 - `any`: Model always calls a function
 - `none`: Model never calls functions
@@ -295,6 +379,7 @@ You can see how they all work in the new set of server-side tooling examples.
 ## 1.2.0
 
 Another big release!
+
 - Migrated Google provider from deprecated `google_generative_ai` to generated
   `google_cloud_ai_generativelanguage_v1beta` package. This is an internal
   implementation change with no API surface changes for users. However, it does
@@ -316,7 +401,7 @@ Another big release!
   in `dart:io`, disabling web support. dartantic_ai fully supports the web and
   if it ever says it doesn't, that's a bug.
 - Used the updated `openai_core` package to refactor `OpenAIResponsesChatModel`
-  to eliminate workaround for retrieving container file names. 
+  to eliminate workaround for retrieving container file names.
 - Updated the default Anthropic model to `claude-sonnet-4-0`, although of course
   you can use whichever model you want.
 - Fixed the `homepage` tag in the `pubspec.yaml`.
@@ -326,6 +411,7 @@ Another big release!
 ## 1.1.0
 
 This is a big release!
+
 - Added the OpenAI Responses provider built on `openai_core`, including session
   persistence (aka prompt caching), intrinsic server-side tools, and thinking
   metadata streams. Thanks to @jezell for his most excellent `openai_core`
@@ -380,12 +466,12 @@ This is a big release!
 
 ## 1.0.5
 
--  Fixed #47: Dartantic is checking for wrong environment variable. I was being
-   aggressive about constructing providers before they were used and checking
-   API keys before they were needed, which was causing this issue. For example,
-   if you wanted to use `Agent('google')` and didn't have the MISTRAL_API_KEY
-   set (why would you?), string lookup creates all of the providers, which
-   caused all of them to check for their API key and -- BOOM.
+- Fixed #47: Dartantic is checking for wrong environment variable. I was being
+  aggressive about constructing providers before they were used and checking
+  API keys before they were needed, which was causing this issue. For example,
+  if you wanted to use `Agent('google')` and didn't have the MISTRAL_API_KEY
+  set (why would you?), string lookup creates all of the providers, which
+  caused all of them to check for their API key and -- BOOM.
 
 ## 1.0.4
 
@@ -589,7 +675,7 @@ final part = await DataPart.file(File('bio.txt'));
 import 'package:cross_file/cross_file.dart';
 
 final file = XFile.fromData(
-  await File('bio.txt').readAsBytes(), 
+  await File('bio.txt').readAsBytes(),
   path: 'bio.txt',
 );
 final part = await DataPart.fromFile(file);
@@ -881,7 +967,7 @@ Agent.loggingOptions = const LoggingOptions(level: LogLevel.ALL);
   "providerName/model", e.g. "openai" or "googleai/gemini-2.0-flash"
 - move types specified by `Map<String, dynamic>` to a `JsonSchema` object; added
   `toMap()` extension method to `JsonSchema` and `toSchema` to `Map<String,
-  dynamic>` to make going back and forth more convenient.
+dynamic>` to make going back and forth more convenient.
 - move the provider argument to `Agent.provider` as the most flexible case, but
   also the less common one. `Agent()` will contine to take a model string.
 

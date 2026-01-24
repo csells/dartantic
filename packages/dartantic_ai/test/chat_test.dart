@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 
-import 'package:json_schema/json_schema.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -83,7 +82,7 @@ void main() {
     test('should send message with output schema', () async {
       final chat = Chat(agent);
 
-      final schema = JsonSchema.create({
+      final schema = Schema.fromMap({
         'type': 'object',
         'properties': {
           'name': {'type': 'string'},
@@ -107,7 +106,7 @@ void main() {
 
       final result = await chat.sendFor<TestTownAndCountry>(
         'Return London, England as the town and country',
-        outputSchema: JsonSchema.create(TestTownAndCountry.schemaMap),
+        outputSchema: Schema.fromMap(TestTownAndCountry.schemaMap),
         outputFromJson: TestTownAndCountry.fromJson,
       );
 
@@ -232,7 +231,7 @@ class TestTimeAndTemperature {
         temperature: (json['temperature'] as num).toDouble(),
       );
 
-  static final schema = JsonSchema.create({
+  static final schema = Schema.fromMap({
     'type': 'object',
     'properties': {
       'time': {'type': 'string'},
@@ -249,7 +248,7 @@ class TestTimeAndTemperature {
 final testWeatherTool = Tool<Map<String, dynamic>>(
   name: 'weather',
   description: 'Get the weather for a given location',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'location': {

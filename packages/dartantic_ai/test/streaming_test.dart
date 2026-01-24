@@ -153,7 +153,7 @@ void main() {
           expect(
             toolResults.any(
               (r) =>
-                  r.name == 'string_tool' &&
+                  r.toolName == 'string_tool' &&
                   r.result.toString().toLowerCase().contains('hello'),
             ),
             isTrue,
@@ -161,7 +161,8 @@ void main() {
           expect(
             toolResults.any(
               (r) =>
-                  r.name == 'int_tool' && (r.result == 42 || r.result == '42'),
+                  r.toolName == 'int_tool' &&
+                  (r.result == 42 || r.result == '42'),
             ),
             isTrue,
           );

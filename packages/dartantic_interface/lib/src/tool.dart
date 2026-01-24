@@ -1,25 +1,27 @@
 import 'dart:async';
 
-import 'package:json_schema/json_schema.dart';
+import 'package:genai_primitives/genai_primitives.dart';
+import 'package:json_schema_builder/json_schema_builder.dart';
 import 'package:logging/logging.dart';
 
+// Re-export schema types for consumers who need to define schemas
+export 'package:json_schema_builder/json_schema_builder.dart' show S, Schema;
+
 /// A tool that can be called by the LLM.
-class Tool<TInput extends Object> {
+class Tool<TInput extends Object> extends ToolDefinition<TInput> {
   /// Creates a [Tool].
   Tool({
-    required this.name,
-    required this.description,
+    required super.name,
+    required super.description,
     required this.onCall,
-    JsonSchema? inputSchema,
+    Schema? inputSchema,
     TInput Function(Map<String, dynamic>)? inputFromJson,
-  }) : inputSchema =
-           inputSchema ??
-           JsonSchema.create({'type': 'object', 'properties': {}}) {
+  }) : super(inputSchema: inputSchema ?? S.object()) {
     // if there are parameters, we need to be able to decode the json
     // from the LLM to the tool's input type.
     if (inputFromJson != null) {
       _inputFromJson = inputFromJson;
-    } else if (_hasParameters(inputSchema)) {
+    } else if (_hasParameters(this.inputSchema)) {
       if (<String, dynamic>{} is TInput) {
         _inputFromJson = (json) => json as TInput;
       } else {
@@ -31,26 +33,14 @@ class Tool<TInput extends Object> {
       _inputFromJson = null;
     }
 
-    _logger.info(
-      'Registered tool: $name with '
-      '${_hasParameters(inputSchema) ? inputSchema?.properties.length ?? 0 : 0}'
-      ' parameters',
-    );
+    final paramCount = _hasParameters(this.inputSchema)
+        ? _getPropertiesCount(this.inputSchema)
+        : 0;
+    _logger.info('Registered tool: $name with $paramCount parameters');
   }
 
   /// Logger for tool operations.
   static final Logger _logger = Logger('dartantic.tools');
-
-  /// The unique name of the tool that clearly communicates its purpose.
-  final String name;
-
-  /// Used to tell the model how/when/why to use the tool. You can provide
-  /// few-shot examples as a part of the description.
-  final String description;
-
-  /// Schema to parse and validate tool's input arguments. Following the [JSON
-  /// Schema specification](https://json-schema.org).
-  final JsonSchema inputSchema;
 
   /// The function that will be called when the tool is run.
   final FutureOr<dynamic> Function(TInput input) onCall;
@@ -61,42 +51,37 @@ class Tool<TInput extends Object> {
   /// Runs the tool.
   Future<dynamic> call(Map<String, dynamic> arguments) async {
     _logger.fine('Invoking tool: $name with arguments: $arguments');
-    try {
-      dynamic result;
-      final inputFromJson = _inputFromJson; // workaround for web compiler error
-      if (inputFromJson != null) {
-        final input = inputFromJson(arguments);
-        result = await onCall(input);
+    dynamic result;
+    final inputFromJson = _inputFromJson; // workaround for web compiler error
+    if (inputFromJson != null) {
+      final input = inputFromJson(arguments);
+      result = await onCall(input);
+    } else {
+      // No parameters expected - for tools like Tool<String> with no params,
+      // we pass an empty string or the Map itself, depending on TInput type
+      if (TInput == String) {
+        result = await onCall('' as TInput);
       } else {
-        // No parameters expected - for tools like Tool<String> with no params,
-        // we pass an empty string or the Map itself, depending on TInput type
-        if (TInput == String) {
-          result = await onCall('' as TInput);
-        } else {
-          result = await onCall(arguments as TInput);
-        }
+        result = await onCall(arguments as TInput);
       }
-      _logger.fine(
-        'Tool $name executed successfully, result type: ${result.runtimeType}',
-      );
-      return result;
-    } catch (error, stackTrace) {
-      _logger.warning('Tool $name execution failed: $error', error, stackTrace);
-      rethrow;
     }
+    _logger.fine(
+      'Tool $name executed successfully, result type: ${result.runtimeType}',
+    );
+    return result;
   }
 
   /// Checks if the schema has parameters that require custom parsing.
-  static bool _hasParameters(JsonSchema? schema) {
+  static bool _hasParameters(Schema? schema) {
     if (schema == null) return false;
-    final properties = schema.properties;
-    return properties.isNotEmpty;
+    final properties = schema['properties'] as Map<String, Object?>?;
+    return properties != null && properties.isNotEmpty;
   }
 
-  /// Converts the tool to a JSON-serializable map.
-  Map<String, dynamic> toJson() => {
-    'name': name,
-    'description': description,
-    'inputSchema': inputSchema.schemaMap ?? {},
-  };
+  /// Gets the count of properties in the schema.
+  static int _getPropertiesCount(Schema? schema) {
+    if (schema == null) return 0;
+    final properties = schema['properties'] as Map<String, Object?>?;
+    return properties?.length ?? 0;
+  }
 }

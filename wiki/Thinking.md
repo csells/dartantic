@@ -58,7 +58,7 @@ graph TD
 ### Core Principles
 
 1. **Agent-Level Configuration**: Thinking is enabled via `enableThinking: true` parameter at the Agent constructor level, not in provider-specific options
-2. **Dedicated Surface**: Thinking appears in `ChatResult.thinking`, not as a primary message part
+2. **Dedicated Surface**: Thinking appears as `ThinkingPart` instances in message parts (v3.0.0+)
 3. **Streaming Transparency**: During streaming, thinking deltas are emitted through the `thinking` field as they arrive
 4. **Accumulation**: The agent accumulator concatenates all streamed deltas and exposes the full thinking text in the final result
 5. **History Isolation**: Thinking is typically NOT sent back to the model in conversation history
@@ -92,13 +92,13 @@ sequenceDiagram
 
 ### Key Differences from Message Content
 
-| Aspect | Message Content | Thinking Field |
+| Aspect | Message Content | ThinkingPart |
 |--------|----------------|----------------|
-| Location | `ChatMessage.parts` | `ChatResult.thinking` |
+| Location | `ChatMessage.parts` (TextPart, etc.) | `ChatMessage.parts` (as ThinkingPart) |
 | Sent to Model | ✅ Yes | ❌ No (by default) |
 | Purpose | Conversation content | Transparency/debugging |
-| Streaming | Text deltas | Thinking deltas |
-| Accumulation | In message accumulator | In thinking buffer |
+| Streaming | Text deltas | ThinkingPart with partial text |
+| Accumulation | In message accumulator | As ThinkingPart instances |
 | History | Persists | Optional (usually filtered) |
 
 ## Provider Implementations
@@ -167,7 +167,7 @@ Stream<ChatResult<ChatMessage>> _handleReasoningSummaryDelta(
 }
 ```
 
-**Final Result**: Thinking accumulated in `ChatResult.thinking` but NOT in message parts.
+**Final Result**: Thinking accumulated as `ThinkingPart` instances in message parts.
 
 **Token Accounting**:
 - OpenAI charges for full reasoning tokens generated
@@ -254,7 +254,7 @@ BlockDelta.thinking(
 
 Despite Anthropic including thinking in message content, Dartantic follows the established pattern with one important exception:
 
-1. **During streaming**: Extract thinking deltas and emit via `ChatResult.thinking`
+1. **During streaming**: Extract thinking deltas and emit as `ThinkingPart` instances
 2. **After completion**: Accumulate full thinking in result metadata
 3. **In message history**: Thinking blocks are preserved in metadata when tool calls are present
 
@@ -266,7 +266,7 @@ The Anthropic message mapper handles thinking through the following high-level f
 
 1. **Streaming Phase**:
    - Accumulate thinking deltas in a buffer as `ThinkingBlockDelta` events arrive
-   - Emit each delta through `ChatResult.thinking` for real-time display
+   - Emit each delta as `ThinkingPart` for real-time display
    - Capture the cryptographic signature from the `ThinkingBlock.start` event
 
 2. **Completion Phase**:
@@ -348,7 +348,7 @@ Part(
 
 Despite Google including thinking in content parts, Dartantic follows the established pattern:
 
-1. **During streaming**: Extract thinking text from parts where `thought=true` and emit via `ChatResult.thinking`
+1. **During streaming**: Extract thinking text from parts where `thought=true` and emit as `ThinkingPart`
 2. **After completion**: Accumulate full thinking in result metadata
 3. **In message history**: Thinking is NOT included in message parts (filtered during mapping)
 
@@ -362,7 +362,7 @@ The Google message mapper handles thinking through the following flow:
    - If `thought=false`, add text as normal TextPart
 
 2. **Metadata Addition**:
-   - Store accumulated thinking in `ChatResult.thinking`
+   - Store accumulated thinking as `ThinkingPart` in message parts
    - Thinking never appears in `ChatMessage.parts`
 
 See `google_message_mappers.dart` for the complete implementation.
@@ -405,7 +405,7 @@ See `google_message_mappers.dart` for the complete implementation.
 | **Streaming Event** | `ResponseReasoningSummaryTextDelta` | `BlockDelta.thinking()` | Text parts with `thought=true` |
 | **Content Block** | No (metadata only) | Yes (`Block.thinking()`) | Yes (Part with `thought` flag) |
 | **Signature** | No | Yes (optional cryptographic) | Yes (optional encrypted) |
-| **Dartantic Representation** | `ChatResult.thinking` | `ChatResult.thinking` + metadata for tool replay | `ChatResult.thinking` |
+| **Dartantic Representation** | `ThinkingPart` in message parts | `ThinkingPart` + metadata for tool replay | `ThinkingPart` in message parts |
 | **Message History** | Never included | Preserved when tool calls present | Never included |
 | **Tool Use Compatibility** | Full support | Full support (thinking auto-preserved) | Full support |
 | **Temperature Constraints** | None | Cannot use with modified temperature | None |
@@ -416,206 +416,22 @@ See `google_message_mappers.dart` for the complete implementation.
 
 ### Streaming with Thinking
 
-```dart
-import 'dart:io';
-import 'package:dartantic_ai/dartantic_ai.dart';
-
-Future<void> demonstrateStreamingThinking(Agent agent) async {
-  final thinkingChunks = <String>[];
-  final textChunks = <String>[];
-
-  await for (final chunk in agent.sendStream('Solve: What is 15% of 847?')) {
-    // Collect thinking deltas
-    final thinking = chunk.thinking as String?;
-    if (thinking != null) {
-      thinkingChunks.add(thinking);
-      stdout.write('[THINKING] $thinking');
-    }
-
-    // Collect response text
-    if (chunk.output.isNotEmpty) {
-      textChunks.add(chunk.output);
-      stdout.write(chunk.output);
-    }
-  }
-
-  final fullThinking = thinkingChunks.join();
-  final fullResponse = textChunks.join();
-
-  print('\n\n=== Summary ===');
-  print('Thinking length: ${fullThinking.length} chars');
-  print('Response length: ${fullResponse.length} chars');
-}
-```
+In v3.0.0+, thinking content is represented as `ThinkingPart` instances within message parts. During streaming, thinking deltas arrive as `ThinkingPart` objects that can be identified by their type. Applications can extract and display thinking content by filtering for `ThinkingPart` instances in the streamed message parts, while regular text content appears as `TextPart` instances.
 
 ### Non-Streaming with Thinking
 
-```dart
-Future<void> demonstrateNonStreamingThinking(Agent agent) async {
-  final result = await agent.send('What is the capital of France?');
+In v3.0.0+, thinking content is accessible by filtering for `ThinkingPart` instances within the message parts. For non-streaming operations, the complete thinking content is accumulated in `ThinkingPart` instances within the final message. Applications can extract all thinking by filtering for `ThinkingPart` in `result.messages.last.parts`.
 
-  // Access accumulated thinking
-  final thinking = result.thinking as String?;
-  if (thinking != null) {
-    print('=== Thinking ===');
-    print(thinking);
-    print('\n=== Answer ===');
-  }
+### Provider-Specific Patterns
 
-  // The final answer
-  print(result.output);
+All providers that support thinking (OpenAI Responses, Anthropic, Google) emit thinking content as `ThinkingPart` instances within message parts. Applications can uniformly access thinking by filtering for `ThinkingPart` in the message parts, regardless of the underlying provider.
 
-  // Verify thinking NOT in message parts
-  final thinkingParts = result.messages.last.parts
-      .where((p) => p.toString().contains('thinking'))
-      .toList();
-  assert(thinkingParts.isEmpty, 'Thinking should not be in message parts');
-}
-```
+Provider-specific configuration:
+- **OpenAI Responses**: Enable with `enableThinking: true`, uses `reasoningSummary: detailed` by default
+- **Anthropic**: Enable with `enableThinking: true`, uses 4096 token budget by default
+- **Google**: Enable with `enableThinking: true`, uses dynamic budget (-1) by default
 
-### Provider-Specific Examples
-
-#### OpenAI Responses
-
-```dart
-void main() async {
-  final agent = Agent(
-    'openai-responses:gpt-5',
-    enableThinking: true,  // Uses reasoningSummary: detailed by default
-  );
-
-  stdout.write('Question: What are the first 10 prime numbers?\n\n');
-
-  await for (final chunk in agent.sendStream('What are the first 10 prime numbers?')) {
-    final thinking = chunk.thinking as String?;
-    if (thinking != null) {
-      stdout.write('[Reasoning] $thinking\n');
-    }
-
-    if (chunk.output.isNotEmpty) {
-      stdout.write(chunk.output);
-    }
-  }
-
-  exit(0);
-}
-```
-
-#### Anthropic
-
-```dart
-void main() async {
-  final agent = Agent(
-    'anthropic:claude-sonnet-4-5',
-    enableThinking: true,  // Uses 4096 token budget by default
-  );
-
-  stdout.write('Question: Explain quantum entanglement\n\n');
-
-  final thinkingBuffer = StringBuffer();
-  await for (final chunk in agent.sendStream(
-    'Explain quantum entanglement in simple terms.',
-  )) {
-    final thinking = chunk.thinking as String?;
-    if (thinking != null) {
-      thinkingBuffer.write(thinking);
-      stdout.write('[Extended Thinking] $thinking\n');
-    }
-
-    if (chunk.output.isNotEmpty) {
-      stdout.write(chunk.output);
-    }
-  }
-
-  print('\n\nTotal thinking length: ${thinkingBuffer.length} characters');
-
-  exit(0);
-}
-```
-
-#### Google
-
-```dart
-void main() async {
-  final agent = Agent(
-    'google:gemini-2.5-flash',
-    enableThinking: true,  // Uses dynamic budget (-1) by default
-  );
-
-  stdout.write('Question: Solve a complex math problem\n\n');
-
-  final thinkingBuffer = StringBuffer();
-  await for (final chunk in agent.sendStream(
-    'What is the derivative of x^3 + 2x^2 - 5x + 7?',
-  )) {
-    final thinking = chunk.thinking as String?;
-    if (thinking != null) {
-      thinkingBuffer.write(thinking);
-      stdout.write('[Thinking] $thinking\n');
-    }
-
-    if (chunk.output.isNotEmpty) {
-      stdout.write(chunk.output);
-    }
-  }
-
-  print('\n\nTotal thinking length: ${thinkingBuffer.length} characters');
-
-  exit(0);
-}
-```
-
-### Multi-Provider Example
-
-```dart
-Future<void> compareThinkingAcrossProviders() async {
-  final question = 'Calculate the compound interest on \$1000 at 5% for 3 years.';
-
-  // OpenAI Responses
-  final openaiAgent = Agent(
-    'openai-responses:gpt-5',
-    enableThinking: true,
-  );
-
-  print('=== OpenAI Responses ===');
-  await demonstrateThinking(openaiAgent, question);
-
-  // Anthropic
-  final anthropicAgent = Agent(
-    'anthropic:claude-sonnet-4-5',
-    enableThinking: true,
-  );
-
-  print('\n=== Anthropic Extended Thinking ===');
-  await demonstrateThinking(anthropicAgent, question);
-
-  // Google
-  final googleAgent = Agent(
-    'google:gemini-2.5-flash',
-    enableThinking: true,
-  );
-
-  print('\n=== Google Extended Thinking ===');
-  await demonstrateThinking(googleAgent, question);
-}
-
-Future<void> demonstrateThinking(Agent agent, String question) async {
-  var thinkingLength = 0;
-
-  await for (final chunk in agent.sendStream(question)) {
-    final thinking = chunk.thinking as String?;
-    if (thinking != null) {
-      thinkingLength += thinking.length;
-      stdout.write('[T]');
-    }
-    if (chunk.output.isNotEmpty) {
-      stdout.write(chunk.output);
-    }
-  }
-
-  print('\nThinking tokens: ~${thinkingLength ~/ 4}');
-}
-```
+To compare thinking across providers, create agents with `enableThinking: true` and filter streamed message parts for `ThinkingPart` instances.
 
 ## Testing Strategy
 
@@ -632,7 +448,7 @@ Tests should cover the following functional areas across all thinking-enabled pr
 - Streaming transformers extract thinking deltas from provider-specific events
 - Thinking accumulation in buffers during streaming
 - Thinking blocks filtered from `ChatMessage.parts`
-- Final `ChatResult.thinking` contains complete accumulated thinking text
+- Final message parts contain complete accumulated thinking as `ThinkingPart` instances
 
 **Integration Tests:**
 - End-to-end streaming with thinking enabled
@@ -679,7 +495,7 @@ When implementing thinking support for a new provider:
    - Document that these only apply when `enableThinking=true`
 
 5. **Extract Thinking from Streaming Events**
-   - Map provider-specific thinking events to `ChatResult.thinking` field
+   - Map provider-specific thinking events to `ThinkingPart` instances in message parts
    - Emit each delta immediately during streaming
    - Accumulate deltas in a buffer for final result
 
@@ -695,12 +511,26 @@ When implementing thinking support for a new provider:
 
 ### Architectural Constraints
 
+> **⚠️ CRITICAL: ThinkingPart MUST NEVER Be Sent to LLMs**
+>
+> Thinking content is **model-generated output only**. It flows FROM the model, NEVER TO it.
+> Every message mapper includes an assertion that fails if ThinkingPart appears in outbound
+> messages. This is a fundamental architectural constraint:
+>
+> - ThinkingPart is received from the model's reasoning process
+> - It is stored for display/debugging purposes
+> - It is NEVER sent back in conversation history
+> - If ThinkingPart appears in outbound messages, it indicates a bug in the message pipeline
+>
+> The only exception is Anthropic's signature-preserved thinking blocks for tool call continuity,
+> which are handled via special metadata (`_anthropic_thinking_block`), NOT via ThinkingPart.
+
 - **Agent-Level Configuration**: Thinking is enabled via `Agent(enableThinking: true)`, not in provider-specific options
-- **Never send thinking back to model**: Filter thinking from conversation history (unless provider requires it)
-- **Always emit thinking via the field**: Use `ChatResult.thinking`, not custom metadata keys
+- **Never send thinking back to model**: ThinkingPart MUST NEVER appear in outbound messages (enforced by assertions in all mappers)
+- **Always emit thinking via ThinkingPart**: Use `ThinkingPart` instances in message parts, not custom metadata keys
 - **Always accumulate thinking**: Provide full thinking text in final result
 - **Single-item events during streaming**: Each thinking delta is a separate chunk
-- **Provider-agnostic surface**: Same `ChatResult.thinking` field across all providers
+- **Provider-agnostic surface**: Same `ThinkingPart` type in message parts across all providers
 
 ### Error Handling
 

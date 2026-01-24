@@ -6,7 +6,6 @@ import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart' as a;
 import 'package:anthropic_sdk_dart/src/generated/client.dart' as ag;
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 
 import '../../media_gen_models/anthropic/anthropic_files_client.dart';
@@ -95,7 +94,7 @@ class AnthropicChatModel extends ChatModel<AnthropicChatOptions> {
   Stream<ChatResult<ChatMessage>> sendStream(
     List<ChatMessage> messages, {
     AnthropicChatOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     _logger.info(
       'Starting Anthropic chat stream with '
@@ -160,7 +159,6 @@ class AnthropicChatModel extends ChatModel<AnthropicChatOptions> {
         messages: result.messages,
         finishReason: result.finishReason,
         metadata: result.metadata,
-        thinking: result.thinking,
         usage: result.usage,
       );
     }

@@ -5,13 +5,12 @@ import 'dart:convert';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 
-import 'package:json_schema/json_schema.dart' as js;
 import 'package:test/test.dart';
 
 void main() {
   group('Message Metadata', () {
     test('Anthropic attaches metadata for suppressed content', () async {
-      final recipeSchema = js.JsonSchema.create({
+      final recipeSchema = Schema.fromMap({
         'type': 'object',
         'properties': {
           'name': {'type': 'string'},
@@ -26,7 +25,7 @@ void main() {
       final recipeTool = Tool<Map<String, dynamic>>(
         name: 'get_recipe',
         description: 'Get a recipe',
-        inputSchema: js.JsonSchema.create({
+        inputSchema: Schema.fromMap({
           'type': 'object',
           'properties': {
             'name': {'type': 'string'},
@@ -74,7 +73,7 @@ void main() {
     });
 
     test('Google attaches metadata for suppressed content', () async {
-      final recipeSchema = js.JsonSchema.create({
+      final recipeSchema = Schema.fromMap({
         'type': 'object',
         'properties': {
           'name': {'type': 'string'},
@@ -89,7 +88,7 @@ void main() {
       final recipeTool = Tool<Map<String, dynamic>>(
         name: 'get_recipe',
         description: 'Get a recipe',
-        inputSchema: js.JsonSchema.create({
+        inputSchema: Schema.fromMap({
           'type': 'object',
           'properties': {
             'name': {'type': 'string'},
@@ -138,16 +137,16 @@ void main() {
     });
 
     test('ChatMessage preserves metadata during concatenation', () {
-      const msg1 = ChatMessage(
+      final msg1 = ChatMessage(
         role: ChatMessageRole.model,
-        parts: [TextPart('Hello')],
-        metadata: {'key1': 'value1'},
+        parts: const [TextPart('Hello')],
+        metadata: const {'key1': 'value1'},
       );
 
-      const msg2 = ChatMessage(
+      final msg2 = ChatMessage(
         role: ChatMessageRole.model,
-        parts: [TextPart(' world')],
-        metadata: {'key2': 'value2'},
+        parts: const [TextPart(' world')],
+        metadata: const {'key2': 'value2'},
       );
 
       // Simulate what Agent._concatMessages would do

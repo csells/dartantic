@@ -17,7 +17,7 @@
 // ignore_for_file: avoid_dynamic_calls
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:json_schema/json_schema.dart';
+
 import 'package:test/test.dart';
 
 import 'test_helpers/run_provider_test.dart';
@@ -96,7 +96,7 @@ void main() {
           expect(result, contains('test'));
           expect(result, contains('map_result'));
         } else {
-          final resultMap = result as Map<String, dynamic>;
+          final resultMap = result! as Map<String, dynamic>;
           expect(resultMap['name'], equals('test'));
           expect(resultMap['type'], equals('map_result'));
         }
@@ -208,10 +208,22 @@ void main() {
 
         // Check for specific results (order may vary)
         final results = toolResults.map((tr) => tr.result).toList();
-        expect(results.any((r) => r.contains('Boston')), isTrue);
-        expect(results.any((r) => r.contains('New York')), isTrue);
-        expect(results.any((r) => r.contains('45°F')), isTrue); // Boston temp
-        expect(results.any((r) => r.contains('52°F')), isTrue); // New York temp
+        expect(
+          results.any((r) => r?.toString().contains('Boston') ?? false),
+          isTrue,
+        );
+        expect(
+          results.any((r) => r?.toString().contains('New York') ?? false),
+          isTrue,
+        );
+        expect(
+          results.any((r) => r?.toString().contains('45°F') ?? false),
+          isTrue,
+        ); // Boston temp
+        expect(
+          results.any((r) => r?.toString().contains('52°F') ?? false),
+          isTrue,
+        ); // New York temp
       });
 
       test('calls same tool multiple times with same arguments', () async {
@@ -231,7 +243,7 @@ void main() {
 
         // All results should be correct
         for (final tr in toolResults) {
-          if (tr.name == 'string_tool') {
+          if (tr.toolName == 'string_tool') {
             expect(tr.result, equals('String result: repeat test'));
           }
         }
@@ -342,7 +354,7 @@ void main() {
 
           // All results should be correct
           for (final tr in toolResults) {
-            if (tr.name == 'string_tool') {
+            if (tr.toolName == 'string_tool') {
               expect(
                 tr.result,
                 equals('String result: repeat ${provider.name}'),
@@ -516,7 +528,7 @@ void main() {
         );
 
         // Mistral supports tools but not typed output + tools simultaneously
-        final schema = JsonSchema.create({
+        final schema = Schema.fromMap({
           'type': 'object',
           'properties': {
             'result': {'type': 'string'},
@@ -659,9 +671,11 @@ void main() {
       test('handles tool results in conversation context', () async {
         final agent = Agent('openai:gpt-4o-mini', tools: [mapTool]);
         final messages = [
-          const ChatMessage(
+          ChatMessage(
             role: ChatMessageRole.user,
-            parts: [TextPart('Use map_tool with key "color" and value "blue"')],
+            parts: const [
+              TextPart('Use map_tool with key "color" and value "blue"'),
+            ],
           ),
         ];
 
@@ -679,9 +693,9 @@ void main() {
 
         // Follow up about the tool result
         messages.add(
-          const ChatMessage(
+          ChatMessage(
             role: ChatMessageRole.user,
-            parts: [TextPart('What was the value for the color key?')],
+            parts: const [TextPart('What was the value for the color key?')],
           ),
         );
 

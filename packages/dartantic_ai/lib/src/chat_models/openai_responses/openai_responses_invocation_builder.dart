@@ -1,5 +1,4 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:openai_core/openai_core.dart' as openai;
 
 import 'openai_responses_chat_options.dart';
@@ -138,7 +137,7 @@ class OpenAIResponsesInvocationBuilder {
   final OpenAIResponsesChatModelOptions defaultOptions;
 
   /// Optional output schema for typed responses.
-  final JsonSchema? outputSchema;
+  final Schema? outputSchema;
 
   /// Builds the complete invocation.
   ///

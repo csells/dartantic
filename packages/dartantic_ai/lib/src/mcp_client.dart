@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:mcp_dart/mcp_dart.dart' as mcp;
 
 import 'platform/platform.dart' as platform;
@@ -156,8 +155,7 @@ class McpClient {
           description: tool.description == null
               ? ''
               : '$name: ${tool.description}',
-          inputSchema: JsonSchema.create(tool.inputSchema.toJson()),
-
+          inputSchema: Schema.fromMap(tool.inputSchema.toJson()),
           onCall: (args) => _call(tool.name, args),
         ),
       );

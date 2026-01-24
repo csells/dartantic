@@ -15,9 +15,13 @@ Future<void> thinking(Agent agent) async {
   stdout.writeln('\n${agent.displayName} thinking:');
   final result = await agent.send('In one sentence: how does quicksort work?');
 
-  // Thinking is in result.thinking
-  final thinking = result.thinking;
-  assert(thinking != null && thinking.isNotEmpty);
+  // Thinking is in message parts as ThinkingPart
+  final thinking = result.messages
+      .expand((m) => m.parts)
+      .whereType<ThinkingPart>()
+      .map((p) => p.text)
+      .join();
+  assert(thinking.isNotEmpty);
   stdout.writeln('[[$thinking]]\n');
   stdout.writeln(result.output);
   dumpMessages(result.messages);
@@ -30,21 +34,24 @@ Future<void> thinkingStream(Agent agent) async {
   var stillThinking = true;
   stdout.write('[[');
 
-  final thinkingBuffer = StringBuffer();
   await for (final chunk in agent.sendStream(
     'In one sentence: how does quicksort work?',
   )) {
-    // Check for thinking in the ChatResult
-    final thinking = chunk.thinking;
-    final hasThinking = thinking != null && thinking.isNotEmpty;
-    final hasText = chunk.output.isNotEmpty;
-
-    if (hasThinking) {
-      thinkingBuffer.write(thinking);
-      stdout.write(thinking);
+    // Display thinking in real-time from streaming-only messages (those
+    // without TextPart). The consolidated message also has ThinkingParts
+    // but we don't want to print those again.
+    for (final message in chunk.messages) {
+      final hasTextPart = message.parts.any((p) => p is TextPart);
+      if (!hasTextPart) {
+        // Streaming thinking-only message - display it
+        for (final part in message.parts.whereType<ThinkingPart>()) {
+          stdout.write(part.text);
+        }
+      }
     }
 
-    if (hasText) {
+    // Display response text
+    if (chunk.output.isNotEmpty) {
       if (stillThinking) {
         stillThinking = false;
         stdout.writeln(']]\n');
@@ -52,10 +59,19 @@ Future<void> thinkingStream(Agent agent) async {
       stdout.write(chunk.output);
     }
 
-    history.addAll(chunk.messages);
+    // Only add "real" messages to history (user messages and model messages
+    // with text/tools), not streaming thinking-only messages which are
+    // already included in the consolidated model message
+    for (final message in chunk.messages) {
+      final hasTextOrTools = message.parts.any(
+        (p) => p is TextPart || p is ToolPart,
+      );
+      if (hasTextOrTools || message.role == ChatMessageRole.user) {
+        history.add(message);
+      }
+    }
   }
 
   stdout.writeln('\n');
   dumpMessages(history);
-  exit(0);
 }

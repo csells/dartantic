@@ -19,7 +19,7 @@
 import 'dart:convert';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:json_schema/json_schema.dart' as js;
+
 import 'package:test/test.dart';
 
 import 'test_helpers/run_provider_test.dart';
@@ -35,7 +35,7 @@ void main() {
       runProviderTest(
         'returns simple JSON object',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'name': {'type': 'string'},
@@ -61,7 +61,7 @@ void main() {
       runProviderTest(
         'handles nested objects',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'user': {
@@ -108,7 +108,7 @@ void main() {
       runProviderTest(
         'returns arrays when specified',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'items': {
@@ -147,7 +147,7 @@ void main() {
       runProviderTest(
         'handle structured output correctly',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'result': {'type': 'string'},
@@ -196,7 +196,7 @@ void main() {
       runProviderTest(
         'handles all primitive types',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'string_field': {'type': 'string'},
@@ -240,7 +240,7 @@ void main() {
       runProviderTest(
         'respects enum constraints',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'status': {
@@ -272,7 +272,7 @@ void main() {
       runProviderTest(
         'handles numeric constraints',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'age': {'type': 'integer', 'minimum': 0, 'maximum': 150},
@@ -305,7 +305,7 @@ void main() {
       runProviderTest(
         'generates valid recursive structures',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'name': {'type': 'string'},
@@ -347,7 +347,7 @@ void main() {
       runProviderTest(
         'handles union types with anyOf',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'value': {
@@ -392,7 +392,7 @@ void main() {
       runProviderTest(
         'handles provider-specific formats',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'message': {'type': 'string'},
@@ -425,7 +425,7 @@ void main() {
       runProviderTest(
         'structured output works across supporting providers',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'name': {'type': 'string'},
@@ -462,7 +462,7 @@ void main() {
       runProviderTest(
         'handles schema validation errors',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'required_field': {'type': 'string'},
@@ -489,7 +489,7 @@ void main() {
       runProviderTest(
         'handles conflicting instructions',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'number': {'type': 'integer', 'minimum': 10, 'maximum': 20},
@@ -520,7 +520,7 @@ void main() {
       runProviderTest(
         'streams JSON output correctly',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'message': {'type': 'string'},
@@ -562,7 +562,7 @@ void main() {
       runProviderTest(
         'handles complex schema in streaming',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'users': {
@@ -614,7 +614,7 @@ void main() {
       runProviderTest(
         'returns typed Map<String, dynamic>',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'city': {'type': 'string'},
@@ -686,7 +686,7 @@ void main() {
       runProviderTest(
         'handles API response schema',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'success': {'type': 'boolean'},
@@ -751,7 +751,7 @@ void main() {
       runProviderTest(
         'handles nested configuration',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'name': {'type': 'string'},
@@ -810,7 +810,7 @@ void main() {
       runProviderTest(
         'handles unicode and special characters',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'message': {'type': 'string'},
@@ -842,7 +842,7 @@ void main() {
       runProviderTest(
         'handles empty collections',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'emptyArray': {
@@ -878,7 +878,7 @@ void main() {
       runProviderTest(
         'handles large numeric values',
         (provider) async {
-          final schema = js.JsonSchema.create({
+          final schema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'largeInt': {'type': 'integer'},
@@ -925,7 +925,7 @@ class WeatherReport {
     humidity: json['humidity'] as int,
   );
 
-  static final schema = js.JsonSchema.create({
+  static final schema = Schema.fromMap({
     'type': 'object',
     'properties': {
       'location': {'type': 'string'},
@@ -972,7 +972,7 @@ class UserProfile {
     ),
   );
 
-  static final schema = js.JsonSchema.create({
+  static final schema = Schema.fromMap({
     'type': 'object',
     'properties': {
       'name': {'type': 'string'},

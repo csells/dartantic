@@ -80,9 +80,9 @@ void main() {
 
         // Add to history
         messages.add(
-          const ChatMessage(
+          ChatMessage(
             role: ChatMessageRole.user,
-            parts: [TextPart('My name is Alice. Remember it.')],
+            parts: const [TextPart('My name is Alice. Remember it.')],
           ),
         );
         messages.add(
@@ -121,9 +121,9 @@ void main() {
         // First exchange
         var response = await agent.send('Count to 1', history: messages);
         messages.add(
-          const ChatMessage(
+          ChatMessage(
             role: ChatMessageRole.user,
-            parts: [TextPart('Count to 1')],
+            parts: const [TextPart('Count to 1')],
           ),
         );
         messages.add(
@@ -136,9 +136,9 @@ void main() {
         // Second exchange
         response = await agent.send('Now count to 2', history: messages);
         messages.add(
-          const ChatMessage(
+          ChatMessage(
             role: ChatMessageRole.user,
-            parts: [TextPart('Now count to 2')],
+            parts: const [TextPart('Now count to 2')],
           ),
         );
         messages.add(
@@ -169,9 +169,11 @@ void main() {
           );
 
           messages.add(
-            const ChatMessage(
+            ChatMessage(
               role: ChatMessageRole.user,
-              parts: [TextPart('My favorite color is purple. Remember that.')],
+              parts: const [
+                TextPart('My favorite color is purple. Remember that.'),
+              ],
             ),
           );
           messages.add(
@@ -344,15 +346,18 @@ void main() {
         expect(deserialized.metadata['timestamp'], equals(1234567890));
         expect(deserialized.metadata['userId'], equals('test-user'));
         expect(deserialized.metadata['nested'], isA<Map>());
-        expect(deserialized.metadata['nested']['key'], equals('value'));
+        expect(
+          (deserialized.metadata['nested'] as Map?)?['key'],
+          equals('value'),
+        );
         expect(deserialized.metadata['array'], equals([1, 2, 3]));
         expect(deserialized.metadata['boolean'], isTrue);
       });
 
       test('serializes and deserializes messages with multiple text parts', () {
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [
+          parts: const [
             TextPart('First part. '),
             TextPart('Second part. '),
             TextPart('Third part.'),
@@ -425,8 +430,8 @@ void main() {
 
       test('serializes and deserializes tool call parts', () {
         const toolCall = ToolPart.call(
-          id: 'call_123',
-          name: 'get_weather',
+          callId: 'call_123',
+          toolName: 'get_weather',
           arguments: {
             'location': 'San Francisco',
             'units': 'celsius',
@@ -434,9 +439,9 @@ void main() {
           },
         );
 
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [toolCall],
+          parts: const [toolCall],
         );
 
         final json = message.toJson();
@@ -448,8 +453,8 @@ void main() {
 
         final deserializedCall = deserialized.parts[0] as ToolPart;
         expect(deserializedCall.kind, equals(ToolPartKind.call));
-        expect(deserializedCall.id, equals('call_123'));
-        expect(deserializedCall.name, equals('get_weather'));
+        expect(deserializedCall.callId, equals('call_123'));
+        expect(deserializedCall.toolName, equals('get_weather'));
         expect(
           deserializedCall.arguments?['location'],
           equals('San Francisco'),
@@ -460,14 +465,14 @@ void main() {
 
       test('serializes and deserializes tool result parts', () {
         const toolResult = ToolPart.result(
-          id: 'call_123',
-          name: 'get_weather',
+          callId: 'call_123',
+          toolName: 'get_weather',
           result: {'temperature': 22.5, 'condition': 'sunny', 'humidity': 65},
         );
 
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.user,
-          parts: [toolResult],
+          parts: const [toolResult],
         );
 
         final json = message.toJson();
@@ -479,31 +484,37 @@ void main() {
 
         final deserializedResult = deserialized.parts[0] as ToolPart;
         expect(deserializedResult.kind, equals(ToolPartKind.result));
-        expect(deserializedResult.id, equals('call_123'));
-        expect(deserializedResult.name, equals('get_weather'));
-        expect(deserializedResult.result['temperature'], equals(22.5));
-        expect(deserializedResult.result['condition'], equals('sunny'));
-        expect(deserializedResult.result['humidity'], equals(65));
+        expect(deserializedResult.callId, equals('call_123'));
+        expect(deserializedResult.toolName, equals('get_weather'));
+        expect(
+          (deserializedResult.result! as Map)['temperature'],
+          equals(22.5),
+        );
+        expect(
+          (deserializedResult.result! as Map)['condition'],
+          equals('sunny'),
+        );
+        expect((deserializedResult.result! as Map)['humidity'], equals(65));
       });
 
       test('serializes and deserializes complex mixed messages', () {
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [
+          parts: const [
             TextPart('Here is the weather information: '),
             ToolPart.call(
-              id: 'call_456',
-              name: 'get_weather',
+              callId: 'call_456',
+              toolName: 'get_weather',
               arguments: {'location': 'Tokyo'},
             ),
             TextPart(' and the temperature conversion: '),
             ToolPart.call(
-              id: 'call_789',
-              name: 'convert_temp',
+              callId: 'call_789',
+              toolName: 'convert_temp',
               arguments: {'value': 25, 'from': 'C', 'to': 'F'},
             ),
           ],
-          metadata: {'requestId': 'req_123', 'version': 2},
+          metadata: const {'requestId': 'req_123', 'version': 2},
         );
 
         final json = message.toJson();
@@ -524,7 +535,10 @@ void main() {
         );
 
         expect(deserialized.parts[1], isA<ToolPart>());
-        expect((deserialized.parts[1] as ToolPart).name, equals('get_weather'));
+        expect(
+          (deserialized.parts[1] as ToolPart).toolName,
+          equals('get_weather'),
+        );
 
         expect(deserialized.parts[2], isA<TextPart>());
         expect(
@@ -534,14 +548,14 @@ void main() {
 
         expect(deserialized.parts[3], isA<ToolPart>());
         expect(
-          (deserialized.parts[3] as ToolPart).name,
+          (deserialized.parts[3] as ToolPart).toolName,
           equals('convert_temp'),
         );
       });
 
       test('handles edge cases in serialization', () {
         // Empty parts list
-        var message = const ChatMessage(role: ChatMessageRole.user, parts: []);
+        var message = ChatMessage(role: ChatMessageRole.user, parts: const []);
         var json = message.toJson();
         var deserialized = ChatMessage.fromJson(json);
         expect(deserialized.parts, isEmpty);
@@ -559,10 +573,10 @@ void main() {
         );
 
         // Null metadata values
-        message = const ChatMessage(
+        message = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [TextPart('Test')],
-          metadata: {'nullValue': null, 'normalValue': 'test'},
+          parts: const [TextPart('Test')],
+          metadata: const {'nullValue': null, 'normalValue': 'test'},
         );
         json = message.toJson();
         deserialized = ChatMessage.fromJson(json);
@@ -571,13 +585,13 @@ void main() {
 
         // Tool call with empty arguments
         const toolCall = ToolPart.call(
-          id: 'empty_call',
-          name: 'no_args_function',
+          callId: 'empty_call',
+          toolName: 'no_args_function',
           arguments: {},
         );
-        message = const ChatMessage(
+        message = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [toolCall],
+          parts: const [toolCall],
         );
         json = message.toJson();
         deserialized = ChatMessage.fromJson(json);
@@ -593,8 +607,8 @@ void main() {
             parts: [
               const TextPart('Processing your request...'),
               const ToolPart.call(
-                id: 'multi_cycle_1',
-                name: 'complex_function',
+                callId: 'multi_cycle_1',
+                toolName: 'complex_function',
                 arguments: {
                   'nested': {
                     'deep': {'value': 42},
@@ -618,8 +632,8 @@ void main() {
                 name: 'webpage.html',
               ),
               const ToolPart.result(
-                id: 'multi_cycle_1',
-                name: 'complex_function',
+                callId: 'multi_cycle_1',
+                toolName: 'complex_function',
                 result: [
                   'array',
                   'result',
@@ -654,8 +668,14 @@ void main() {
           // Verify complex nested structure is preserved
           final toolCallArgs =
               (thirdDeserialized.parts[1] as ToolPart).arguments;
-          expect(toolCallArgs!['nested']['deep']['value'], equals(42));
-          expect(toolCallArgs['nested']?['array']?[2]?['three'], equals(3));
+          expect(
+            (toolCallArgs!['nested']! as Map)['deep']['value'],
+            equals(42),
+          );
+          expect(
+            (toolCallArgs['nested'] as Map?)?['array']?[2]?['three'],
+            equals(3),
+          );
           expect(toolCallArgs['unicode'], equals('测试 🚀'));
         },
       );

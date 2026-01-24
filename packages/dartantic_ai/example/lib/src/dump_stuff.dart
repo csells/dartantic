@@ -22,19 +22,20 @@ String _messageToSingleLine(ChatMessage message) {
   final parts = [
     for (final part in message.parts)
       switch (part) {
-        (final TextPart _) => 'TextPart{${part.text.trim()}}',
-        (final DataPart _) =>
-          'DataPart{mimeType: ${part.mimeType}, size: ${part.bytes.length}}',
-        (final LinkPart _) => 'LinkPart{url: ${part.url}}',
-        (final ToolPart _) => switch (part.kind) {
+        (final ThinkingPart p) =>
+          'ThinkingPart{${_clip(p.text, maxLength: 50)}}',
+        (final TextPart p) => 'TextPart{${p.text.trim()}}',
+        (final DataPart p) =>
+          'DataPart{mimeType: ${p.mimeType}, size: ${p.bytes.length}}',
+        (final LinkPart p) => 'LinkPart{url: ${p.url}}',
+        (final ToolPart p) => switch (p.kind) {
           ToolPartKind.call =>
-            'ToolPart.call{id: ${part.id}, name: ${part.name}, '
-                'args: ${part.arguments}}',
+            'ToolPart.call{id: ${p.callId}, name: ${p.toolName}, '
+                'args: ${p.arguments}}',
           ToolPartKind.result =>
-            'ToolPart.result{id: ${part.id}, name: ${part.name}, '
-                'result: ${part.result}}',
+            'ToolPart.result{id: ${p.callId}, name: ${p.toolName}, '
+                'result: ${p.result}}',
         },
-        (final Part _) => throw UnimplementedError(),
       },
   ];
 
@@ -128,16 +129,19 @@ String _messageToSummary(ChatMessage message) {
   final parts = <String>[];
 
   for (final part in message.parts) {
-    if (part is TextPart) {
+    if (part is ThinkingPart) {
+      final preview = _clip(part.text, maxLength: 50);
+      parts.add('Thinking("$preview")');
+    } else if (part is TextPart) {
       final preview = part.text.length > 50
           ? '${part.text.substring(0, 47)}...'
           : part.text;
       parts.add('Text("$preview")');
     } else if (part is ToolPart) {
       if (part.kind == ToolPartKind.call) {
-        parts.add('ToolCall(${part.name})');
+        parts.add('ToolCall(${part.toolName})');
       } else {
-        parts.add('ToolResult(${part.name})');
+        parts.add('ToolResult(${part.toolName})');
       }
     } else if (part is DataPart) {
       parts.add('Data(${part.mimeType})');
@@ -276,7 +280,7 @@ String resolveAssetName(DataPart part, String fallbackPrefix) {
     return existing.replaceAll(RegExp(r'[\\/:]'), '_');
   }
   // Generate a unique fallback name
-  final extension = Part.extensionFromMimeType(part.mimeType);
+  final extension = PartHelpers.extensionFromMimeType(part.mimeType);
   final id = _assetCounter++;
   return extension == null
       ? '$fallbackPrefix-$id'

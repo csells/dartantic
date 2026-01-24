@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 
@@ -38,7 +37,7 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     state.resetForNewMessage();
     await beforeModelStream(state, model, outputSchema: outputSchema);
@@ -72,7 +71,7 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
   Future<void> beforeModelStream(
     StreamingState state,
     ChatModel<ChatModelOptions> model, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async {}
 
   /// Handles a single streaming chunk from the model response.
@@ -83,7 +82,9 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
   ) async* {
     final textOutput = _extractText(result);
     final hasMetadata = result.metadata.isNotEmpty;
-    final hasThinking = result.thinking != null && result.thinking!.isNotEmpty;
+    final thinkingParts =
+        result.output.parts.whereType<ThinkingPart>().toList();
+    final hasThinking = thinkingParts.isNotEmpty;
 
     final streamText =
         textOutput.isNotEmpty && allowTextStreaming(state, result);
@@ -99,16 +100,23 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
 
     _logger.fine(
       'Streaming chunk: text=${streamOutput.length} chars, '
-      'metadata=${result.metadata.keys}',
+      'metadata=${result.metadata.keys}, '
+      'thinking=${thinkingParts.length} parts',
     );
+
+    // Yield thinking parts as a message so callers can display them
+    final streamingMessages = hasThinking
+        ? [
+            ChatMessage(role: ChatMessageRole.model, parts: thinkingParts),
+          ]
+        : const <ChatMessage>[];
 
     yield StreamingIterationResult(
       output: streamOutput,
-      messages: const [],
+      messages: streamingMessages,
       shouldContinue: true,
       finishReason: result.finishReason,
       metadata: result.metadata,
-      thinking: result.thinking,
       usage: null, // Usage only in final result
     );
   }
@@ -135,7 +143,7 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
     ChatMessage consolidatedMessage,
     StreamingState state,
     ChatModel<ChatModelOptions> model, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     final emptyHandler = handleEmptyMessage(consolidatedMessage, state);
     if (emptyHandler != null) {
@@ -151,7 +159,6 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
       shouldContinue: true,
       finishReason: state.lastResult.finishReason,
       metadata: const {}, // Empty - metadata already streamed via onModelChunk
-      thinking: null,
       usage: null, // Usage only in final chunk
     );
 
@@ -164,7 +171,6 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
         finishReason: state.lastResult.finishReason,
         metadata:
             const {}, // Empty - metadata already streamed via onModelChunk
-        thinking: null,
         usage: state.lastResult.usage, // Final usage here
       );
       return;
@@ -191,7 +197,6 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
               shouldContinue: true,
               finishReason: state.lastResult.finishReason,
               metadata: const {}, // Empty - metadata already streamed
-              thinking: null,
               usage: state.lastResult.usage,
             ),
           );
@@ -208,7 +213,6 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
             shouldContinue: false,
             finishReason: state.lastResult.finishReason,
             metadata: const {}, // Empty - metadata already streamed
-            thinking: null,
             usage: state.lastResult.usage,
           ),
         );
@@ -224,7 +228,6 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
             shouldContinue: false,
             finishReason: state.lastResult.finishReason,
             metadata: const {}, // Empty - metadata already streamed
-            thinking: null,
             usage: state.lastResult.usage,
           ),
         );
@@ -271,7 +274,6 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
         shouldContinue: true,
         finishReason: state.lastResult.finishReason,
         metadata: const {}, // Empty - metadata already streamed
-        thinking: null,
         usage: state.lastResult.usage,
       );
     }
@@ -282,7 +284,6 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
       shouldContinue: true,
       finishReason: state.lastResult.finishReason,
       metadata: const {}, // Empty - metadata already streamed
-      thinking: null,
       usage: state.lastResult.usage,
     );
   }
@@ -319,8 +320,8 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
   void registerToolCalls(List<ToolPart> toolCalls, StreamingState state) {
     for (final toolCall in toolCalls) {
       state.registerToolCall(
-        id: toolCall.id,
-        name: toolCall.name,
+        id: toolCall.callId,
+        name: toolCall.toolName,
         arguments: toolCall.arguments,
       );
     }

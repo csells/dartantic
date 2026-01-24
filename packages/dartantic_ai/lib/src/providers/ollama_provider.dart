@@ -22,10 +22,6 @@ class OllamaProvider
     super.headers,
   }) : super(
          defaultModelNames: {
-           /// Note: llama3.x models have a known issue with spurious content in
-           /// tool calling responses, generating unwanted JSON fragments like
-           /// '", "parameters": {}}' during streaming. qwen2.5:7b-instruct
-           /// provides cleaner tool calling behavior.
            ModelKind.chat: 'qwen2.5:7b-instruct',
          },
        );

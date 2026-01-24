@@ -337,7 +337,7 @@ INPUT: ChatResult stream, output options
 OUTPUT: Formatted output to stdout/stderr
 
 1. For each streaming chunk:
-   a. If chunk.thinking is not empty:
+   a. If chunk message parts contain ThinkingPart:
       - If first thinking chunk: Output "[Thinking]\n" (colored if enabled)
       - Output thinking content
    b. If chunk.output is not empty:

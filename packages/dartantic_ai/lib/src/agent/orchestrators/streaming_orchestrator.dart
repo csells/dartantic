@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 
 import '../streaming_state.dart';
 
@@ -14,7 +13,6 @@ class StreamingIterationResult {
     required this.shouldContinue,
     required this.finishReason,
     this.metadata = const {},
-    this.thinking,
     this.usage,
   });
 
@@ -32,9 +30,6 @@ class StreamingIterationResult {
 
   /// Metadata from the iteration
   final Map<String, dynamic> metadata;
-
-  /// Extended thinking content
-  final String? thinking;
 
   /// Usage information
   final LanguageModelUsage? usage;
@@ -59,7 +54,7 @@ abstract class StreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   });
 
   /// Handles the initial setup before streaming begins

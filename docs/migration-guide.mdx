@@ -2,6 +2,89 @@
 title: Migration Guide
 ---
 
+## Migrating from 2.x to 3.0.0
+
+### Thinking API Change
+
+Extended thinking is now accessed via `ThinkingPart` in message parts instead of
+a dedicated `thinking` property:
+
+```dart
+// OLD
+if (result.thinking != null && result.thinking!.isNotEmpty) {
+  print('[[${result.thinking!.trim()}]]');
+}
+
+// NEW
+final thinking = result.messages
+    .expand((m) => m.parts)
+    .whereType<ThinkingPart>()
+    .map((p) => p.text)
+    .join();
+if (thinking.isNotEmpty) {
+  print('[[${thinking.trim()}]]');
+}
+
+// For streaming chunks:
+// OLD
+final thinking = chunk.thinking;
+
+// NEW
+final thinking = chunk.messages
+    .expand((m) => m.parts)
+    .whereType<ThinkingPart>()
+    .map((p) => p.text)
+    .join();
+```
+
+### Schema API Change
+
+The `JsonSchema` class has been replaced with `Schema`:
+
+```dart
+// OLD
+import 'package:json_schema/json_schema.dart';
+
+final schema = JsonSchema.create({
+  'type': 'object',
+  'properties': {
+    'city': {'type': 'string'},
+  },
+  'required': ['city'],
+});
+
+// Or with builder methods:
+final schema = JsonSchema.object({
+  'location': JsonSchema.string(description: 'The location'),
+  'count': JsonSchema.integer(description: 'The count'),
+}, required: ['location']);
+
+// NEW
+import 'package:dartantic_ai/dartantic_ai.dart'; // Schema is re-exported
+
+final schema = Schema.fromMap({
+  'type': 'object',
+  'properties': {
+    'city': {'type': 'string'},
+  },
+  'required': ['city'],
+});
+
+// Or with builder methods (using S shorthand):
+final schema = S.object(properties: {
+  'location': S.string(description: 'The location'),
+  'count': S.integer(description: 'The count'),
+}, required: ['location']);
+```
+
+Key changes:
+- `JsonSchema.create({...})` becomes `Schema.fromMap({...})`
+- `JsonSchema.object({...})` becomes `S.object(properties: {...})`
+- `JsonSchema.string(...)` becomes `S.string(...)`
+- `JsonSchema.integer(...)` becomes `S.integer(...)`
+- No need to import `json_schema` package; `Schema` is re-exported from
+  `dartantic_ai`
+
 ## Migrating from 1.x to 2.0.0
 
 ### Exposing dartantic_interface directly from dartantic_ai

@@ -57,8 +57,8 @@ class OpenAIResponsesPartMapper {
         toolCallNames[item.callId] = item.name;
         parts.add(
           ToolPart.call(
-            id: item.callId,
-            name: item.name,
+            callId: item.callId,
+            toolName: item.name,
             arguments: decodeArguments(item.arguments),
           ),
         );
@@ -69,8 +69,8 @@ class OpenAIResponsesPartMapper {
         final toolName = toolCallNames[item.callId] ?? item.callId;
         parts.add(
           ToolPart.result(
-            id: item.callId,
-            name: toolName,
+            callId: item.callId,
+            toolName: toolName,
             result: decodeResult(item.output),
           ),
         );

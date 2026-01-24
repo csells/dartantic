@@ -151,12 +151,11 @@ For word-level timestamps and structured output, use typed responses with a JSON
 ```dart
 import 'dart:io';
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:json_schema/json_schema.dart';
 
 final agent = Agent('google');
 final audioBytes = await File('audio.m4a').readAsBytes();
 
-final schema = JsonSchema.create({
+final schema = Schema.fromMap({
   'type': 'object',
   'properties': {
     'transcript': {'type': 'string'},

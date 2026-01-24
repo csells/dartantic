@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 import 'package:openai_core/openai_core.dart' as openai;
 
@@ -57,9 +56,7 @@ class OpenAIResponsesChatModel
           (tool) => openai.FunctionTool(
             name: tool.name,
             description: tool.description,
-            parameters: Map<String, dynamic>.from(
-              tool.inputSchema.schemaMap ?? {},
-            ),
+            parameters: Map<String, dynamic>.from(tool.inputSchema.value),
           ),
         )
         .toList(growable: false);
@@ -70,7 +67,7 @@ class OpenAIResponsesChatModel
   Stream<ChatResult<ChatMessage>> sendStream(
     List<ChatMessage> messages, {
     OpenAIResponsesChatModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     final invocation = _buildInvocation(messages, options, outputSchema);
     _validateInvocation(invocation);
@@ -126,7 +123,7 @@ class OpenAIResponsesChatModel
   OpenAIResponsesInvocation _buildInvocation(
     List<ChatMessage> messages,
     OpenAIResponsesChatModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   ) => OpenAIResponsesInvocationBuilder(
     messages: messages,
     options: options,

@@ -134,6 +134,12 @@ void main() {
         final tool = Tool<String>(
           name: 'echo',
           description: 'Echo input',
+          inputSchema: Schema.fromMap({
+            'type': 'object',
+            'properties': {
+              'text': {'type': 'string', 'description': 'Text to echo'},
+            },
+          }),
           inputFromJson: (json) => (json['text'] ?? 'test') as String,
           onCall: (input) => input,
         );

@@ -1,3 +1,44 @@
+## 3.0.0
+
+### Breaking Change: Migrated to genai_primitives Types
+
+Core message and part types are now provided by the `genai_primitives` package
+and re-exported from `dartantic_interface`. This provides better
+interoperability with other GenAI tooling in the Dart ecosystem.
+
+Types re-exported from `genai_primitives`:
+- `ChatMessage`, `ChatMessageRole`
+- `Part`, `TextPart`, `DataPart`, `LinkPart`, `ThinkingPart`
+- `ToolPart`, `ToolPartKind`
+- `ToolDefinition`
+
+### Breaking Change: Migrated to json_schema_builder for Schemas
+
+The `Schema` type is now provided by the `json_schema_builder` package. Use the
+`S` builder class for constructing schemas:
+
+```dart
+import 'package:dartantic_interface/dartantic_interface.dart';
+
+// Build schemas with S.*
+final schema = S.object(properties: {
+  'name': S.string(description: 'User name'),
+  'age': S.integer(minimum: 0),
+});
+```
+
+### New: ThinkingPart for Extended Reasoning
+
+Added `ThinkingPart` to represent extended thinking/reasoning content from LLMs.
+This provides a unified representation across providers that support thinking
+(OpenAI Responses, Anthropic, Google).
+
+### New Convenience Extensions
+
+Added `MessagePartHelpers` extension on `Iterable<Part>`:
+- `thinkingParts` - extracts all `ThinkingPart` instances
+- `thinkingText` - concatenates all thinking text
+
 ## 2.0.0
 
 - **BREAKING**: Removed `ProviderCaps` enum from the interface. Provider

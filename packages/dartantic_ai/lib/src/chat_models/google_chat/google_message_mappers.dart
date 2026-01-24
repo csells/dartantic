@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
@@ -82,9 +81,8 @@ gl.Part _mapToolCallPart(
           arguments: arguments,
         );
 
-  // Decode base64 signature back to Uint8List for Google API
-  final sigBase64 = thoughtSignatures[callId] as String?;
-  final sig = sigBase64 != null ? base64Decode(sigBase64) : null;
+  // Get signature bytes directly from metadata
+  final sig = thoughtSignatures[callId] as List<int>?;
 
   return gl.Part(
     functionCall: gl.FunctionCall(
@@ -103,9 +101,8 @@ gl.Part _mapToolResultPart(
   final responseMap = ToolResultHelpers.ensureMap(part.result);
   _logger.fine('Creating function response for tool: ${part.toolName}');
 
-  // Decode base64 signature back to Uint8List for Google API
-  final sigBase64 = thoughtSignatures[part.callId] as String?;
-  final sig = sigBase64 != null ? base64Decode(sigBase64) : null;
+  // Get signature bytes directly from metadata
+  final sig = thoughtSignatures[part.callId] as List<int>?;
 
   return gl.Part(
     functionResponse: gl.FunctionResponse(
@@ -304,10 +301,10 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
             arguments: args,
           ),
         );
-        // Store thought signature as base64 in message metadata
+        // Store thought signature bytes in message metadata
         final sig = part.thoughtSignature;
         if (sig.isNotEmpty) {
-          thoughtSignatures[callId] = base64Encode(sig);
+          thoughtSignatures[callId] = sig.toList();
         }
       }
 
@@ -330,10 +327,10 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
             result: responseMap,
           ),
         );
-        // Store thought signature as base64 for function responses too
+        // Store thought signature bytes for function responses too
         final sig = part.thoughtSignature;
         if (sig.isNotEmpty) {
-          thoughtSignatures[responseId] = base64Encode(sig);
+          thoughtSignatures[responseId] = sig.toList();
         }
       }
 

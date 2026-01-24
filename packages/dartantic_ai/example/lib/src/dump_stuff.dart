@@ -194,6 +194,12 @@ Object? _recursiveTrimJson(Object? value, {required int maxLength}) {
 
   // Handle lists recursively
   if (value is List) {
+    // Check if this is a list of numbers (like byte arrays/signatures)
+    final isNumericList = value.isNotEmpty && value.every((e) => e is num);
+    if (isNumericList && value.length > 8) {
+      // Trim numeric lists to first 8 elements with "..." indicator
+      return [...value.take(8), '...'];
+    }
     return value
         .map((item) => _recursiveTrimJson(item, maxLength: maxLength))
         .toList();

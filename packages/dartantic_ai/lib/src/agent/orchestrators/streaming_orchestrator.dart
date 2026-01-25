@@ -12,12 +12,16 @@ class StreamingIterationResult {
     required this.messages,
     required this.shouldContinue,
     required this.finishReason,
+    this.thinking,
     this.metadata = const {},
     this.usage,
   });
 
   /// Text output to stream to the user
   final String output;
+
+  /// Thinking output to stream to the user (for reasoning models)
+  final String? thinking;
 
   /// Messages to yield (if any)
   final List<ChatMessage> messages;

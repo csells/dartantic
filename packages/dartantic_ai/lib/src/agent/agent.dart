@@ -328,11 +328,14 @@ class Agent {
             state,
             outputSchema: outputSchema,
           )) {
-            // Yield streaming text or metadata
-            if (result.output.isNotEmpty || result.metadata.isNotEmpty) {
+            // Yield streaming text, thinking, or metadata
+            if (result.output.isNotEmpty ||
+                result.thinking != null ||
+                result.metadata.isNotEmpty) {
               yield ChatResult<String>(
                 id: state.lastResult.id.isEmpty ? '' : state.lastResult.id,
                 output: result.output,
+                thinking: result.thinking,
                 messages: const [],
                 finishReason: result.finishReason,
                 metadata: result.metadata,

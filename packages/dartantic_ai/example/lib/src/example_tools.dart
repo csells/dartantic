@@ -20,7 +20,6 @@ final localTimeTool = Tool<Map<String, dynamic>>(
 final currentDateTimeTool = Tool<Map<String, dynamic>>(
   name: 'current_date_time',
   description: 'Get the current date and time',
-
   onCall: (_) => DateTime.now().toIso8601String(),
 );
 

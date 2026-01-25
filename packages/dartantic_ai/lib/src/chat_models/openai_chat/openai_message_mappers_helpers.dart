@@ -69,7 +69,11 @@ CreateChatCompletionRequest createChatCompletionRequest(
           function: FunctionObject(
             name: tool.name,
             description: tool.description,
-            parameters: tool.inputSchema.value as Map<String, dynamic>?,
+            // OpenAI requires 'properties' field on object schemas, even if
+            // empty
+            parameters: OpenAIUtils.prepareSchemaForOpenAI(
+              Map<String, dynamic>.from(tool.inputSchema.value),
+            ),
             strict: null, // Explicitly pass null to override any defaults
           ),
         ),

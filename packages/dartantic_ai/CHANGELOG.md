@@ -1,5 +1,24 @@
 ## 3.0.0
 
+### Streaming Thinking via `chunk.thinking`
+
+Added a dedicated `thinking` field to `ChatResult<String>` for streaming thinking
+content. This provides symmetric access to thinking during streaming, matching
+how `chunk.output` provides streaming text:
+
+```dart
+await for (final chunk in agent.sendStream(prompt)) {
+  if (chunk.thinking != null) {
+    stdout.write(chunk.thinking);  // Real-time thinking display
+  }
+  stdout.write(chunk.output);  // Real-time text display
+  history.addAll(chunk.messages);  // Consolidated messages
+}
+```
+
+This is an additive change - the final consolidated message still contains
+`ThinkingPart` for history storage.
+
 ### Breaking Change: Migrated to genai_primitives Types
 
 The core message types have been migrated from custom implementations to the
@@ -7,8 +26,10 @@ standardized `genai_primitives` package. This provides better interoperability
 with other GenAI tooling in the Dart ecosystem.
 
 Types now re-exported from `genai_primitives`:
+
 - `ChatMessage`, `ChatMessageRole`
-- `Part` (alias for `StandardPart`), `TextPart`, `DataPart`, `LinkPart`, `ThinkingPart`
+- `Part` (alias for `StandardPart`), `TextPart`, `DataPart`, `LinkPart`,
+  `ThinkingPart`
 - `ToolPart`, `ToolPartKind`
 - `ToolDefinition`
 
@@ -35,31 +56,26 @@ final tool = Tool(
 );
 ```
 
-### Breaking Change: ThinkingPart Replaces result.thinking
+### Thinking API
 
-Extended thinking (chain-of-thought reasoning) content is now represented as
-`ThinkingPart` instances in message parts, replacing the previous
-`result.thinking` property. This provides a unified representation across all
-providers that support thinking:
+Extended thinking (chain-of-thought reasoning) is accessed via
+`ChatResult.thinking` for both streaming and non-streaming:
 
 ```dart
-// OLD
-final thinking = result.thinking; // No longer available
-
-// NEW
 final agent = Agent('anthropic', enableThinking: true);
+
+// Non-streaming
 final result = await agent.send('Solve this puzzle...');
+print(result.thinking);
 
-// Access thinking via parts
-final thinking = result.messages
-    .expand((m) => m.parts)
-    .whereType<ThinkingPart>()
-    .map((p) => p.text)
-    .join();
-
-// Or use the convenience getter on parts
-print('Thinking: ${result.output.parts.thinkingText}');
+// Streaming
+await for (final chunk in agent.sendStream('Solve this puzzle...')) {
+  if (chunk.thinking != null) stdout.write(chunk.thinking);  // Real-time
+}
 ```
+
+Thinking is also stored as `ThinkingPart` in message parts for conversation
+history.
 
 ### Provider Changes
 
@@ -69,14 +85,8 @@ print('Thinking: ${result.output.parts.thinkingText}');
 
 ### Fixes
 
-- **OpenAI Tool Schema Requirement**: OpenAI's API now requires `properties`
-  field in object schemas, even for tools with no parameters. Tools without an
-  explicit `inputSchema` will fail with "object schema missing properties". Fix
-  by adding `inputSchema: S.object()` to tools that don't take parameters.
-
-- **Anthropic Thinking Metadata**: The thinking signature is now stored
-  separately in metadata while the thinking text is only stored in
-  `ThinkingPart`.
+- **Anthropic Thinking Metadata**: The thinking signature is still stored in
+  metadata while the thinking text is only stored in `ThinkingPart`.
 
 - **ThinkingPart Filtering**: Each provider's message mapper now correctly
   handles `ThinkingPart` - Anthropic converts it to thinking blocks for the API,
@@ -140,7 +150,8 @@ print('Thinking: ${result.output.parts.thinkingText}');
   - Enables image editing use cases: colorization, style transfer, inpainting
   - Added e2e tests for image editing with attachments for Google, OpenAI, and
     Anthropic providers
-  - Updated all media generation examples to include image editing demonstrations
+  - Updated all media generation examples to include image editing
+    demonstrations
   - Refactored Google Part mapping to use shared `mapPartsToGoogle()` helper
 - Refactored provider `listModels()` implementations to use SDK methods instead
   of raw HTTP:
@@ -153,10 +164,12 @@ print('Thinking: ${result.output.parts.thinkingText}');
 ## 2.0.3
 
 - Updated Anthropic SDK compatibility for `anthropic_sdk_dart` 0.3.1:
-  - `ImageBlockSource` now uses sealed class API with `base64ImageSource()` factory
+  - `ImageBlockSource` now uses sealed class API with `base64ImageSource()`
+    factory
   - Added support for new block types: `DocumentBlock`, `RedactedThinkingBlock`,
     `ServerToolUseBlock`, `WebSearchToolResultBlock`, `MCPToolUseBlock`
-  - Added support for new delta types: `SignatureBlockDelta`, `CitationsBlockDelta`
+  - Added support for new delta types: `SignatureBlockDelta`,
+    `CitationsBlockDelta`
   - Added `pauseTurn` and `refusal` stop reasons
 - Updated Mistral SDK compatibility for `mistralai_dart` 0.1.1:
   - Fixed ambiguous imports for `JsonSchema` and `Tool`
@@ -470,11 +483,11 @@ This is a big release!
 ## 1.0.5
 
 - Fixed #47: Dartantic is checking for wrong environment variable. I was being
-  aggressive about constructing providers before they were used and checking
-  API keys before they were needed, which was causing this issue. For example,
-  if you wanted to use `Agent('google')` and didn't have the MISTRAL_API_KEY
-  set (why would you?), string lookup creates all of the providers, which
-  caused all of them to check for their API key and -- BOOM.
+  aggressive about constructing providers before they were used and checking API
+  keys before they were needed, which was causing this issue. For example, if
+  you wanted to use `Agent('google')` and didn't have the MISTRAL_API_KEY set
+  (why would you?), string lookup creates all of the providers, which caused all
+  of them to check for their API key and -- BOOM.
 
 ## 1.0.4
 

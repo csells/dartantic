@@ -7,7 +7,9 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:example/example.dart';
 
 void main() async {
-  const model = 'gemini';
+  // const model = 'gemini';
+  // const model = 'openai-responses';
+  const model = 'claude';
   final provider = Agent.getProvider(model);
   final agent = Agent.forProvider(
     provider,

@@ -25,14 +25,9 @@ final agent = Agent(
 
 final result = await agent.send('In one sentence, how does quicksort work?');
 
-// Extract thinking from message parts
-final thinking = result.messages
-    .expand((m) => m.parts)
-    .whereType<ThinkingPart>()
-    .map((p) => p.text)
-    .join();
-if (thinking.isNotEmpty) {
-  print('[[${thinking.trim()}]]');
+// Access thinking via result.thinking
+if (result.thinking != null) {
+  print('[[${result.thinking}]]');
 }
 print(result.output);
 ```
@@ -100,8 +95,8 @@ final agentDynamic = Agent(
 
 ### Key Points
 
-- The reasoning stream is emitted through `ThinkingPart` in message parts
-- Access thinking via: `message.parts.whereType<ThinkingPart>()`
+- Access thinking via `result.thinking` for both streaming and non-streaming
+- Thinking is also stored as `ThinkingPart` in consolidated messages for history
 - You control where (or if) thinking is displayed
 - **Important**: When using Anthropic with tool calls, thinking blocks are
   automatically preserved in conversation history as required by their API. This
@@ -114,25 +109,16 @@ final history = <ChatMessage>[];
 var stillThinking = true;
 stdout.write('[[');
 
-final thinkingBuffer = StringBuffer();
 await for (final chunk in agent.sendStream(
   'In one sentence: how does quicksort work?',
 )) {
-  // Extract thinking from message parts
-  final thinking = chunk.messages
-      .expand((m) => m.parts)
-      .whereType<ThinkingPart>()
-      .map((p) => p.text)
-      .join();
-  final hasThinking = thinking.isNotEmpty;
-  final hasText = chunk.output.isNotEmpty;
-
-  if (hasThinking) {
-    thinkingBuffer.write(thinking);
-    stdout.write(thinking);
+  // Display thinking in real-time via chunk.thinking field
+  if (chunk.thinking != null) {
+    stdout.write(chunk.thinking);
   }
 
-  if (hasText) {
+  // Display response text
+  if (chunk.output.isNotEmpty) {
     if (stillThinking) {
       stillThinking = false;
       stdout.writeln(']]\n');
@@ -146,9 +132,10 @@ await for (final chunk in agent.sendStream(
 stdout.writeln('\n');
 ```
 
-The stream delivers reasoning deltas incrementally through `ThinkingPart` in
-message parts, so you can render a live "thought bubble" while the model is
-working. Each chunk may include text output, thinking, or both.
+The stream delivers reasoning deltas incrementally through `chunk.thinking`,
+so you can render a live "thought bubble" while the model is working. Each
+chunk may include text output (`chunk.output`), thinking (`chunk.thinking`),
+or both.
 
 ## Examples
 

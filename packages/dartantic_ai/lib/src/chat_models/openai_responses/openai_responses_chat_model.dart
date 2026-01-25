@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:openai_core/openai_core.dart' as openai;
 
 import '../../retry_http_client.dart';
+import '../../shared/openai_utils.dart';
 import 'openai_responses_chat_options.dart';
 import 'openai_responses_event_mapper.dart';
 import 'openai_responses_invocation_builder.dart';
@@ -56,7 +57,11 @@ class OpenAIResponsesChatModel
           (tool) => openai.FunctionTool(
             name: tool.name,
             description: tool.description,
-            parameters: Map<String, dynamic>.from(tool.inputSchema.value),
+            // OpenAI Responses API requires 'properties' field on object
+            // schemas, even if empty
+            parameters: OpenAIUtils.prepareSchemaForOpenAI(
+              Map<String, dynamic>.from(tool.inputSchema.value),
+            ),
           ),
         )
         .toList(growable: false);

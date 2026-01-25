@@ -19,7 +19,6 @@
 import 'dart:convert';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-
 import 'package:test/test.dart';
 
 import 'test_helpers/run_provider_test.dart';
@@ -107,7 +106,7 @@ void main() {
   final getSecretCodeTool = Tool<Map<String, dynamic>>(
     name: 'get_secret_code',
     description: 'Gets a secret code that must be validated',
-    inputSchema: Schema.fromMap({'type': 'object', 'properties': {}}),
+    inputSchema: S.object(),
     onCall: (input) => {
       'code': 'SECRET-XYZ-789',
       'issued_at': '2025-01-09T12:00:00Z',

@@ -367,12 +367,11 @@ extension MessageListMapper on List<ChatMessage> {
         }
       }
 
-      // Add text blocks if present
-      for (final textPart in textParts) {
-        if (textPart.text.isNotEmpty) {
-          blocks.add(a.Block.text(text: textPart.text));
-        }
-      }
+      // NOTE: We intentionally do NOT add text blocks when tool_use blocks are
+      // present. Anthropic's API can accept mixed content, but in practice when
+      // we have tool calls, the text is typically "thinking out loud" that gets
+      // suppressed by the typed output orchestrator. Including it can confuse
+      // subsequent model responses.
 
       // Add tool_use blocks
       blocks.addAll(
@@ -832,7 +831,6 @@ class MessageStreamEventTransformer
 
   ChatResult<ChatMessage>? _mapMessageStopEvent(a.MessageStopEvent e) {
     // Capture state before clearing
-    final thinkingText = _thinkingBuffer.toString();
     final thinkingSignature = _thinkingSignature;
     final hasToolCalls = _messageHasToolCalls;
     final toolMetadata = _toolState.toMetadata();
@@ -852,39 +850,31 @@ class MessageStreamEventTransformer
     _messageHasToolCalls = false;
     _toolState.reset();
 
-    // Nothing to emit if no thinking and no tool metadata
-    if (thinkingText.isEmpty && toolMetadata.isEmpty) {
-      return null;
-    }
-
     // Store signature in metadata only when tool calls are present (for
-    // replay). Thinking text is already in ThinkingPart, so we only store the
-    // signature.
+    // replay). Thinking text was already streamed via ThinkingBlockDelta
+    // events, so we only need to emit metadata here.
     final hasSignature =
         thinkingSignature != null && thinkingSignature.isNotEmpty;
     final messageMetadata = hasToolCalls && hasSignature
         ? AnthropicThinkingMetadata.buildMetadata(signature: thinkingSignature)
         : <String, Object?>{};
 
-    // Emit thinking as ThinkingPart in output message
-    final thinkingParts = thinkingText.isNotEmpty
-        ? <Part>[ThinkingPart(thinkingText)]
-        : const <Part>[];
+    // Only emit if we have metadata or tool metadata to pass through.
+    // Thinking content was already streamed as ThinkingBlockDelta events and
+    // will be accumulated by MessageAccumulator - emitting it again here would
+    // cause duplication.
+    if (messageMetadata.isEmpty && toolMetadata.isEmpty) {
+      return null;
+    }
 
     return ChatResult<ChatMessage>(
       id: lastMessageId,
       output: ChatMessage(
         role: ChatMessageRole.model,
-        parts: thinkingParts,
+        parts: const [],
         metadata: messageMetadata,
       ),
-      messages: [
-        ChatMessage(
-          role: ChatMessageRole.model,
-          parts: thinkingParts,
-          metadata: messageMetadata,
-        ),
-      ],
+      messages: const [],
       finishReason: FinishReason.unspecified,
       metadata: toolMetadata,
       usage: null,

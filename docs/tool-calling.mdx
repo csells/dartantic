@@ -49,6 +49,23 @@ It's not shown here, but it's best practice for you to also list the tools and
 their metadata in the agent's system message. See [System
 Messages](/system-messages) for more information.
 
+## Tools Without Parameters
+
+For tools that don't take any input, simply omit the `inputSchema`:
+
+```dart
+final currentTimeTool = Tool(
+  name: 'get_current_time',
+  description: 'Get the current date and time',
+  onCall: (_) => DateTime.now().toIso8601String(),
+);
+
+final agent = Agent('openai', tools: [currentTimeTool]);
+final result = await agent.send("What time is it?");
+```
+
+The tool will use a default empty object schema.
+
 ## Multiple Tools
 
 You can pass multiple tools to the agent constructor.
@@ -110,15 +127,15 @@ Use `json_serializable` and `soti_schema_plus` for type-safe tools:
 @JsonSerializable()
 class WeatherInput {
   WeatherInput({required this.city});
-  
+
   /// The city to get weather for
   final String city;
-  
+
   factory WeatherInput.fromJson(Map<String, dynamic> json) =>
       _$WeatherInputFromJson(json);
-  
+
   @jsonSchema
-  static Map<String, dynamic> get schemaMap => 
+  static Map<String, dynamic> get schemaMap =>
       _$WeatherInputSchemaMap;
 }
 

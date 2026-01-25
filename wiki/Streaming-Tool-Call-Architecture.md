@@ -114,10 +114,9 @@ for features like session persistence.
 | OpenRouter | ✅        | ✅    | ✅       | OpenAI-compatible|
 | Anthropic  | ✅        | ✅    | ✅       | Event-based      |
 | Google     | ✅        | ✅    | ❌       | Complete chunks  |
-| Ollama     | ✅        | ✅    | ❌       | Complete chunks  |
-| Mistral    | ✅        | ❌    | N/A      | Text only        |
+| Ollama     | ✅        | ⚠️    | ❌       | Complete chunks (limited reliability) |
+| Mistral    | ✅        | ✅    | ✅       | OpenAI-compatible |
 | Cohere     | ✅        | ⚠️    | ⚠️       | API bug (non-unique IDs) |
-| Together   | ✅        | ✅    | ✅       | OpenAI-compatible|
 
 ## Streaming Patterns
 

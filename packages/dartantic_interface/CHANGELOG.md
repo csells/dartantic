@@ -1,5 +1,11 @@
 ## 3.0.0
 
+### Streaming Thinking via `ChatResult.thinking`
+
+Added optional `thinking` field to `ChatResult` for streaming thinking content.
+During streaming, thinking deltas are delivered via `chunk.thinking` for real-time
+display, while the consolidated `ThinkingPart` appears in final messages for history.
+
 ### Breaking Change: Migrated to genai_primitives Types
 
 Core message and part types are now provided by the `genai_primitives` package

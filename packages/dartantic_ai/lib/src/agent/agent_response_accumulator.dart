@@ -10,6 +10,7 @@ class AgentResponseAccumulator {
 
   final List<ChatMessage> _allNewMessages = <ChatMessage>[];
   final StringBuffer _finalOutputBuffer = StringBuffer();
+  final StringBuffer _finalThinkingBuffer = StringBuffer();
   final Map<String, dynamic> _accumulatedMetadata = <String, dynamic>{};
 
   ChatResult<String> _finalResult = ChatResult<String>(
@@ -26,14 +27,20 @@ class AgentResponseAccumulator {
       _finalOutputBuffer.write(result.output);
     }
 
-    // Accumulate messages, filtering out streaming ThinkingPart-only messages.
-    // These are emitted during streaming for real-time display but the thinking
-    // is already included in the consolidated model message.
+    // Accumulate thinking text
+    if (result.thinking != null) {
+      _finalThinkingBuffer.write(result.thinking);
+    }
+
+    // Accumulate messages, filtering out streaming-only ThinkingPart messages.
+    // These are emitted during streaming for real-time display but are
+    // duplicated in the consolidated model message. The consolidated message
+    // (which has ThinkingPart + TextPart/ToolPart, or ThinkingPart with
+    // signature metadata) is what mappers need for multi-turn tool calling.
     for (final message in result.messages) {
-      final hasTextOrTools = message.parts.any(
-        (p) => p is TextPart || p is ToolPart,
-      );
-      if (hasTextOrTools || message.role == ChatMessageRole.user) {
+      final isStreamingThinkingOnly = message.parts.isNotEmpty &&
+          message.parts.every((p) => p is ThinkingPart);
+      if (!isStreamingThinkingOnly) {
         _allNewMessages.add(message);
       }
     }
@@ -48,12 +55,16 @@ class AgentResponseAccumulator {
   }
 
   /// Builds the final accumulated ChatResult.
-  ChatResult<String> buildFinal() => ChatResult<String>(
-    id: _finalResult.id,
-    output: _finalOutputBuffer.toString(),
-    messages: _allNewMessages,
-    finishReason: _finalResult.finishReason,
-    metadata: _accumulatedMetadata,
-    usage: _finalResult.usage,
-  );
+  ChatResult<String> buildFinal() {
+    final thinking = _finalThinkingBuffer.toString();
+    return ChatResult<String>(
+      id: _finalResult.id,
+      output: _finalOutputBuffer.toString(),
+      thinking: thinking.isEmpty ? null : thinking,
+      messages: _allNewMessages,
+      finishReason: _finalResult.finishReason,
+      metadata: _accumulatedMetadata,
+      usage: _finalResult.usage,
+    );
+  }
 }

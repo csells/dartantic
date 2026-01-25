@@ -26,7 +26,9 @@ class Tool<TInput extends Object> extends ToolDefinition<TInput> {
         _inputFromJson = (json) => json as TInput;
       } else {
         throw ArgumentError(
-          'inputFromJson cannot be null when tool has parameters',
+          'Tool "$name" has parameters but no inputFromJson was provided. '
+          'Either provide inputFromJson to parse arguments into $TInput, '
+          'or use Tool<Map<String, dynamic>> to receive raw arguments.',
         );
       }
     } else {
@@ -51,24 +53,29 @@ class Tool<TInput extends Object> extends ToolDefinition<TInput> {
   /// Runs the tool.
   Future<dynamic> call(Map<String, dynamic> arguments) async {
     _logger.fine('Invoking tool: $name with arguments: $arguments');
-    dynamic result;
-    final inputFromJson = _inputFromJson; // workaround for web compiler error
-    if (inputFromJson != null) {
-      final input = inputFromJson(arguments);
-      result = await onCall(input);
-    } else {
-      // No parameters expected - for tools like Tool<String> with no params,
-      // we pass an empty string or the Map itself, depending on TInput type
-      if (TInput == String) {
-        result = await onCall('' as TInput);
+    try {
+      dynamic result;
+      final inputFromJson = _inputFromJson; // workaround for web compiler error
+      if (inputFromJson != null) {
+        final input = inputFromJson(arguments);
+        result = await onCall(input);
       } else {
-        result = await onCall(arguments as TInput);
+        // No parameters expected - for tools like Tool<String> with no params,
+        // we pass an empty string or the Map itself, depending on TInput type
+        if (TInput == String) {
+          result = await onCall('' as TInput);
+        } else {
+          result = await onCall(arguments as TInput);
+        }
       }
+      _logger.fine(
+        'Tool $name executed successfully, result type: ${result.runtimeType}',
+      );
+      return result;
+    } on Exception catch (e, stackTrace) {
+      _logger.warning('Tool $name failed: $e', e, stackTrace);
+      rethrow;
     }
-    _logger.fine(
-      'Tool $name executed successfully, result type: ${result.runtimeType}',
-    );
-    return result;
   }
 
   /// Checks if the schema has parameters that require custom parsing.

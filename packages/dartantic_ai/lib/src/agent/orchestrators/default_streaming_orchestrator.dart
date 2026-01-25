@@ -81,13 +81,13 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
     StreamingState state,
   ) async* {
     final textOutput = _extractText(result);
+    final thinkingOutput = _extractThinking(result);
     final hasMetadata = result.metadata.isNotEmpty;
-    final thinkingParts =
-        result.output.parts.whereType<ThinkingPart>().toList();
-    final hasThinking = thinkingParts.isNotEmpty;
 
     final streamText =
         textOutput.isNotEmpty && allowTextStreaming(state, result);
+    final hasThinking = thinkingOutput.isNotEmpty;
+
     if (!streamText && !hasMetadata && !hasThinking) {
       return;
     }
@@ -101,21 +101,21 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
     _logger.fine(
       'Streaming chunk: text=${streamOutput.length} chars, '
       'metadata=${result.metadata.keys}, '
-      'thinking=${thinkingParts.length} parts',
+      'thinking=${thinkingOutput.length} chars',
     );
 
-    // Yield thinking parts as a message so callers can display them
-    final streamingMessages = hasThinking
-        ? [
-            ChatMessage(role: ChatMessageRole.model, parts: thinkingParts),
-          ]
-        : const <ChatMessage>[];
+    // NOTE: ThinkingPart content is NOT yielded in messages[] to avoid
+    // polluting the caller's message history with duplicates. The thinking
+    // content will be consolidated into the final model message via
+    // MessageAccumulator. Instead, thinking is streamed via the `thinking`
+    // field for real-time display.
 
     yield StreamingIterationResult(
       output: streamOutput,
-      messages: streamingMessages,
+      messages: const [],
       shouldContinue: true,
       finishReason: result.finishReason,
+      thinking: hasThinking ? thinkingOutput : null,
       metadata: result.metadata,
       usage: null, // Usage only in final result
     );
@@ -360,6 +360,9 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
 
 String _extractText(ChatResult<ChatMessage> result) =>
     result.output.parts.whereType<TextPart>().map((p) => p.text).join();
+
+String _extractThinking(ChatResult<ChatMessage> result) =>
+    result.output.parts.whereType<ThinkingPart>().map((p) => p.text).join();
 
 bool _shouldPrefixNewline(StreamingState state) =>
     state.shouldPrefixNextMessage && state.isFirstChunkOfMessage;

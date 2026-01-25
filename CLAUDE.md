@@ -275,9 +275,16 @@ Thinking support is unified across providers via `ThinkingPart`. Enable with `en
 - During streaming, `ThinkingPart`s are emitted for real-time display, then consolidated into a single part
 - Provider-specific signatures for multi-turn tool calling are stored in message metadata:
   - **Anthropic**: `_anthropic_thinking_signature` - signature string for ThinkingBlock continuity
-  - **Google**: `_google_thought_signatures` - base64-encoded signatures keyed by tool call ID
+  - **Google**: `_google_thought_signatures` - byte signatures keyed by tool call ID (stored as `List<int>`)
 
 These signatures are automatically preserved in conversation history and sent back to the provider when tool results are returned. This allows the model to maintain reasoning context across tool call boundaries.
+
+**Consolidation invariants (enforced by tests):**
+- ThinkingPart consolidation works exactly like TextPart consolidation via `MessageAccumulator`
+- The final consolidated message has at most ONE ThinkingPart (all thinking joined)
+- The final consolidated message has at most ONE TextPart (all text joined)
+- TextPart comes before ThinkingPart in the consolidated message parts list
+- Streaming-only ThinkingPart messages (for display) are filtered by `AgentResponseAccumulator`
 
 See `wiki/Thinking.md` for full architecture documentation.
 
@@ -288,6 +295,7 @@ See `wiki/Thinking.md` for full architecture documentation.
 - **No Try-Catch in Implementation**: Only catch exceptions to add context before re-throwing, never to suppress errors
 - **Scratch Files**: Use `tmp/` folder at project root for temporary/test files
 - **Silent Tests**: Successful tests produce no output; failures reported via `expect()`. Remove diagnostic `print()` statements before committing.
+- **Accumulator Filtering Rule**: The `AgentResponseAccumulator` filters ONLY streaming-only ThinkingPart messages (messages where ALL parts are ThinkingPart). These are emitted during streaming for real-time display but are duplicated in the consolidated model message. The consolidated message (ThinkingPart + TextPart/ToolPart, with signature metadata) MUST be preserved because provider mappers (e.g., Anthropic) need it for multi-turn tool calling. Empty model messages (no parts) must also pass through.
 
 ## Dartantic Chat
 

@@ -153,6 +153,108 @@ void main() {
         );
 
         _runThinkingProviderTest(
+          'thinking streams via chunk.thinking field',
+          (provider) async {
+            final agent = _createAgentWithThinking(provider);
+
+            final thinkingChunks = <String>[];
+            final textChunks = <String>[];
+
+            await for (final chunk in agent.sendStream(
+              'In one sentence: explain binary search.',
+            )) {
+              // Collect thinking from chunk.thinking field (real-time)
+              if (chunk.thinking != null) {
+                thinkingChunks.add(chunk.thinking!);
+              }
+
+              // Collect response text from chunk.output field
+              if (chunk.output.isNotEmpty) {
+                textChunks.add(chunk.output);
+              }
+            }
+
+            // Should have received thinking via chunk.thinking field
+            expect(
+              thinkingChunks,
+              isNotEmpty,
+              reason: 'Should receive thinking via chunk.thinking field',
+            );
+
+            // Accumulated thinking should be substantial
+            final fullThinking = thinkingChunks.join();
+            expect(
+              fullThinking.length,
+              greaterThan(10),
+              reason: 'Thinking should accumulate to substantial content',
+            );
+
+            // Should also have received text response
+            expect(
+              textChunks,
+              isNotEmpty,
+              reason: 'Should receive text response',
+            );
+          },
+          requiredCaps: {ProviderTestCaps.thinking},
+        );
+
+        _runThinkingProviderTest(
+          'streaming does not pollute history with ThinkingPart-only messages',
+          (provider) async {
+            // This test ensures that streaming with thinking doesn't yield
+            // individual ThinkingPart-only messages that would pollute the
+            // message history. ThinkingPart should only appear in consolidated
+            // messages alongside TextPart or ToolPart.
+            final agent = _createAgentWithThinking(
+              provider,
+              tools: [currentDateTimeTool],
+            );
+
+            final allMessages = <ChatMessage>[];
+
+            await for (final chunk in agent.sendStream(
+              'What time is it and what day is today?',
+            )) {
+              allMessages.addAll(chunk.messages);
+            }
+
+            // Check that no model message has ONLY ThinkingPart (no pollution)
+            final thinkingOnlyMessages = allMessages
+                .where((m) => m.role == ChatMessageRole.model)
+                .where((m) {
+                  final parts = m.parts.toList();
+                  // Has thinking parts but NO text or tool parts
+                  final hasThinking = parts.any((p) => p is ThinkingPart);
+                  final hasTextOrTool =
+                      parts.any((p) => p is TextPart || p is ToolPart);
+                  return hasThinking && !hasTextOrTool;
+                });
+
+            expect(
+              thinkingOnlyMessages,
+              isEmpty,
+              reason: 'Should not have ThinkingPart-only messages - '
+                  'thinking should be consolidated with text/tool parts. '
+                  'Found ${thinkingOnlyMessages.length} ThinkingPart-only '
+                  'messages in history.',
+            );
+
+            // Verify thinking IS present (consolidated with other parts)
+            final thinkingMessages = allMessages
+                .where((m) => m.role == ChatMessageRole.model)
+                .where((m) => m.parts.any((p) => p is ThinkingPart));
+
+            expect(
+              thinkingMessages,
+              isNotEmpty,
+              reason: 'Should have consolidated messages with ThinkingPart',
+            );
+          },
+          requiredCaps: {ProviderTestCaps.thinking},
+        );
+
+        _runThinkingProviderTest(
           'thinking works with tool calls',
           (provider) async {
             final agent = _createAgentWithThinking(

@@ -1,10 +1,9 @@
-import 'dart:typed_data';
-
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:google_cloud_ai_generativelanguage_v1beta/generativelanguage.dart'
     as gl;
 import 'package:logging/logging.dart';
 
+import '../../shared/google_thinking_metadata.dart';
 import '../helpers/message_part_helpers.dart';
 import '../helpers/protobuf_value_helpers.dart';
 import '../helpers/tool_id_helpers.dart';
@@ -20,8 +19,7 @@ final Logger _logger = Logger('dartantic.chat.mappers.google');
 /// Maps Dartantic Parts to Google gl.Parts (public helper for reuse).
 ///
 /// The [messageMetadata] parameter should contain thought signatures when
-/// available, keyed as `'_google_thought_signatures'` with a map of
-/// tool call ID → signature.
+/// available, stored via [GoogleThinkingMetadata].
 List<gl.Part> mapPartsToGoogle(
   Iterable<Part> parts, {
   bool includeToolCalls = false,
@@ -29,9 +27,9 @@ List<gl.Part> mapPartsToGoogle(
   Map<String, dynamic> messageMetadata = const {},
 }) {
   final mappedParts = <gl.Part>[];
-  final thoughtSignatures =
-      messageMetadata['_google_thought_signatures'] as Map<String, dynamic>? ??
-      const {};
+  final thoughtSignatures = GoogleThinkingMetadata.getSignatures(
+    messageMetadata,
+  );
 
   for (final part in parts) {
     switch (part) {
@@ -59,8 +57,8 @@ List<gl.Part> mapPartsToGoogle(
           mappedParts.add(_mapToolResultPart(part, thoughtSignatures));
         }
       case ThinkingPart():
-        // ThinkingPart is filtered out here - Google doesn't need thinking
-        // content sent back. Skip it during mapping.
+        // Google maintains reasoning context via thought signatures, not
+        // thinking text - signatures alone preserve continuity across turns
         break;
     }
   }
@@ -81,16 +79,17 @@ gl.Part _mapToolCallPart(
           arguments: arguments,
         );
 
-  // Get signature bytes directly from metadata
-  final sig = thoughtSignatures[callId] as List<int>?;
-
   return gl.Part(
     functionCall: gl.FunctionCall(
       id: callId,
       name: part.toolName,
       args: ProtobufValueHelpers.structFromJson(arguments),
     ),
-    thoughtSignature: sig != null ? Uint8List.fromList(sig) : null,
+    // Attach signature to preserve reasoning context across tool calls
+    thoughtSignature: GoogleThinkingMetadata.getSignatureBytes(
+      thoughtSignatures,
+      callId,
+    ),
   );
 }
 
@@ -101,16 +100,17 @@ gl.Part _mapToolResultPart(
   final responseMap = ToolResultHelpers.ensureMap(part.result);
   _logger.fine('Creating function response for tool: ${part.toolName}');
 
-  // Get signature bytes directly from metadata
-  final sig = thoughtSignatures[part.callId] as List<int>?;
-
   return gl.Part(
     functionResponse: gl.FunctionResponse(
       id: part.callId,
       name: part.toolName,
       response: ProtobufValueHelpers.structFromJson(responseMap),
     ),
-    thoughtSignature: sig != null ? Uint8List.fromList(sig) : null,
+    // Attach signature to preserve reasoning context across tool results
+    thoughtSignature: GoogleThinkingMetadata.getSignatureBytes(
+      thoughtSignatures,
+      part.callId,
+    ),
   );
 }
 
@@ -121,8 +121,8 @@ extension MessageListMapper on List<ChatMessage> {
   /// Groups consecutive tool result messages into a single `Content` so we can
   /// attach all [gl.FunctionResponse] parts in one payload.
   ///
-  /// ThinkingPart is skipped during mapping since Google doesn't need thinking
-  /// content sent back in conversation history.
+  /// ThinkingPart is skipped since Google uses thought signatures (not text)
+  /// to maintain reasoning continuity across conversation turns.
   List<gl.Content> toContentList() {
     final nonSystemMessages = where(
       (message) => message.role != ChatMessageRole.system,
@@ -301,11 +301,12 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
             arguments: args,
           ),
         );
-        // Store thought signature bytes in message metadata
-        final sig = part.thoughtSignature;
-        if (sig.isNotEmpty) {
-          thoughtSignatures[callId] = sig.toList();
-        }
+        // Store signature to preserve reasoning context for subsequent turns
+        GoogleThinkingMetadata.setSignatureBytes(
+          thoughtSignatures,
+          callId,
+          part.thoughtSignature,
+        );
       }
 
       final functionResponse = part.functionResponse;
@@ -327,11 +328,12 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
             result: responseMap,
           ),
         );
-        // Store thought signature bytes for function responses too
-        final sig = part.thoughtSignature;
-        if (sig.isNotEmpty) {
-          thoughtSignatures[responseId] = sig.toList();
-        }
+        // Store signature to preserve reasoning context for subsequent turns
+        GoogleThinkingMetadata.setSignatureBytes(
+          thoughtSignatures,
+          responseId,
+          part.thoughtSignature,
+        );
       }
 
       final executableCode = part.executableCode;
@@ -345,11 +347,10 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
       }
     }
 
-    // Build message metadata including thought signatures if present
-    final messageMetadata = <String, dynamic>{
-      if (thoughtSignatures.isNotEmpty)
-        '_google_thought_signatures': thoughtSignatures,
-    };
+    // Build message metadata with thought signatures for multi-turn continuity
+    final messageMetadata = GoogleThinkingMetadata.buildMetadata(
+      signatures: thoughtSignatures,
+    );
 
     final message = ChatMessage(
       role: ChatMessageRole.model,

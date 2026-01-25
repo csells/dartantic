@@ -24,6 +24,9 @@ build/
 .flutter-plugins
 .flutter-plugins-dependencies
 
+# Temp/scratch files
+tmp/
+
 # Misc
 *.class
 *.log

@@ -65,11 +65,10 @@ flowchart LR
 |------------|--------------|--------|---------------------------|
 | OpenAI     | ✅          | Native response_format | ✅ |
 | OpenAI Responses | ✅     | Native text_format (stateful) | ✅ |
-| OpenRouter | ✅          | Native (OpenAI-compatible) | ✅ |
+| OpenRouter | ✅          | Native (OpenAI-compatible) | ❌ |
 | Anthropic  | ✅          | return_result tool | ✅ |
 | Google     | ✅          | Native responseSchema + Double Agent | ✅ |
-| Ollama     | ✅          | Native format param (as of ollama_dart ^0.3.0) | ❌ (future: add double agent) |
-| Together   | ✅          | Native (OpenAI-compatible) | ✅ |
+| Ollama     | ✅          | Native format param (as of ollama_dart ^0.3.0) | ❌ |
 | Cohere     | ✅          | Native (OpenAI-compatible) | ❌ (API limitation) |
 | Mistral    | ❌          | Not supported | ❌ |
 

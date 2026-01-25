@@ -59,16 +59,35 @@ graph TD
 
 1. **Agent-Level Configuration**: Thinking is enabled via `enableThinking: true` parameter at the Agent constructor level, not in provider-specific options
 2. **Dedicated Surface**: Thinking appears as `ThinkingPart` instances in message parts (v3.0.0+)
-3. **Streaming Transparency**: During streaming, thinking deltas are emitted through the `thinking` field as they arrive
-4. **Accumulation**: The agent accumulator concatenates all streamed deltas and exposes the full thinking text in the final result
+3. **Streaming Transparency**: During streaming, thinking deltas are emitted as `ThinkingPart` messages for real-time display
+4. **Consolidation**: Multiple streaming `ThinkingPart`s are consolidated into a SINGLE `ThinkingPart` in the final message (same as `TextPart` consolidation)
 5. **History Isolation**: Thinking is typically NOT sent back to the model in conversation history
    - **Exception**: Anthropic requires thinking blocks (with signatures) to be preserved when tool calls are present
-   - This is handled transparently by the provider implementation via `_anthropic_thinking_block` metadata
+   - This is handled transparently by the provider implementation via `_anthropic_thinking_signature` metadata
    - Users pay for thinking tokens on every turn when using tools with Anthropic
 6. **Provider-Specific Fine-Tuning**: Options classes (e.g., `AnthropicChatOptions`, `GoogleChatModelOptions`) contain only provider-specific tuning parameters like token budgets, not the enable flag
 7. **Provider Agnostic**: Same consumption pattern works across all providers
 
-### Metadata Flow
+### Message Consolidation Architecture
+
+ThinkingPart consolidation follows the exact same pattern as TextPart consolidation via `MessageAccumulator`:
+
+**During streaming (`MessageAccumulator.accumulate`):**
+- Each streaming chunk adds its parts to the accumulated message
+- ThinkingParts and TextParts are collected separately
+
+**At end of stream (`MessageAccumulator.consolidate`):**
+- All TextParts are joined into a SINGLE TextPart
+- All ThinkingParts are joined into a SINGLE ThinkingPart
+- Parts are ordered: TextPart first, then ThinkingPart, then other parts (ToolParts, etc.)
+
+**Invariants (enforced by tests in `thinking_consolidation_test.dart`):**
+- Final message has at most ONE TextPart
+- Final message has at most ONE ThinkingPart
+- TextPart comes before ThinkingPart in parts list
+- Streaming-only ThinkingPart messages are filtered by `AgentResponseAccumulator`
+
+### Streaming Data Flow
 
 ```mermaid
 sequenceDiagram
@@ -80,25 +99,28 @@ sequenceDiagram
 
     M->>S: Thinking delta
     S->>O: Map to ChatResult
-    O->>A: Yield ChatResult(thinking: delta)
-    A->>U: Stream chunk
+    O->>A: Yield ChatResult(thinking: delta, output: '', messages: [])
+    A->>U: chunk.thinking for real-time display
     Note over S,O: Accumulate in buffer
-    M->>S: Final thinking
-    S->>O: Complete thinking
-    O->>A: Final ChatResult(thinking: full)
-    A->>U: Complete result
-    Note over O,A: Thinking NOT in message.parts
+    M->>S: Text delta
+    S->>O: Map to ChatResult
+    O->>A: Yield ChatResult(thinking: null, output: text, messages: [])
+    A->>U: chunk.output for real-time display
+    M->>S: Stream complete
+    S->>O: Consolidate message
+    O->>A: Yield ChatResult(messages: [consolidated])
+    A->>U: chunk.messages with ThinkingPart for history
 ```
 
 ### Key Differences from Message Content
 
-| Aspect | Message Content | ThinkingPart |
-|--------|----------------|----------------|
-| Location | `ChatMessage.parts` (TextPart, etc.) | `ChatMessage.parts` (as ThinkingPart) |
+| Aspect | Message Content | Thinking Content |
+|--------|----------------|------------------|
+| Streaming Access | `chunk.output` (String) | `chunk.thinking` (String?) |
+| Final Location | `ChatMessage.parts` (TextPart) | `ChatMessage.parts` (ThinkingPart) |
 | Sent to Model | ✅ Yes | ❌ No (by default) |
 | Purpose | Conversation content | Transparency/debugging |
-| Streaming | Text deltas | ThinkingPart with partial text |
-| Accumulation | In message accumulator | As ThinkingPart instances |
+| Consolidation | Multiple TextParts → 1 TextPart | Multiple ThinkingParts → 1 ThinkingPart |
 | History | Persists | Optional (usually filtered) |
 
 ## Provider Implementations
@@ -287,7 +309,7 @@ See `anthropic_message_mappers.dart` for the complete implementation.
 - Explicit budget control via `budgetTokens` parameter
 - Minimum budget: 1,024 tokens
 
-**Signature**: Anthropic provides optional cryptographic signature for authenticity verification
+**Signature**: Anthropic provides optional cryptographic signature for authenticity verification. Stored in message metadata via `AnthropicThinkingMetadata` with key `_anthropic_thinking_signature` (a string)
 
 **Token Budget Configuration**:
 - Default: 4096 tokens
@@ -379,7 +401,7 @@ See `google_message_mappers.dart` for the complete implementation.
 - **Gemini 2.5 Flash-Lite**: 512-24576 tokens (no default)
 - **Dynamic Mode (-1)**: Model determines optimal budget based on task complexity
 
-**Thought Signatures**: Google provides optional encrypted signatures for thinking blocks to maintain context across multi-turn conversations with function calling.
+**Thought Signatures**: Google provides optional encrypted signatures for thinking blocks to maintain context across multi-turn conversations with function calling. These are stored in message metadata via `GoogleThinkingMetadata` with key `_google_thought_signatures` (a map of tool call ID → byte array as `List<int>`).
 
 **Token Budget Configuration**:
 - Default: Dynamic (-1, model decides optimal budget)
@@ -416,15 +438,44 @@ See `google_message_mappers.dart` for the complete implementation.
 
 ### Streaming with Thinking
 
-In v3.0.0+, thinking content is represented as `ThinkingPart` instances within message parts. During streaming, thinking deltas arrive as `ThinkingPart` objects that can be identified by their type. Applications can extract and display thinking content by filtering for `ThinkingPart` instances in the streamed message parts, while regular text content appears as `TextPart` instances.
+In v3.0.0+, streaming thinking is available via the dedicated `chunk.thinking` field on `ChatResult<String>`. This provides symmetric access to thinking during streaming, matching how `chunk.output` provides streaming text:
+
+```dart
+await for (final chunk in agent.sendStream(prompt)) {
+  // Real-time thinking display
+  if (chunk.thinking != null) {
+    stdout.write(chunk.thinking);
+  }
+
+  // Real-time text display
+  stdout.write(chunk.output);
+
+  // Consolidated messages for history
+  history.addAll(chunk.messages);
+}
+```
+
+The final consolidated message contains a single `ThinkingPart` with the complete thinking text for storage in conversation history.
 
 ### Non-Streaming with Thinking
 
-In v3.0.0+, thinking content is accessible by filtering for `ThinkingPart` instances within the message parts. For non-streaming operations, the complete thinking content is accumulated in `ThinkingPart` instances within the final message. Applications can extract all thinking by filtering for `ThinkingPart` in `result.messages.last.parts`.
+In v3.0.0+, thinking is accessible via `result.thinking` for non-streaming operations:
+
+```dart
+final result = await agent.send(prompt);
+
+// Access thinking via result.thinking
+if (result.thinking != null) {
+  print('[[${result.thinking}]]');
+}
+print(result.output);
+```
+
+Thinking is also stored as `ThinkingPart` in the consolidated message for history storage.
 
 ### Provider-Specific Patterns
 
-All providers that support thinking (OpenAI Responses, Anthropic, Google) emit thinking content as `ThinkingPart` instances within message parts. Applications can uniformly access thinking by filtering for `ThinkingPart` in the message parts, regardless of the underlying provider.
+All providers that support thinking (OpenAI Responses, Anthropic, Google) use the same API: `result.thinking` for both streaming and non-streaming access. Thinking content is also stored as `ThinkingPart` in consolidated messages for history.
 
 Provider-specific configuration:
 - **OpenAI Responses**: Enable with `enableThinking: true`, uses `reasoningSummary: detailed` by default
@@ -523,7 +574,20 @@ When implementing thinking support for a new provider:
 > - If ThinkingPart appears in outbound messages, it indicates a bug in the message pipeline
 >
 > The only exception is Anthropic's signature-preserved thinking blocks for tool call continuity,
-> which are handled via special metadata (`_anthropic_thinking_block`), NOT via ThinkingPart.
+> which are handled via special metadata (`_anthropic_thinking_signature`), NOT via ThinkingPart.
+
+> **⚠️ CRITICAL: AgentResponseAccumulator Filtering Rule**
+>
+> The `AgentResponseAccumulator` filters ONLY streaming-only ThinkingPart messages
+> (messages where ALL parts are ThinkingPart and nothing else). These are:
+>
+> - Emitted during streaming for real-time display
+> - Duplicated in the consolidated model message
+> - NOT needed for mappers (they use the consolidated message)
+>
+> The **consolidated message** (ThinkingPart + TextPart/ToolPart, with signature metadata)
+> MUST be preserved because provider mappers (e.g., Anthropic) need it for multi-turn
+> tool calling. Empty model messages (no parts) must also pass through.
 
 - **Agent-Level Configuration**: Thinking is enabled via `Agent(enableThinking: true)`, not in provider-specific options
 - **Never send thinking back to model**: ThinkingPart MUST NEVER appear in outbound messages (enforced by assertions in all mappers)

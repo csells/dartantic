@@ -18,15 +18,12 @@ export 'package:genai_primitives/genai_primitives.dart'
         ToolPart,
         ToolPartKind;
 
-/// Alias for [StandardPart] to maintain backward compatibility.
+/// Alias for [StandardPart] for API convenience.
 ///
-/// In genai_primitives 0.2.0, the type hierarchy was reorganized:
-/// - `Part` is now the extendable base class
-/// - `StandardPart` is the sealed class containing built-in part types
+/// **For most dartantic users**: Use `Part` as before - it works identically.
 ///
-/// Dartantic APIs use `Part` as an alias for `StandardPart` for convenience.
-/// If you need to create a custom Part that extends the base class, import
-/// genai_primitives directly:
+/// **For custom part types**: Import genai_primitives directly to extend
+/// the base `Part` class:
 /// ```dart
 /// import 'package:genai_primitives/genai_primitives.dart' as gaip;
 /// class MyCustomPart extends gaip.Part { ... }
@@ -35,8 +32,7 @@ typedef Part = StandardPart;
 
 /// Helper utilities for Part-related operations.
 ///
-/// These provide backward compatibility with methods that were previously
-/// on the Part class.
+/// Provides MIME type detection and file extension mapping for [DataPart].
 class PartHelpers {
   PartHelpers._();
 
@@ -85,13 +81,4 @@ extension MessagePartHelpers on Iterable<Part> {
   List<ToolPart> get toolResults => whereType<ToolPart>()
       .where((p) => p.kind == ToolPartKind.result)
       .toList();
-
-  /// Extracts all thinking parts from the list.
-  ///
-  /// Returns all ThinkingPart instances.
-  List<ThinkingPart> get thinkingParts => whereType<ThinkingPart>().toList();
-
-  /// Gets the combined thinking text from all thinking parts.
-  String get thinkingText =>
-      whereType<ThinkingPart>().map((p) => p.text).join();
 }

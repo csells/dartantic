@@ -335,28 +335,21 @@ class LocalProvider extends Provider<LocalChatOptions, EmbeddingsModelOptions> {
 
 
 
-## Static Provider Registration
+## Provider Factory Registration
 
-Add your provider to the Provider class:
+Add your provider factory to `Agent.providerFactories`:
 
 ```dart
-abstract class Provider {
-  // ... base class definition ...
-  
-  // Add your provider as a static instance
-  static final example = ExampleProvider();
-  
-  // Include in the all providers list
-  static final all = <Provider>[
-    openai,
-    google,
-    anthropic,
-    cohere,
-    mistral,
-    ollama,
-    example,  // Add your provider here
-  ];
-}
+// In your application code or during initialization:
+Agent.providerFactories['example'] = ExampleProvider.new;
+
+// For providers with aliases:
+Agent.providerFactories['example'] = ExampleProvider.new;
+Agent.providerFactories['ex'] = ExampleProvider.new;  // alias
+
+// Now the provider is available:
+final provider = Agent.getProvider('example');
+final agent = Agent('example:example-chat-v1');
 ```
 
 ## Message Mapping Rules
@@ -478,8 +471,11 @@ OpenAIClient(
 ## Testing Your Provider
 
 ```dart
+// Register the provider factory first
+Agent.providerFactories['example'] = ExampleProvider.new;
+
 // Test provider discovery
-final provider = Providers.get('example');
+final provider = Agent.getProvider('example');
 assert(provider.name == 'example');
 
 // Test model creation
@@ -488,7 +484,7 @@ final embeddingsModel = provider.createEmbeddingsModel();
 
 // Test model listing
 await for (final model in provider.listModels()) {
-  print('${model.name} supports ${model.kinds}');
+  print('${model.id} supports ${model.kinds}');
 }
 
 // Test Agent integration

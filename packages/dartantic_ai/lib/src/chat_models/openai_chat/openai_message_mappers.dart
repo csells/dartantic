@@ -4,6 +4,7 @@ import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
 import 'package:openai_dart/openai_dart.dart';
 
+import '../../shared/openai_utils.dart';
 import '../helpers/message_part_helpers.dart';
 import '../helpers/tool_id_helpers.dart';
 import 'openai_chat_options.dart';
@@ -29,7 +30,11 @@ CreateChatCompletionRequest createChatCompletionRequestFromMessages(
           function: FunctionObject(
             name: tool.name,
             description: tool.description,
-            parameters: tool.inputSchema.value as Map<String, dynamic>?,
+            // OpenAI requires 'properties' field on object schemas, even if
+            // empty
+            parameters: OpenAIUtils.prepareSchemaForOpenAI(
+              Map<String, dynamic>.from(tool.inputSchema.value),
+            ),
             strict: null, // Explicitly pass null to override any defaults
           ),
         ),

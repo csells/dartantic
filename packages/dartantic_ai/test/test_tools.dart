@@ -370,10 +370,6 @@ List<Tool> get errorTestTools => [errorTool, invalidJsonTool];
 final currentDateTimeTool = Tool<Map<String, dynamic>>(
   name: 'current_date_time',
   description: 'Get the current date and time',
-  inputSchema: Schema.fromMap({
-    'type': 'object',
-    'properties': <String, dynamic>{}, // OpenAI requires properties field
-  }),
   onCall: (_) => DateTime.now().toIso8601String(),
 );
 

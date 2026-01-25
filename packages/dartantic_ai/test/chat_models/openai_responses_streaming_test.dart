@@ -30,13 +30,9 @@ void main() {
       await for (final chunk in agent.sendStream(
         'In one sentence: explain quicksort.',
       )) {
-        // Thinking comes through ThinkingPart in message parts
-        for (final message in chunk.messages) {
-          for (final part in message.parts) {
-            if (part is ThinkingPart) {
-              thinkingBuffer.write(part.text);
-            }
-          }
+        // Thinking streams via chunk.thinking field (real-time)
+        if (chunk.thinking != null) {
+          thinkingBuffer.write(chunk.thinking);
         }
         outputBuffer.write(chunk.output);
         history.addAll(chunk.messages);
@@ -45,7 +41,16 @@ void main() {
       expect(
         thinkingBuffer.toString(),
         isNotEmpty,
-        reason: 'gpt-5 with detailed reasoning MUST produce thinking output',
+        reason: 'gpt-5 with detailed reasoning MUST produce thinking output '
+            'via chunk.thinking',
+      );
+
+      // Verify thinking also consolidated in final message as ThinkingPart
+      final thinkingParts = history.last.parts.whereType<ThinkingPart>();
+      expect(
+        thinkingParts,
+        isNotEmpty,
+        reason: 'Final message should have consolidated ThinkingPart',
       );
 
       expect(

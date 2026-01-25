@@ -93,9 +93,10 @@ The model string includes all model types (chat, embeddings, media) when the pro
 
 1. **Empty strings**: Empty model names (e.g., `chat=`) are treated as `null`
 2. **Whitespace**: No automatic trimming - whitespace is preserved
-3. **Case sensitivity**: Provider and model names are case-sensitive
+3. **Case sensitivity**: Provider names are normalized to lowercase; model names preserve their case
 4. **Special characters**: URI encoding is handled automatically for query parameters
 5. **Round-trip support**: `Agent.model` always produces parseable strings
+6. **Legacy `other` parameter**: The query parameter `other` is accepted as an alias for `media` for backward compatibility
 
 ## Related Specifications
 

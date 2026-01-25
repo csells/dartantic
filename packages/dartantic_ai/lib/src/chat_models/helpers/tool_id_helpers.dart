@@ -44,17 +44,17 @@ class ToolIdHelpers {
     var toolIndex = 0;
     return parts.map((part) {
       if (part is ToolPart && part.kind == ToolPartKind.call) {
-        if (part.id.isEmpty) {
+        if (part.callId.isEmpty) {
           // Generate a new ID for this tool call
           final newId = generateToolCallId(
-            toolName: part.name,
+            toolName: part.toolName,
             providerHint: providerHint,
             arguments: part.arguments,
             index: toolIndex++,
           );
           return ToolPart.call(
-            id: newId,
-            name: part.name,
+            callId: newId,
+            toolName: part.toolName,
             arguments: part.arguments ?? {},
           );
         }
@@ -159,14 +159,14 @@ extension ToolIdValidation on ChatMessage {
 
     // Check for empty IDs
     for (final call in toolCalls) {
-      if (call.id.isEmpty) {
-        errors.add('Tool call "${call.name}" has empty ID');
+      if (call.callId.isEmpty) {
+        errors.add('Tool call "${call.toolName}" has empty ID');
       }
     }
 
     for (final result in toolResults) {
-      if (result.id.isEmpty) {
-        errors.add('Tool result for "${result.name}" has empty ID');
+      if (result.callId.isEmpty) {
+        errors.add('Tool result for "${result.toolName}" has empty ID');
       }
     }
 
@@ -181,7 +181,9 @@ extension ToolIdValidation on ChatMessage {
   ChatMessage ensureToolCallIds({required String providerHint}) {
     final needsUpdate = parts.any(
       (part) =>
-          part is ToolPart && part.kind == ToolPartKind.call && part.id.isEmpty,
+          part is ToolPart &&
+          part.kind == ToolPartKind.call &&
+          part.callId.isEmpty,
     );
 
     if (!needsUpdate) return this;
@@ -212,8 +214,8 @@ extension ConversationToolIdValidation on List<ChatMessage> {
       for (final part in message.parts) {
         if (part is ToolPart && part.kind == ToolPartKind.call) {
           coordinator.registerToolCall(
-            id: part.id,
-            name: part.name,
+            id: part.callId,
+            name: part.toolName,
             arguments: part.arguments,
           );
         }
@@ -222,10 +224,10 @@ extension ConversationToolIdValidation on List<ChatMessage> {
       // Validate tool results have matching calls
       for (final part in message.parts) {
         if (part is ToolPart && part.kind == ToolPartKind.result) {
-          if (!coordinator.validateToolResultId(part.id)) {
+          if (!coordinator.validateToolResultId(part.callId)) {
             errors.add(
-              'Message $i: Tool result "${part.name}" has ID "${part.id}" '
-              'with no matching tool call',
+              'Message $i: Tool result "${part.toolName}" has ID '
+              '"${part.callId}" with no matching tool call',
             );
           }
         }

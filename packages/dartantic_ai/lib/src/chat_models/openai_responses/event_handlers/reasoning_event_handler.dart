@@ -81,9 +81,11 @@ class ReasoningEventHandler implements OpenAIResponsesEventHandler {
 
   ChatResult<ChatMessage> _thinkingChunk(String thinking) =>
       ChatResult<ChatMessage>(
-        output: const ChatMessage(role: ChatMessageRole.model, parts: []),
+        output: ChatMessage(
+          role: ChatMessageRole.model,
+          parts: [ThinkingPart(thinking)],
+        ),
         messages: const [],
-        thinking: thinking,
         usage: null,
       );
 }

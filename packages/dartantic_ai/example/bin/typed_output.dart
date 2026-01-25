@@ -5,10 +5,11 @@ import 'dart:io';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:example/example.dart';
-import 'package:json_schema/json_schema.dart';
 
 void main() async {
-  const model = 'gemini';
+  // const model = 'gemini';
+  // const model = 'openai-responses';
+  const model = 'claude';
   final provider = Agent.getProvider(model);
   final agent = Agent.forProvider(
     provider,
@@ -32,7 +33,7 @@ Future<void> jsonOutput(Agent agent) async {
 
   final result = await agent.send(
     'What is the Windy City in the US of A?',
-    outputSchema: JsonSchema.create({
+    outputSchema: Schema.fromMap({
       'type': 'object',
       'properties': {
         'town': {'type': 'string'},
@@ -58,7 +59,7 @@ Future<void> jsonOutputStreaming(Agent agent) async {
   await agent
       .sendStream(
         'What is the Windy City in the US of A?',
-        outputSchema: JsonSchema.create({
+        outputSchema: Schema.fromMap({
           'type': 'object',
           'properties': {
             'town': {'type': 'string'},
@@ -87,7 +88,7 @@ Future<void> mapOutput(Agent agent) async {
 
   final result = await agent.sendFor<Map<String, dynamic>>(
     'What is the Windy City in the US of A?',
-    outputSchema: JsonSchema.create({
+    outputSchema: Schema.fromMap({
       'type': 'object',
       'properties': {
         'town': {'type': 'string'},
@@ -109,7 +110,7 @@ Future<void> typedOutput(Agent agent) async {
 
   final result = await agent.sendFor<TownAndCountry>(
     'What is the Windy City in the US of A?',
-    outputSchema: JsonSchema.create({
+    outputSchema: Schema.fromMap({
       'type': 'object',
       'properties': {
         'town': {'type': 'string'},
@@ -137,7 +138,7 @@ Future<void> typedOutputWithCodeGen(Agent agent) async {
 
   final result = await agent.sendFor<TownAndCountry>(
     'What is the Windy City in the US of A?',
-    outputSchema: JsonSchema.create(TownAndCountry.schemaMap),
+    outputSchema: Schema.fromMap(TownAndCountry.schemaMap),
     outputFromJson: TownAndCountry.fromJson,
   );
 
@@ -173,7 +174,7 @@ Future<void> typedOutputWithToolCallsAndMultipleTurns(Provider provider) async {
     '═══',
   );
 
-  final recipeSchema = JsonSchema.create({
+  final recipeSchema = Schema.fromMap({
     'type': 'object',
     'properties': {
       'name': {'type': 'string'},
@@ -235,7 +236,7 @@ Future<void> typedOutputWithToolCallsAndMultipleTurnsStreaming(
     '═══',
   );
 
-  final recipeSchema = JsonSchema.create({
+  final recipeSchema = Schema.fromMap({
     'type': 'object',
     'properties': {
       'name': {'type': 'string'},

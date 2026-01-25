@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 import 'package:openai_core/openai_core.dart' as openai;
 
 import '../../retry_http_client.dart';
+import '../../shared/openai_utils.dart';
 import 'openai_responses_chat_options.dart';
 import 'openai_responses_event_mapper.dart';
 import 'openai_responses_invocation_builder.dart';
@@ -57,8 +57,10 @@ class OpenAIResponsesChatModel
           (tool) => openai.FunctionTool(
             name: tool.name,
             description: tool.description,
-            parameters: Map<String, dynamic>.from(
-              tool.inputSchema.schemaMap ?? {},
+            // OpenAI Responses API requires 'properties' field on object
+            // schemas, even if empty
+            parameters: OpenAIUtils.prepareSchemaForOpenAI(
+              Map<String, dynamic>.from(tool.inputSchema.value),
             ),
           ),
         )
@@ -70,7 +72,7 @@ class OpenAIResponsesChatModel
   Stream<ChatResult<ChatMessage>> sendStream(
     List<ChatMessage> messages, {
     OpenAIResponsesChatModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     final invocation = _buildInvocation(messages, options, outputSchema);
     _validateInvocation(invocation);
@@ -126,7 +128,7 @@ class OpenAIResponsesChatModel
   OpenAIResponsesInvocation _buildInvocation(
     List<ChatMessage> messages,
     OpenAIResponsesChatModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   ) => OpenAIResponsesInvocationBuilder(
     messages: messages,
     options: options,

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 import 'package:ollama_dart/ollama_dart.dart' show OllamaClient;
 
@@ -47,7 +46,7 @@ class OllamaChatModel extends ChatModel<OllamaChatOptions> {
   Stream<ChatResult<ChatMessage>> sendStream(
     List<ChatMessage> messages, {
     OllamaChatOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) {
     // Check if we have both tools and output schema
     if (outputSchema != null &&

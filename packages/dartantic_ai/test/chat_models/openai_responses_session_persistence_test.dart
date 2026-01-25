@@ -99,7 +99,7 @@ void main() {
           );
 
           final firstSessionId =
-              (history.last.metadata['_responses_session']
+              (history.last.metadata['_responses_session']!
                       as Map<String, Object?>)['response_id']!
                   as String;
 
@@ -178,7 +178,7 @@ void main() {
           );
 
           final secondSessionId =
-              (history.last.metadata['_responses_session']
+              (history.last.metadata['_responses_session']!
                       as Map<String, Object?>)['response_id']!
                   as String;
 
@@ -242,7 +242,7 @@ void main() {
         );
 
         final firstSessionId =
-            (history.last.metadata['_responses_session']
+            (history.last.metadata['_responses_session']!
                     as Map<String, Object?>)['response_id']!
                 as String;
 
@@ -291,7 +291,7 @@ void main() {
           history.addAll(result1.messages);
 
           final firstSessionId =
-              (history.last.metadata['_responses_session']
+              (history.last.metadata['_responses_session']!
                       as Map<String, Object?>)['response_id']!
                   as String;
 
@@ -312,7 +312,7 @@ void main() {
           history.addAll(result3.messages);
 
           final secondSessionId =
-              (history.last.metadata['_responses_session']
+              (history.last.metadata['_responses_session']!
                       as Map<String, Object?>)['response_id']!
                   as String;
 

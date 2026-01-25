@@ -30,6 +30,7 @@ void main() {
       await for (final chunk in agent.sendStream(
         'In one sentence: explain quicksort.',
       )) {
+        // Thinking streams via chunk.thinking field (real-time)
         if (chunk.thinking != null) {
           thinkingBuffer.write(chunk.thinking);
         }
@@ -40,7 +41,17 @@ void main() {
       expect(
         thinkingBuffer.toString(),
         isNotEmpty,
-        reason: 'gpt-5 with detailed reasoning MUST produce thinking output',
+        reason:
+            'gpt-5 with detailed reasoning MUST produce thinking output '
+            'via chunk.thinking',
+      );
+
+      // Verify thinking also consolidated in final message as ThinkingPart
+      final thinkingParts = history.last.parts.whereType<ThinkingPart>();
+      expect(
+        thinkingParts,
+        isNotEmpty,
+        reason: 'Final message should have consolidated ThinkingPart',
       );
 
       expect(
@@ -126,7 +137,7 @@ void main() {
       );
 
       final sessionData =
-          history.last.metadata['_responses_session'] as Map<String, Object?>;
+          history.last.metadata['_responses_session']! as Map<String, Object?>;
       expect(
         sessionData.containsKey('response_id'),
         isTrue,
@@ -241,9 +252,9 @@ void main() {
 
         // The response IDs should be different
         final firstSession =
-            history[1].metadata['_responses_session'] as Map<String, Object?>;
+            history[1].metadata['_responses_session']! as Map<String, Object?>;
         final secondSession =
-            history[3].metadata['_responses_session'] as Map<String, Object?>;
+            history[3].metadata['_responses_session']! as Map<String, Object?>;
 
         expect(
           firstSession['response_id'],
@@ -254,7 +265,7 @@ void main() {
     );
 
     test(
-      'should provide thinking in result.thinking for non-streaming',
+      'should provide thinking in message parts for non-streaming',
       () async {
         // Test with gpt-5 which supports thinking/reasoning
         final agent = Agent(
@@ -267,17 +278,17 @@ void main() {
         // Thinking is accumulated from streaming chunks by Agent.send()
         final result = await agent.send('Explain merge sort');
 
-        // Thinking should be surfaced via ChatResult.thinking
+        // Thinking should be surfaced via ThinkingPart in message parts
+        final thinkingText = result.messages
+            .expand((m) => m.parts)
+            .whereType<ThinkingPart>()
+            .map((p) => p.text)
+            .join();
         expect(
-          result.thinking,
-          isNotNull,
+          thinkingText,
+          isNotEmpty,
           reason:
               'Agent.send() should accumulate thinking from streaming chunks',
-        );
-        expect(
-          result.thinking!.isNotEmpty,
-          isTrue,
-          reason: 'Thinking should contain content',
         );
 
         // Thinking is NOT in message metadata (only session info there)

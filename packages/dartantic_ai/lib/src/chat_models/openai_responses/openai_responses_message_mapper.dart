@@ -48,6 +48,9 @@ class OpenAIResponsesMessageMapper {
 
   /// Maps the provided [messages] into an [OpenAIResponsesHistorySegment]
   /// understood by the Responses API.
+  ///
+  /// ThinkingPart is skipped during mapping since OpenAI doesn't need thinking
+  /// content sent back in conversation history.
   static OpenAIResponsesHistorySegment mapHistory(
     List<ChatMessage> messages, {
     bool store = true,
@@ -237,6 +240,10 @@ class OpenAIResponsesMessageMapper {
         case ToolPart():
           flushContent();
           items.addAll(_mapToolPart(part));
+        case ThinkingPart():
+          // ThinkingPart is filtered out here - OpenAI doesn't need thinking
+          // content sent back. Skip it during mapping.
+          break;
       }
     }
 
@@ -286,7 +293,7 @@ class OpenAIResponsesMessageMapper {
     } else if (mimeType == 'application/pdf') {
       // PDFs: Use InputFileContent (only file type supported by Responses API)
       final base64Data = base64Encode(bytes);
-      final fileName = name ?? Part.nameFromMimeType(mimeType);
+      final fileName = name ?? PartHelpers.nameFromMimeType(mimeType);
       final fileDataUrl = 'data:$mimeType;base64,$base64Data';
       content.add(
         openai.InputFileContent(filename: fileName, fileData: fileDataUrl),
@@ -348,14 +355,14 @@ class OpenAIResponsesMessageMapper {
         return [
           openai.FunctionCall(
             arguments: jsonEncode(part.arguments ?? const {}),
-            callId: part.id,
-            name: part.name,
+            callId: part.callId,
+            name: part.toolName,
           ),
         ];
       case ToolPartKind.result:
         return [
           openai.FunctionCallOutput(
-            callId: part.id,
+            callId: part.callId,
             output: _stringifyToolResult(part.result),
           ),
         ];

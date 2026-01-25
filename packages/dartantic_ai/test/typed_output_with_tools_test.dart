@@ -19,7 +19,6 @@
 import 'dart:convert';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:json_schema/json_schema.dart' as js;
 import 'package:test/test.dart';
 
 import 'test_helpers/run_provider_test.dart';
@@ -29,7 +28,7 @@ void main() {
   final recipeLookupTool = Tool<Map<String, dynamic>>(
     name: 'lookup_recipe',
     description: 'Look up a recipe by name',
-    inputSchema: js.JsonSchema.create({
+    inputSchema: Schema.fromMap({
       'type': 'object',
       'properties': {
         'recipe_name': {
@@ -77,7 +76,7 @@ void main() {
   );
 
   // Recipe schema for chef scenario
-  final recipeSchema = js.JsonSchema.create({
+  final recipeSchema = Schema.fromMap({
     'type': 'object',
     'properties': {
       'name': {'type': 'string'},
@@ -107,7 +106,7 @@ void main() {
   final getSecretCodeTool = Tool<Map<String, dynamic>>(
     name: 'get_secret_code',
     description: 'Gets a secret code that must be validated',
-    inputSchema: js.JsonSchema.create({'type': 'object', 'properties': {}}),
+    inputSchema: S.object(),
     onCall: (input) => {
       'code': 'SECRET-XYZ-789',
       'issued_at': '2025-01-09T12:00:00Z',
@@ -118,7 +117,7 @@ void main() {
   final validateCodeTool = Tool<Map<String, dynamic>>(
     name: 'validate_code',
     description: 'Validates a secret code and returns validation details',
-    inputSchema: js.JsonSchema.create({
+    inputSchema: Schema.fromMap({
       'type': 'object',
       'properties': {
         'code': {'type': 'string', 'description': 'The code to validate'},
@@ -141,7 +140,7 @@ void main() {
   );
 
   // Schema for validation result
-  final validationResultSchema = js.JsonSchema.create({
+  final validationResultSchema = Schema.fromMap({
     'type': 'object',
     'properties': {
       'code': {'type': 'string'},
@@ -201,12 +200,12 @@ void main() {
             reason: 'Should call get_secret_code then validate_code',
           );
           expect(
-            toolCalls.any((t) => t.name == 'get_secret_code'),
+            toolCalls.any((t) => t.toolName == 'get_secret_code'),
             isTrue,
             reason: 'Should call get_secret_code',
           );
           expect(
-            toolCalls.any((t) => t.name == 'validate_code'),
+            toolCalls.any((t) => t.toolName == 'validate_code'),
             isTrue,
             reason: 'Should call validate_code with the retrieved code',
           );
@@ -274,7 +273,7 @@ void main() {
               .toList();
           expect(toolCalls, isNotEmpty);
           expect(
-            toolCalls.any((t) => t.name == 'lookup_recipe'),
+            toolCalls.any((t) => t.toolName == 'lookup_recipe'),
             isTrue,
             reason: 'Should have called lookup_recipe tool',
           );

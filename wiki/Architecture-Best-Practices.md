@@ -19,7 +19,7 @@
 - **KISS (Keep It Simple, Sir)** - keep solutions as simple as possible.
 - **YAGNI (You're Not Gonna Need It)** – avoid speculative complexity or
   over-engineering.
-- **Don't Swallow Errors** by catching expections, silently filling in required
+- **Don't Swallow Errors** by catching exceptions, silently filling in required
   but missing values or adding timeouts when something hangs unexpectedly. All
   of those are exceptions that should be thrown so that the errors can be seen,
   root causes can be found and fixes can be applied.
@@ -33,7 +33,7 @@
 - **Prefer Async Notifications** when possible over inefficient polling.
 - **Consider First Principles** to assess your current architecture against the
   one you'd use if you started over from scratch.
-- **Eliminate Race Condtions** that might cause dropped or corrupted data
+- **Eliminate Race Conditions** that might cause dropped or corrupted data
 - **Write for Maintainability** so that the code is clear and readable and easy
   to maintain by future developers.
 - **Arrange Project Idiomatically** for the language and framework being used,

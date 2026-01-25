@@ -35,9 +35,13 @@ void main() {
             await for (final chunk in agent.sendStream(
               'In one sentence: how does quicksort work?',
             )) {
-              // Collect thinking deltas
-              if (chunk.thinking != null) {
-                thinkingChunks.add(chunk.thinking!);
+              // Collect thinking from ThinkingPart in messages
+              for (final message in chunk.messages) {
+                for (final part in message.parts) {
+                  if (part is ThinkingPart) {
+                    thinkingChunks.add(part.text);
+                  }
+                }
               }
 
               // Collect response text
@@ -92,8 +96,13 @@ void main() {
             await for (final chunk in agent.sendStream(
               'Calculate 156 divided by 12',
             )) {
-              if (chunk.thinking != null) {
-                thinkingChunks.add(chunk.thinking!);
+              // Collect thinking from ThinkingPart in messages
+              for (final message in chunk.messages) {
+                for (final part in message.parts) {
+                  if (part is ThinkingPart) {
+                    thinkingChunks.add(part.text);
+                  }
+                }
               }
             }
 
@@ -116,31 +125,133 @@ void main() {
         );
 
         _runThinkingProviderTest(
-          'thinking does not appear in message parts',
+          'thinking appears as ThinkingPart in streamed messages',
           (provider) async {
             final agent = _createAgentWithThinking(provider);
 
-            var hadMessages = false;
+            var hadThinkingParts = false;
 
             await for (final chunk in agent.sendStream('Simple math: 7 + 8')) {
-              // Check messages in this chunk
+              // Check messages in this chunk for ThinkingPart
               for (final message in chunk.messages) {
-                hadMessages = true;
-                // No part should contain thinking content as separate part type
                 for (final part in message.parts) {
-                  // Thinking should never appear as a distinct part
-                  final partType = part.runtimeType.toString();
-                  expect(
-                    partType,
-                    isNot(contains('Thinking')),
-                    reason: 'Thinking should not appear as a message part type',
-                  );
+                  if (part is ThinkingPart) {
+                    hadThinkingParts = true;
+                  }
                 }
               }
             }
 
-            // Should have checked at least some messages
-            expect(hadMessages, true, reason: 'Should have messages to verify');
+            // Should have ThinkingPart in messages
+            expect(
+              hadThinkingParts,
+              true,
+              reason: 'Thinking should appear as ThinkingPart in messages',
+            );
+          },
+          requiredCaps: {ProviderTestCaps.thinking},
+        );
+
+        _runThinkingProviderTest(
+          'thinking streams via chunk.thinking field',
+          (provider) async {
+            final agent = _createAgentWithThinking(provider);
+
+            final thinkingChunks = <String>[];
+            final textChunks = <String>[];
+
+            await for (final chunk in agent.sendStream(
+              'In one sentence: explain binary search.',
+            )) {
+              // Collect thinking from chunk.thinking field (real-time)
+              if (chunk.thinking != null) {
+                thinkingChunks.add(chunk.thinking!);
+              }
+
+              // Collect response text from chunk.output field
+              if (chunk.output.isNotEmpty) {
+                textChunks.add(chunk.output);
+              }
+            }
+
+            // Should have received thinking via chunk.thinking field
+            expect(
+              thinkingChunks,
+              isNotEmpty,
+              reason: 'Should receive thinking via chunk.thinking field',
+            );
+
+            // Accumulated thinking should be substantial
+            final fullThinking = thinkingChunks.join();
+            expect(
+              fullThinking.length,
+              greaterThan(10),
+              reason: 'Thinking should accumulate to substantial content',
+            );
+
+            // Should also have received text response
+            expect(
+              textChunks,
+              isNotEmpty,
+              reason: 'Should receive text response',
+            );
+          },
+          requiredCaps: {ProviderTestCaps.thinking},
+        );
+
+        _runThinkingProviderTest(
+          'streaming does not pollute history with ThinkingPart-only messages',
+          (provider) async {
+            // This test ensures that streaming with thinking doesn't yield
+            // individual ThinkingPart-only messages that would pollute the
+            // message history. ThinkingPart should only appear in consolidated
+            // messages alongside TextPart or ToolPart.
+            final agent = _createAgentWithThinking(
+              provider,
+              tools: [currentDateTimeTool],
+            );
+
+            final allMessages = <ChatMessage>[];
+
+            await for (final chunk in agent.sendStream(
+              'What time is it and what day is today?',
+            )) {
+              allMessages.addAll(chunk.messages);
+            }
+
+            // Check that no model message has ONLY ThinkingPart (no pollution)
+            final thinkingOnlyMessages = allMessages
+                .where((m) => m.role == ChatMessageRole.model)
+                .where((m) {
+                  final parts = m.parts.toList();
+                  // Has thinking parts but NO text or tool parts
+                  final hasThinking = parts.any((p) => p is ThinkingPart);
+                  final hasTextOrTool = parts.any(
+                    (p) => p is TextPart || p is ToolPart,
+                  );
+                  return hasThinking && !hasTextOrTool;
+                });
+
+            expect(
+              thinkingOnlyMessages,
+              isEmpty,
+              reason:
+                  'Should not have ThinkingPart-only messages - '
+                  'thinking should be consolidated with text/tool parts. '
+                  'Found ${thinkingOnlyMessages.length} ThinkingPart-only '
+                  'messages in history.',
+            );
+
+            // Verify thinking IS present (consolidated with other parts)
+            final thinkingMessages = allMessages
+                .where((m) => m.role == ChatMessageRole.model)
+                .where((m) => m.parts.any((p) => p is ThinkingPart));
+
+            expect(
+              thinkingMessages,
+              isNotEmpty,
+              reason: 'Should have consolidated messages with ThinkingPart',
+            );
           },
           requiredCaps: {ProviderTestCaps.thinking},
         );
@@ -160,10 +271,11 @@ void main() {
             await for (final chunk in agent.sendStream(
               'What time is it right now?',
             )) {
-              if (chunk.thinking != null) hadThinking = true;
-
-              // Check for tool calls in messages
+              // Check for thinking in ThinkingPart
               for (final message in chunk.messages) {
+                for (final part in message.parts) {
+                  if (part is ThinkingPart) hadThinking = true;
+                }
                 if (message.toolCalls.isNotEmpty) hadToolCall = true;
               }
 
@@ -184,21 +296,21 @@ void main() {
 
       group('non-streaming with thinking (80% cases)', () {
         _runThinkingProviderTest(
-          'thinking appears in result metadata for non-streaming',
+          'thinking appears in message parts for non-streaming',
           (provider) async {
             final agent = _createAgentWithThinking(provider);
 
             final result = await agent.send('What is 15 plus 27?');
 
-            // Thinking should be in result
-            expect(result.thinking, isNotNull, reason: 'Should have thinking');
+            // Thinking should be in message parts as ThinkingPart
+            final thinkingText = result.messages
+                .expand((m) => m.parts)
+                .whereType<ThinkingPart>()
+                .map((p) => p.text)
+                .join();
+            expect(thinkingText, isNotEmpty, reason: 'Should have thinking');
             expect(
-              result.thinking,
-              isNotEmpty,
-              reason: 'Thinking should not be empty',
-            );
-            expect(
-              result.thinking!.length,
+              thinkingText.length,
               greaterThan(10),
               reason: 'Thinking should be substantial',
             );
@@ -214,27 +326,22 @@ void main() {
         );
 
         _runThinkingProviderTest(
-          'thinking not included in conversation history',
+          'thinking appears as ThinkingPart in message parts',
           (provider) async {
             final agent = _createAgentWithThinking(provider);
 
             final result = await agent.send('Simple question: 2+2');
 
-            // Check all messages in result
-            for (final message in result.messages) {
-              for (final part in message.parts) {
-                // No part should reference thinking
-                final partType = part.runtimeType.toString();
-                expect(
-                  partType,
-                  isNot(contains('Thinking')),
-                  reason: 'Thinking should not appear in message parts',
-                );
-              }
-            }
-
-            // But thinking should be in result
-            expect(result.thinking, isNotNull);
+            // Thinking should appear as ThinkingPart in message parts
+            final thinkingParts = result.messages
+                .expand((m) => m.parts)
+                .whereType<ThinkingPart>()
+                .toList();
+            expect(
+              thinkingParts,
+              isNotEmpty,
+              reason: 'Thinking should appear as ThinkingPart in messages',
+            );
           },
           requiredCaps: {ProviderTestCaps.thinking},
         );
@@ -251,8 +358,12 @@ void main() {
               'how far does it travel?',
             );
 
-            expect(result.thinking, isNotNull);
-            expect(result.thinking, isNotEmpty);
+            final thinkingText = result.messages
+                .expand((m) => m.parts)
+                .whereType<ThinkingPart>()
+                .map((p) => p.text)
+                .join();
+            expect(thinkingText, isNotEmpty);
 
             // Should contain the answer
             expect(result.output, contains('150'));
@@ -270,8 +381,12 @@ void main() {
               'what can we conclude about Fluffy?',
             );
 
-            expect(result.thinking, isNotNull);
-            expect(result.thinking, isNotEmpty);
+            final thinkingText = result.messages
+                .expand((m) => m.parts)
+                .whereType<ThinkingPart>()
+                .map((p) => p.text)
+                .join();
+            expect(thinkingText, isNotEmpty);
 
             // Should conclude Fluffy is a mammal
             final output = result.output.toLowerCase();
@@ -289,8 +404,12 @@ void main() {
               'How many quarters are in 5 dollars?',
             );
 
-            expect(result.thinking, isNotNull);
-            expect(result.thinking, isNotEmpty);
+            final thinkingText = result.messages
+                .expand((m) => m.parts)
+                .whereType<ThinkingPart>()
+                .map((p) => p.text)
+                .join();
+            expect(thinkingText, isNotEmpty);
 
             // Should contain the answer
             expect(result.output, contains('20'));

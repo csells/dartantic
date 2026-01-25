@@ -49,14 +49,14 @@ class StreamingState {
   bool isFirstChunkOfMessage = true;
 
   /// The message being accumulated during streaming
-  ChatMessage accumulatedMessage = const ChatMessage(
+  ChatMessage accumulatedMessage = ChatMessage(
     role: ChatMessageRole.model,
-    parts: [],
+    parts: const [],
   );
 
   /// The last result received from the model
   ChatResult<ChatMessage> lastResult = ChatResult<ChatMessage>(
-    output: const ChatMessage(role: ChatMessageRole.model, parts: []),
+    output: ChatMessage(role: ChatMessageRole.model, parts: const []),
     finishReason: FinishReason.unspecified,
     metadata: const <String, dynamic>{},
     usage: null,
@@ -85,12 +85,12 @@ class StreamingState {
   void resetForNewMessage() {
     _logger.fine('Resetting streaming state for new message');
     isFirstChunkOfMessage = true;
-    accumulatedMessage = const ChatMessage(
+    accumulatedMessage = ChatMessage(
       role: ChatMessageRole.model,
-      parts: [],
+      parts: const [],
     );
     lastResult = ChatResult<ChatMessage>(
-      output: const ChatMessage(role: ChatMessageRole.model, parts: []),
+      output: ChatMessage(role: ChatMessageRole.model, parts: const []),
       finishReason: FinishReason.unspecified,
       metadata: const <String, dynamic>{},
       usage: null,
@@ -113,7 +113,7 @@ class StreamingState {
     done = true;
   }
 
-  /// Adds a message to the conversation history
+  /// Adds a message to the conversation history.
   void addToHistory(ChatMessage message) {
     _conversationHistory.add(message);
   }

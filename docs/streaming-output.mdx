@@ -58,15 +58,20 @@ final agent = Agent(
 );
 
 final result = await agent.send('Explain quicksort.');
-if (result.thinking != null && result.thinking!.isNotEmpty) {
-  stdout.write('[[${result.thinking!.trim()}]]');
+final thinking = result.messages
+    .expand((m) => m.parts)
+    .whereType<ThinkingPart>()
+    .map((p) => p.text)
+    .join();
+if (thinking.isNotEmpty) {
+  stdout.write('[[${thinking.trim()}]]');
 }
 stdout.write(result.output);
 ```
 
-Thinking is available in `ChatResult.thinking` so you can show a live "thought
-bubble" without polluting the message stream. See [Extended Thinking](/thinking)
-for more options.
+Thinking is available via `ThinkingPart` in message parts so you can show a live
+"thought bubble" without polluting the message stream. See [Extended
+Thinking](/thinking) for more options.
 
 ## With Typed Output
 

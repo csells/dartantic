@@ -101,7 +101,7 @@ abstract interface class StreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   });
   
   /// Finalize the orchestrator after streaming completes
@@ -280,7 +280,7 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     // 1. Reset state for new message
     state.resetForNewMessage();
@@ -354,18 +354,18 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
     if (toolCalls.isNotEmpty) {
       _logger.info(
         'Found ${toolCalls.length} tool calls to execute: '
-        '${toolCalls.map((t) => '${t.name}(${t.id})').join(', ')}',
+        '${toolCalls.map((t) => '${t.toolName}(${t.callId})').join(', ')}',
       );
-      
+
       // Execute tools
       final results = await state.executor.executeBatch(toolCalls, state.toolMap);
-      
+
       // Convert to tool result parts
       final toolResultParts = results.map((result) => ToolPart.result(
-        id: result.toolCall.id,
-        name: result.toolCall.name,
-        result: result.isSuccess 
-            ? result.result 
+        callId: result.toolCall.callId,
+        toolName: result.toolCall.toolName,
+        result: result.isSuccess
+            ? result.result
             : json.encode({'error': result.error}),
       )).toList();
       
@@ -439,7 +439,7 @@ class GoogleDoubleAgentOrchestrator extends DefaultStreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     if (_isPhase1) {
       // Phase 1: Run with tools, no outputSchema
@@ -557,7 +557,7 @@ class GoogleDoubleAgentOrchestrator extends DefaultStreamingOrchestrator {
   Stream<StreamingIterationResult> _executePhase2(
     ChatModel<ChatModelOptions> model,
     StreamingState state,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   ) async* {
     _logger.fine('Phase 2: Getting structured output');
 
@@ -641,7 +641,7 @@ class TypedOutputStreamingOrchestrator implements StreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     // Use standard streaming until model response complete
     await for (final result in _streamModelWithTypedHandling(
@@ -672,12 +672,12 @@ class TypedOutputStreamingOrchestrator implements StreamingOrchestrator {
   Future<StreamingIterationResult?> _processTypedOutput(
     ChatMessage message,
     StreamingState state,
-    JsonSchema outputSchema,
+    Schema outputSchema,
   ) async {
     // Check for return_result tool calls first (Anthropic pattern)
     final returnResultCalls = message.parts
         .whereType<ToolPart>()
-        .where((p) => p.kind == ToolPartKind.call && p.name == kReturnResultToolName)
+        .where((p) => p.kind == ToolPartKind.call && p.toolName == kReturnResultToolName)
         .toList();
     
     if (returnResultCalls.isNotEmpty) {
@@ -813,61 +813,61 @@ class ToolExecutor {
   ) async {
     _logger.info(
       'Executing batch of ${toolCalls.length} tools: '
-      '${toolCalls.map((t) => t.name).join(', ')}',
+      '${toolCalls.map((t) => t.toolName).join(', ')}',
     );
-    
+
     final results = <ToolExecutionResult>[];
-    
+
     // Execute sequentially by default
     // Future: ParallelToolExecutor for concurrent execution
     for (final toolCall in toolCalls) {
       final result = await executeSingle(toolCall, toolMap);
       results.add(result);
     }
-    
+
     return results;
   }
-  
+
   @override
   Future<ToolExecutionResult> executeSingle(
     ToolPart toolCall,
     Map<String, Tool> toolMap,
   ) async {
-    _logger.fine('Executing tool: ${toolCall.name} with args: ${json.encode(toolCall.arguments ?? {})}');
-    
+    _logger.fine('Executing tool: ${toolCall.toolName} with args: ${json.encode(toolCall.arguments ?? {})}');
+
     try {
       // 1. Parse arguments with fallback handling
       final args = _parseToolArguments(toolCall);
-      
+
       // 2. Get tool
-      final tool = toolMap[toolCall.name];
+      final tool = toolMap[toolCall.toolName];
       if (tool == null) {
         return ToolExecutionResult.error(
           toolCall: toolCall,
-          error: 'Tool "${toolCall.name}" not found in available tools: ${toolMap.keys.join(', ')}',
+          error: 'Tool "${toolCall.toolName}" not found in available tools: ${toolMap.keys.join(', ')}',
         );
       }
-      
+
       // 3. Execute tool
       final result = await tool.invoke(args);
       final resultString = result is String ? result : json.encode(result);
-      
+
       _logger.info(
-        'Tool ${toolCall.name} executed successfully, result length: ${resultString.length}',
+        'Tool ${toolCall.toolName} executed successfully, result length: ${resultString.length}',
       );
-      
+
       return ToolExecutionResult.success(
         toolCall: toolCall,
         result: resultString,
       );
-      
+
     } on Exception catch (error, stackTrace) {
       _logger.warning(
-        'Tool ${toolCall.name} execution failed: $error',
+        'Tool ${toolCall.toolName} execution failed: $error',
         error,
         stackTrace,
       );
-      
+
       return ToolExecutionResult.error(
         toolCall: toolCall,
         error: error.toString(),
@@ -1084,16 +1084,16 @@ class MessageAccumulator {
     final existingIndex = existingParts.indexWhere((part) =>
         part is ToolPart &&
         part.kind == ToolPartKind.call &&
-        part.id.isNotEmpty &&
-        part.id == newPart.id,
+        part.callId.isNotEmpty &&
+        part.callId == newPart.callId,
     );
-    
+
     if (existingIndex != -1) {
       // Merge with existing tool call
       final existingToolCall = existingParts[existingIndex] as ToolPart;
       final mergedToolCall = ToolPart.call(
-        id: newPart.id,
-        name: newPart.name.isNotEmpty ? newPart.name : existingToolCall.name,
+        callId: newPart.callId,
+        toolName: newPart.toolName.isNotEmpty ? newPart.toolName : existingToolCall.toolName,
         arguments: newPart.arguments?.isNotEmpty ?? false
             ? newPart.arguments!
             : existingToolCall.arguments ?? {},
@@ -1114,7 +1114,7 @@ class MessageAccumulator {
 ```dart
 /// Agent's orchestrator selection strategy
 StreamingOrchestrator _selectOrchestrator({
-  JsonSchema? outputSchema,
+  Schema? outputSchema,
   List<Tool>? tools,
 }) {
   // Specialized orchestrator for typed output
@@ -1142,7 +1142,7 @@ StreamingOrchestrator _selectOrchestrator({
 ```dart
 /// Future: More sophisticated orchestrator selection
 StreamingOrchestrator _selectAdvancedOrchestrator({
-  JsonSchema? outputSchema,
+  Schema? outputSchema,
   List<Tool>? tools,
   Map<String, dynamic>? context,
 }) {
@@ -1322,7 +1322,7 @@ class MultiStepReasoningOrchestrator implements StreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     // Phase 1: Analysis
     yield* _performAnalysisPhase(model, state);
@@ -1375,9 +1375,9 @@ class ParallelToolExecutor extends ToolExecutor {
   ) async {
     _logger.info(
       'Executing ${toolCalls.length} tools in parallel: '
-      '${toolCalls.map((t) => t.name).join(', ')}',
+      '${toolCalls.map((t) => t.toolName).join(', ')}',
     );
-    
+
     // Execute all tools concurrently
     final futures = toolCalls.map((call) => executeSingle(call, toolMap));
     final results = await Future.wait(futures);

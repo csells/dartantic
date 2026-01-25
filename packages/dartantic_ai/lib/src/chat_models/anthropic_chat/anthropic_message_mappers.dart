@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart' as a;
 import 'package:collection/collection.dart' show IterableExtension;
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart' show WhereNotNullExtension;
 
@@ -79,7 +78,7 @@ a.CreateMessageRequest createMessageRequest(
   required AnthropicChatOptions defaultOptions,
   List<Tool>? tools,
   double? temperature,
-  JsonSchema? outputSchema,
+  Schema? outputSchema,
 }) {
   // Handle tools
   final hasTools = tools != null && tools.isNotEmpty;
@@ -199,8 +198,14 @@ a.ToolChoice? _resolveToolChoice({
 extension MessageListMapper on List<ChatMessage> {
   /// Converts this list of [ChatMessage]s to a list of Anthropic SDK
   /// [a.Message]s.
+  ///
+  /// Note: Unlike other providers, Anthropic REQUIRES thinking blocks to be
+  /// sent back in multi-turn conversations when extended thinking is enabled.
+  /// ThinkingPart is converted to thinking blocks here, with the signature
+  /// retrieved from message metadata.
   List<a.Message> toMessages() {
     _logger.fine('Converting $length messages to Anthropic format');
+
     final result = <a.Message>[];
     final consecutiveToolMessages = <ChatMessage>[];
 
@@ -316,13 +321,14 @@ extension MessageListMapper on List<ChatMessage> {
   a.Message _mapModelMessage(ChatMessage message) {
     final textParts = message.parts.whereType<TextPart>().toList();
     final toolParts = message.parts.whereType<ToolPart>().toList();
+    final thinkingParts = message.parts.whereType<ThinkingPart>().toList();
     _logger.fine(
       'Mapping model message: ${textParts.length} text parts, '
-      '${toolParts.length} tool parts',
+      '${toolParts.length} tool parts, ${thinkingParts.length} thinking parts',
     );
 
-    if (toolParts.isEmpty) {
-      // Text-only response
+    if (toolParts.isEmpty && thinkingParts.isEmpty) {
+      // Text-only response (no tools, no thinking)
       final text = message.parts.text;
       if (text.isEmpty && message.parts.isNotEmpty) {
         throw ArgumentError(
@@ -335,43 +341,44 @@ extension MessageListMapper on List<ChatMessage> {
         content: a.MessageContent.text(text),
       );
     } else {
-      // Response with tool calls
+      // Response with tool calls and/or thinking
       final blocks = <a.Block>[];
 
-      // Anthropic requires thinking block before tool_use blocks when present
-      // Retrieve thinking block data (includes signature) from metadata
-      final thinkingBlockData = AnthropicThinkingMetadata.getThinkingBlock(
-        message.metadata,
-      );
-      _logger.fine(
-        'Model message metadata keys: ${message.metadata.keys}; '
-        'thinking block present: ${thinkingBlockData != null}',
-      );
-      if (thinkingBlockData != null) {
-        final thinking = AnthropicThinkingMetadata.thinkingText(
-          thinkingBlockData,
+      // Anthropic requires thinking block before tool_use blocks when present.
+      // Get thinking text from ThinkingPart, signature from metadata.
+      if (thinkingParts.isNotEmpty) {
+        final thinkingText = thinkingParts.map((p) => p.text).join();
+        final signature = AnthropicThinkingMetadata.getSignature(
+          message.metadata,
         );
-        final signature = AnthropicThinkingMetadata.signature(
-          thinkingBlockData,
+        _logger.fine(
+          'Adding thinking block: ${thinkingText.length} chars, '
+          'signature present: ${signature != null}',
         );
 
-        if (thinking != null && thinking.isNotEmpty) {
+        if (thinkingText.isNotEmpty) {
           blocks.add(
             a.Block.thinking(
               type: a.ThinkingBlockType.thinking,
-              thinking: thinking,
-              signature: signature, // Include original signature
+              thinking: thinkingText,
+              signature: signature,
             ),
           );
         }
       }
 
+      // NOTE: We intentionally do NOT add text blocks when tool_use blocks are
+      // present. Anthropic's API can accept mixed content, but in practice when
+      // we have tool calls, the text is typically "thinking out loud" that gets
+      // suppressed by the typed output orchestrator. Including it can confuse
+      // subsequent model responses.
+
       // Add tool_use blocks
       blocks.addAll(
         toolParts.map(
           (toolPart) => a.Block.toolUse(
-            id: toolPart.id,
-            name: toolPart.name,
+            id: toolPart.callId,
+            name: toolPart.toolName,
             input: toolPart.arguments ?? {},
           ),
         ),
@@ -395,7 +402,7 @@ extension MessageListMapper on List<ChatMessage> {
         if (part is ToolPart && part.kind == ToolPartKind.result) {
           blocks.add(
             a.Block.toolResult(
-              toolUseId: part.id,
+              toolUseId: part.callId,
               // ignore: avoid_dynamic_calls
               content: a.ToolResultBlockContent.text(
                 ToolResultHelpers.serialize(part.result),
@@ -549,11 +556,19 @@ class MessageStreamEventTransformer
     final containerId = _extractContainerId(e.delta);
     if (containerId != null) metadata['container_id'] = containerId;
 
+    // When there's a stop reason, include aggregated tool metadata since all
+    // content blocks have completed by this point. This ensures the "complete"
+    // chunk has the full tool metadata.
+    final finishReason = _mapFinishReason(e.delta.stopReason);
+    if (finishReason != FinishReason.unspecified) {
+      metadata.addAll(_toolState.toMetadata());
+    }
+
     return ChatResult<ChatMessage>(
       id: lastMessageId,
-      output: const ChatMessage(role: ChatMessageRole.model, parts: []),
+      output: ChatMessage(role: ChatMessageRole.model, parts: const []),
       messages: const [],
-      finishReason: _mapFinishReason(e.delta.stopReason),
+      finishReason: finishReason,
       metadata: metadata,
       usage: _mapMessageDeltaUsage(e.usage),
     );
@@ -590,7 +605,7 @@ class MessageStreamEventTransformer
 
       return ChatResult<ChatMessage>(
         id: lastMessageId,
-        output: const ChatMessage(role: ChatMessageRole.model, parts: []),
+        output: ChatMessage(role: ChatMessageRole.model, parts: const []),
         messages: const [],
         finishReason: FinishReason.unspecified,
         metadata: const {},
@@ -623,7 +638,7 @@ class MessageStreamEventTransformer
       final parts = [...baseParts, ...webFetchParts];
 
       final outputMessage = parts.isEmpty
-          ? const ChatMessage(role: ChatMessageRole.model, parts: [])
+          ? ChatMessage(role: ChatMessageRole.model, parts: const [])
           : ChatMessage(role: ChatMessageRole.model, parts: parts);
       final messageList = parts.isEmpty
           ? const <ChatMessage>[]
@@ -705,7 +720,7 @@ class MessageStreamEventTransformer
       return _buildToolMetadataChunk(toolKey: toolKey, event: event);
     }
 
-    // Handle ThinkingBlockDelta to accumulate thinking and emit as metadata
+    // Handle ThinkingBlockDelta to accumulate thinking and emit as ThinkingPart
     if (e.delta is a.ThinkingBlockDelta) {
       final delta = e.delta as a.ThinkingBlockDelta;
       _thinkingBuffer.write(delta.thinking);
@@ -713,9 +728,11 @@ class MessageStreamEventTransformer
 
       return ChatResult<ChatMessage>(
         id: lastMessageId,
-        output: const ChatMessage(role: ChatMessageRole.model, parts: []),
+        output: ChatMessage(
+          role: ChatMessageRole.model,
+          parts: [ThinkingPart(delta.thinking)],
+        ),
         messages: const [],
-        thinking: delta.thinking,
         finishReason: FinishReason.unspecified,
         metadata: const {},
         usage: null,
@@ -737,7 +754,7 @@ class MessageStreamEventTransformer
       // Return empty result for accumulation
       return ChatResult<ChatMessage>(
         id: lastMessageId,
-        output: const ChatMessage(role: ChatMessageRole.model, parts: []),
+        output: ChatMessage(role: ChatMessageRole.model, parts: const []),
         messages: const [],
         finishReason: FinishReason.unspecified,
         metadata: const {},
@@ -794,8 +811,8 @@ class MessageStreamEventTransformer
           role: ChatMessageRole.model,
           parts: [
             ToolPart.call(
-              id: toolId,
-              name: toolName ?? '',
+              callId: toolId,
+              toolName: toolName ?? '',
               arguments: argsJson.isNotEmpty
                   ? json.decode(argsJson)
                   : (seededArgs ?? <String, dynamic>{}),
@@ -813,40 +830,12 @@ class MessageStreamEventTransformer
   }
 
   ChatResult<ChatMessage>? _mapMessageStopEvent(a.MessageStopEvent e) {
-    if (_thinkingBuffer.isEmpty) {
-      // Clear tracking state and return nothing if no thinking
-      lastMessageId = null;
-      _toolCallIdByIndex.clear();
-      _toolNameByIndex.clear();
-      _toolArgumentsByIndex.clear();
-      _toolSeedArgsByIndex.clear();
-      _serverToolIndices.clear();
-      _serverToolUseIds.clear();
-      _serverToolIdByIndex.clear();
-      _serverToolNamesById.clear();
-      _thinkingSignature = null;
-      _messageHasToolCalls = false;
-      return null;
-    }
-
-    // Build thinking metadata based on whether tool calls are present
-    final thinkingText = _thinkingBuffer.toString();
+    // Capture state before clearing
+    final thinkingSignature = _thinkingSignature;
     final hasToolCalls = _messageHasToolCalls;
+    final toolMetadata = _toolState.toMetadata();
 
-    // Only need to persist the full thinking block (with signature) when a
-    // subsequent request must replay it before tool_use blocks. For regular
-    // responses, thinking stays in result metadata only.
-    final messageMetadata = hasToolCalls
-        ? {
-            AnthropicThinkingMetadata.thinkingBlockKey:
-                AnthropicThinkingMetadata.buildThinkingBlock(
-                  thinking: thinkingText,
-                  signature: _thinkingSignature,
-                ),
-          }
-        : <String, Object?>{};
-
-    // Clear any tracking state for safety
+    // Clear all tracking state
     lastMessageId = null;
     _toolCallIdByIndex.clear();
     _toolNameByIndex.clear();
@@ -859,28 +848,37 @@ class MessageStreamEventTransformer
     _thinkingBuffer.clear();
     _thinkingSignature = null;
     _messageHasToolCalls = false;
+    _toolState.reset();
 
-    final toolMetadata = _toolState.toMetadata();
+    // Store signature in metadata only when tool calls are present (for
+    // replay). Thinking text was already streamed via ThinkingBlockDelta
+    // events, so we only need to emit metadata here.
+    final hasSignature =
+        thinkingSignature != null && thinkingSignature.isNotEmpty;
+    final messageMetadata = hasToolCalls && hasSignature
+        ? AnthropicThinkingMetadata.buildMetadata(signature: thinkingSignature)
+        : <String, Object?>{};
 
-    final result = ChatResult<ChatMessage>(
+    // Only emit if we have metadata or tool metadata to pass through.
+    // Thinking content was already streamed as ThinkingBlockDelta events and
+    // will be accumulated by MessageAccumulator - emitting it again here would
+    // cause duplication.
+    if (messageMetadata.isEmpty && toolMetadata.isEmpty) {
+      return null;
+    }
+
+    return ChatResult<ChatMessage>(
       id: lastMessageId,
-      output: const ChatMessage(role: ChatMessageRole.model, parts: []),
-      messages: [
-        ChatMessage(
-          role: ChatMessageRole.model,
-          parts: const [],
-          metadata: messageMetadata,
-        ),
-      ],
-      thinking: thinkingText,
+      output: ChatMessage(
+        role: ChatMessageRole.model,
+        parts: const [],
+        metadata: messageMetadata,
+      ),
+      messages: const [],
       finishReason: FinishReason.unspecified,
       metadata: toolMetadata,
       usage: null,
     );
-
-    _toolState.reset();
-
-    return result;
   }
 
   ChatResult<ChatMessage> _buildToolMetadataChunk({
@@ -893,7 +891,7 @@ class MessageStreamEventTransformer
     return ChatResult<ChatMessage>(
       id: lastMessageId,
       output:
-          output ?? const ChatMessage(role: ChatMessageRole.model, parts: []),
+          output ?? ChatMessage(role: ChatMessageRole.model, parts: const []),
       messages: messages ?? const [],
       finishReason: FinishReason.unspecified,
       metadata: {
@@ -996,7 +994,7 @@ class MessageStreamEventTransformer
 
   String? _preferredTextExtension(String mimeType) {
     if (mimeType == 'text/plain') return 'txt';
-    return Part.extensionFromMimeType(mimeType);
+    return PartHelpers.extensionFromMimeType(mimeType);
   }
 }
 
@@ -1078,7 +1076,7 @@ extension ToolSpecListMapper on List<Tool> {
   a.Tool _mapTool(Tool tool) => a.Tool.custom(
     name: tool.name,
     description: tool.description,
-    inputSchema: Map<String, dynamic>.from(tool.inputSchema.schemaMap ?? {}),
+    inputSchema: Map<String, dynamic>.from(tool.inputSchema.value),
   );
 }
 

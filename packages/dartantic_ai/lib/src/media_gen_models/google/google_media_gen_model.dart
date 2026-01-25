@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:google_cloud_ai_generativelanguage_v1beta/generativelanguage.dart'
     as gl;
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 
@@ -43,7 +42,7 @@ class GoogleMediaGenerationModel
     List<ChatMessage> history = const [],
     List<Part> attachments = const [],
     GoogleMediaGenerationModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     if (outputSchema != null) {
       throw UnsupportedError(
@@ -475,7 +474,7 @@ fpdf. For CSV files, use the csv module. Save the file and return it as output.
   }
 
   String _suggestName(String mimeType, int index) {
-    final extension = Part.extensionFromMimeType(mimeType);
+    final extension = PartHelpers.extensionFromMimeType(mimeType);
     final suffix = extension == null ? '' : '.$extension';
     return 'image_$index$suffix';
   }

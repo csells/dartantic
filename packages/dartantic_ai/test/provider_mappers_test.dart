@@ -9,7 +9,7 @@
 /// 7. Each functionality should only be tested in ONE file - no duplication
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:json_schema/json_schema.dart' as js;
+
 import 'package:test/test.dart';
 
 import 'test_helpers/run_provider_test.dart';
@@ -56,7 +56,7 @@ void main() {
           final tool = Tool<String>(
             name: 'echo_tool',
             description: 'Echoes the input',
-            inputSchema: js.JsonSchema.create({
+            inputSchema: Schema.fromMap({
               'type': 'object',
               'properties': {
                 'text': {'type': 'string', 'description': 'The text to echo'},
@@ -88,7 +88,7 @@ void main() {
         final tool = Tool<int>(
           name: 'add',
           description: 'Adds two numbers',
-          inputSchema: js.JsonSchema.create({
+          inputSchema: Schema.fromMap({
             'type': 'object',
             'properties': {
               'a': {'type': 'integer', 'description': 'First number'},
@@ -125,13 +125,13 @@ void main() {
             .cast<ToolPart>();
         expect(toolCallParts, isNotEmpty);
         final toolCallPart = toolCallParts.first;
-        expect(toolCallPart.id, isNotEmpty);
-        expect(toolCallPart.name, equals('add'));
+        expect(toolCallPart.callId, isNotEmpty);
+        expect(toolCallPart.toolName, equals('add'));
 
         // Tool result should reference the call
         expect(toolResultMsg.parts, isNotEmpty);
         final toolResultPart = toolResultMsg.parts.whereType<ToolPart>().first;
-        expect(toolResultPart.id, equals(toolCallPart.id));
+        expect(toolResultPart.callId, equals(toolCallPart.callId));
 
         // Validate message history follows correct pattern
       });

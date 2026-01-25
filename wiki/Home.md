@@ -302,7 +302,7 @@ Clean message semantics and transformations. See [[Message-Handling-Architecture
 
 ### 🧠 **Thinking (Extended Reasoning)**
 LLM reasoning transparency across providers. See [[Thinking]].
-- Streaming thinking deltas via `ChatResult.thinking` field
+- Streaming thinking as `ThinkingPart` instances in message parts
 - Provider-specific configuration (OpenAI Responses, Anthropic, Google)
 - Agent-level enablement with provider-specific fine-tuning options
 - Token budget controls and dynamic thinking support

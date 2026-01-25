@@ -16,9 +16,9 @@ flowchart TD
     end
     
     subgraph "Provider Discovery"
-        PA[Providers.all] --> PC[Check p.caps]
+        PA[Agent.allProviders] --> PC[Check providerTestCaps]
         PC --> PM[Map to provider:model strings]
-        PM --> PS[Provider.forName lookup]
+        PM --> PS[Agent.getProvider lookup]
     end
     
     subgraph "Agent Usage in Tests"
@@ -40,18 +40,15 @@ flowchart TD
 
 To run the full test suite successfully, you'll need to set the following environment variables with valid API keys:
 
-1. **OPENAI_API_KEY** - For OpenAI provider
-2. **ANTHROPIC_API_KEY** - For Anthropic/Claude provider  
+1. **OPENAI_API_KEY** - For OpenAI and OpenAI Responses providers
+2. **ANTHROPIC_API_KEY** - For Anthropic/Claude provider
 3. **GEMINI_API_KEY** - For Google Gemini provider
 4. **MISTRAL_API_KEY** - For Mistral provider
 5. **COHERE_API_KEY** - For Cohere provider
 6. **OPENROUTER_API_KEY** - For OpenRouter provider (access to 300+ models)
-7. **TOGETHER_API_KEY** - For Together AI provider
 
 Note: The following providers do not require API keys:
 - **ollama** - Runs locally
-- **ollama-openai** - Uses local Ollama instance
-- **google-openai** - Uses GEMINI_API_KEY (same as google provider)
 
 ### Setting Up Environment Variables
 
@@ -359,21 +356,17 @@ void runProviderTest(
   Set<ProviderTestCaps>? requiredCaps,
   bool edgeCase = false,
 }) {
-  final providers = edgeCase
-      ? ['google:gemini-2.5-flash'] // Edge cases on Google only
-      : Agent.allProviders
-            .where(
-              (p) =>
-                  requiredCaps == null ||
-                  providerHasTestCaps(p.name, requiredCaps),
-            )
-            .map((p) => '${p.name}:${p.defaultModelNames[ModelKind.chat]}');
+  final providerEntries = edgeCase
+      ? [Agent.getProvider('google')]
+      : Agent.allProviders.where(
+          (p) =>
+              requiredCaps == null ||
+              providerHasTestCaps(p.name, requiredCaps),
+        );
 
-  for (final providerModel in providers) {
-    test('$providerModel: $description', () async {
-      final parts = providerModel.split(':');
-      final providerName = parts[0];
-      final provider = Providers.get(providerName);
+  for (final provider in providerEntries) {
+    final label = '${provider.name}:${provider.defaultModelNames[ModelKind.chat]}';
+    test('$label: $description', () async {
       await testFunction(provider);
     });
   }

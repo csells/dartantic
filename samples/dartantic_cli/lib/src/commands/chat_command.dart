@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:json_schema/json_schema.dart';
 
 import '../exit_codes.dart';
 import '../mcp/mcp_tool_collector.dart';
@@ -221,7 +220,7 @@ class ChatCommand extends DartanticCommand with PromptCommandMixin {
     final outputSchemaStr = _argResults.options.contains('output-schema')
         ? _argResults['output-schema'] as String?
         : null;
-    JsonSchema? outputSchema;
+    Schema? outputSchema;
     if (outputSchemaStr != null) {
       try {
         final schemaResult = await parseOutputSchema(outputSchemaStr);
@@ -236,7 +235,7 @@ class ChatCommand extends DartanticCommand with PromptCommandMixin {
       }
     } else if (agentSettings?.outputSchema != null) {
       // Use output schema from agent settings
-      outputSchema = JsonSchema.create(agentSettings!.outputSchema!);
+      outputSchema = Schema.fromMap(agentSettings!.outputSchema!);
     }
 
     // Collect MCP tools if configured
@@ -282,8 +281,13 @@ class ChatCommand extends DartanticCommand with PromptCommandMixin {
       attachments: processed.attachments,
       outputSchema: outputSchema,
     )) {
-      // Handle thinking output
-      if (chunk.thinking != null && chunk.thinking!.isNotEmpty) {
+      // Handle thinking output from ThinkingPart in messages
+      final thinkingText = chunk.messages
+          .expand((m) => m.parts)
+          .whereType<ThinkingPart>()
+          .map((p) => p.text)
+          .join();
+      if (thinkingText.isNotEmpty) {
         if (!inThinkingMode) {
           inThinkingMode = true;
           if (noColor) {
@@ -293,7 +297,7 @@ class ChatCommand extends DartanticCommand with PromptCommandMixin {
             stdout.write('\x1b[2m[Thinking]\n');
           }
         }
-        stdout.write(chunk.thinking);
+        stdout.write(thinkingText);
       }
 
       // Handle regular output

@@ -38,9 +38,13 @@ void main() {
         expect(results, hasLength(1));
         final result = results.first;
 
-        // Thinking should be surfaced via ChatResult.thinking, not metadata
-        expect(result.thinking, equals('I am thinking about quicksort...'));
-        expect(result.output.parts, isEmpty);
+        // Thinking should be surfaced via ThinkingPart in output, not metadata
+        final thinkingParts = result.output.parts.whereType<ThinkingPart>();
+        expect(thinkingParts, hasLength(1));
+        expect(
+          thinkingParts.first.text,
+          equals('I am thinking about quicksort...'),
+        );
         expect(result.messages, isEmpty);
       },
     );

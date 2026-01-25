@@ -106,8 +106,8 @@ void main() {
 
       test('tool parts', () {
         const toolPart = ToolPart.call(
-          id: 'call_123',
-          name: 'calculator',
+          callId: 'call_123',
+          toolName: 'calculator',
           arguments: {'operation': 'add', 'a': 5, 'b': 3},
         );
 
@@ -120,15 +120,15 @@ void main() {
         expect(message.parts[1], isA<ToolPart>());
 
         final part = message.parts[1] as ToolPart;
-        expect(part.id, equals('call_123'));
-        expect(part.name, equals('calculator'));
+        expect(part.callId, equals('call_123'));
+        expect(part.toolName, equals('calculator'));
         expect(part.kind, equals(ToolPartKind.call));
       });
 
       test('tool result parts', () {
         const toolResult = ToolPart.result(
-          id: 'call_123',
-          name: 'calculator',
+          callId: 'call_123',
+          toolName: 'calculator',
           result: {'result': 8},
         );
 
@@ -141,7 +141,7 @@ void main() {
         expect(message.toolResults.length, equals(1));
 
         final result = message.toolResults.first;
-        expect(result.id, equals('call_123'));
+        expect(result.callId, equals('call_123'));
         expect(result.result, equals({'result': 8}));
       });
 
@@ -152,8 +152,8 @@ void main() {
           parts: [
             DataPart(imageData, mimeType: 'image/jpeg'),
             const ToolPart.result(
-              id: 'calc_456',
-              name: 'calc',
+              callId: 'calc_456',
+              toolName: 'calc',
               result: {'sum': 42},
             ),
           ],
@@ -186,8 +186,8 @@ void main() {
           'response',
           parts: const [
             ToolPart.call(
-              id: 'call_1',
-              name: 'search',
+              callId: 'call_1',
+              toolName: 'search',
               arguments: {'query': 'test'},
             ),
           ],
@@ -203,8 +203,8 @@ void main() {
           'hello',
           parts: const [
             ToolPart.result(
-              id: 'call_1',
-              name: 'search',
+              callId: 'call_1',
+              toolName: 'search',
               result: {'data': 'result'},
             ),
           ],
@@ -220,21 +220,21 @@ void main() {
           "I'll help with both tasks",
           parts: const [
             ToolPart.call(
-              id: 'call_1',
-              name: 'search',
+              callId: 'call_1',
+              toolName: 'search',
               arguments: {'query': 'weather'},
             ),
             ToolPart.call(
-              id: 'call_2',
-              name: 'calculator',
+              callId: 'call_2',
+              toolName: 'calculator',
               arguments: {'expression': '2+2'},
             ),
           ],
         );
 
         expect(message.toolCalls.length, equals(2));
-        expect(message.toolCalls[0].name, equals('search'));
-        expect(message.toolCalls[1].name, equals('calculator'));
+        expect(message.toolCalls[0].toolName, equals('search'));
+        expect(message.toolCalls[1].toolName, equals('calculator'));
       });
 
       test('toolResults returns all tool results', () {
@@ -242,13 +242,13 @@ void main() {
           'hello',
           parts: const [
             ToolPart.result(
-              id: 'call_1',
-              name: 'weather',
+              callId: 'call_1',
+              toolName: 'weather',
               result: {'weather': 'sunny'},
             ),
             ToolPart.result(
-              id: 'call_2',
-              name: 'calculator',
+              callId: 'call_2',
+              toolName: 'calculator',
               result: {'result': 4},
             ),
           ],
@@ -265,12 +265,13 @@ void main() {
         final emptyText = ChatMessage.user('');
         expect(emptyText.text, equals(''));
 
-        // Data part with empty bytes
+        // Data part with empty bytes - empty text doesn't create a TextPart
         final emptyData = ChatMessage.user(
           '',
           parts: [DataPart(Uint8List(0), mimeType: 'image/png')],
         );
-        expect(emptyData.parts[1], isA<DataPart>());
+        expect(emptyData.parts.length, equals(1));
+        expect(emptyData.parts[0], isA<DataPart>());
       });
 
       test('handles very long text content', () {
@@ -298,8 +299,8 @@ void main() {
           'response',
           parts: const [
             ToolPart.call(
-              id: 'call_empty',
-              name: 'no_args_tool',
+              callId: 'call_empty',
+              toolName: 'no_args_tool',
               arguments: {},
             ),
           ],
@@ -314,15 +315,15 @@ void main() {
           'hello',
           parts: const [
             ToolPart.result(
-              id: 'call_null',
-              name: 'tool',
+              callId: 'call_null',
+              toolName: 'tool',
               result: {'data': null, 'error': null},
             ),
           ],
         );
 
         expect(message.hasToolResults, isTrue);
-        expect(message.toolResults.first.result['data'], isNull);
+        expect((message.toolResults.first.result as Map?)?['data'], isNull);
       });
     });
   });

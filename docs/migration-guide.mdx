@@ -2,6 +2,77 @@
 title: Migration Guide
 ---
 
+## Migrating from 2.x to 3.0.0
+
+### Thinking API Change
+
+Thinking is also stored as `ThinkingPart` in the consolidated message for
+history.
+
+```dart
+// Non-streaming - use result.thinking
+final result = await agent.send(prompt);
+if (result.thinking != null) {
+  print('[[${result.thinking}]]');
+}
+print(result.output);
+
+// Streaming - use chunk.thinking for real-time display
+await for (final chunk in agent.sendStream(prompt)) {
+  if (chunk.thinking != null) stdout.write(chunk.thinking);
+  stdout.write(chunk.output);
+  history.addAll(chunk.messages);
+}
+```
+
+### Schema API Change
+
+The `JsonSchema` class has been replaced with `Schema`:
+
+```dart
+// OLD
+import 'package:json_schema/json_schema.dart';
+
+final schema = JsonSchema.create({
+  'type': 'object',
+  'properties': {
+    'city': {'type': 'string'},
+  },
+  'required': ['city'],
+});
+
+// Or with builder methods:
+final schema = JsonSchema.object({
+  'location': JsonSchema.string(description: 'The location'),
+  'count': JsonSchema.integer(description: 'The count'),
+}, required: ['location']);
+
+// NEW
+import 'package:dartantic_ai/dartantic_ai.dart'; // Schema is re-exported
+
+final schema = Schema.fromMap({
+  'type': 'object',
+  'properties': {
+    'city': {'type': 'string'},
+  },
+  'required': ['city'],
+});
+
+// Or with builder methods (using S shorthand):
+final schema = S.object(properties: {
+  'location': S.string(description: 'The location'),
+  'count': S.integer(description: 'The count'),
+}, required: ['location']);
+```
+
+Key changes:
+- `JsonSchema.create({...})` becomes `Schema.fromMap({...})`
+- `JsonSchema.object({...})` becomes `S.object(properties: {...})`
+- `JsonSchema.string(...)` becomes `S.string(...)`
+- `JsonSchema.integer(...)` becomes `S.integer(...)`
+- No need to import `json_schema` package; `Schema` is re-exported from
+  `dartantic_ai`
+
 ## Migrating from 1.x to 2.0.0
 
 ### Exposing dartantic_interface directly from dartantic_ai

@@ -1,5 +1,4 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 
 import '../agent/orchestrators/streaming_orchestrator.dart';
 
@@ -10,7 +9,7 @@ abstract interface class ChatOrchestratorProvider {
   /// The tools list may be modified by the provider, e.g. Anthropic injects
   /// the return_result tool for typed output.
   (StreamingOrchestrator, List<Tool>?) getChatOrchestratorAndTools({
-    required JsonSchema? outputSchema,
+    required Schema? outputSchema,
     required List<Tool>? tools,
   });
 }

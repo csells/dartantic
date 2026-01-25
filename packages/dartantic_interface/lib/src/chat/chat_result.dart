@@ -17,12 +17,11 @@ class ChatResult<T extends Object> extends LanguageModelResult<T> {
   /// The new messages generated during this chat interaction.
   final List<ChatMessage> messages;
 
-  /// Extended thinking (chain-of-thought reasoning) content from the model.
+  /// Thinking content for real-time streaming display (for reasoning models).
   ///
-  /// When thinking is enabled, models can expose their internal reasoning
-  /// process. This field contains:
-  /// - **During streaming**: Incremental thinking deltas (partial text)
-  /// - **Non-streaming**: Complete accumulated thinking text
+  /// During streaming, this field contains incremental thinking deltas as they
+  /// arrive from the model. The final consolidated thinking is available in
+  /// the message's [ThinkingPart].
   final String? thinking;
 
   @override
@@ -31,8 +30,8 @@ class ChatResult<T extends Object> extends LanguageModelResult<T> {
 ChatResult{
   id: $id,
   output: $output,
+  thinking: $thinking,
   messages: $messages,
-  thinking: ${thinking != null ? '${thinking!.length} chars' : 'null'},
   finishReason: $finishReason,
   metadata: $metadata,
   usage: $usage,

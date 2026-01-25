@@ -2,7 +2,6 @@ import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:google_cloud_ai_generativelanguage_v1beta/generativelanguage.dart'
     as gl;
 import 'package:http/http.dart' as http;
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 
 import '../agent/orchestrators/default_streaming_orchestrator.dart';
@@ -61,7 +60,7 @@ class GoogleProvider
 
   @override
   (StreamingOrchestrator, List<Tool>?) getChatOrchestratorAndTools({
-    required JsonSchema? outputSchema,
+    required Schema? outputSchema,
     required List<Tool>? tools,
   }) {
     final hasTools = tools != null && tools.isNotEmpty;

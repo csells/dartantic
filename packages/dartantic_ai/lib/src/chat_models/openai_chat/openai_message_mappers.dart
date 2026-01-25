@@ -4,6 +4,7 @@ import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
 import 'package:openai_dart/openai_dart.dart';
 
+import '../../shared/openai_utils.dart';
 import '../helpers/message_part_helpers.dart';
 import '../helpers/tool_id_helpers.dart';
 import 'openai_chat_options.dart';
@@ -29,7 +30,11 @@ CreateChatCompletionRequest createChatCompletionRequestFromMessages(
           function: FunctionObject(
             name: tool.name,
             description: tool.description,
-            parameters: tool.inputSchema.schemaMap as Map<String, dynamic>?,
+            // OpenAI requires 'properties' field on object schemas, even if
+            // empty
+            parameters: OpenAIUtils.prepareSchemaForOpenAI(
+              Map<String, dynamic>.from(tool.inputSchema.value),
+            ),
             strict: null, // Explicitly pass null to override any defaults
           ),
         ),
@@ -66,6 +71,9 @@ CreateChatCompletionRequest createChatCompletionRequestFromMessages(
 extension MessageListToOpenAI on List<ChatMessage> {
   /// Converts this list of [ChatMessage]s to a list of
   /// [ChatCompletionMessage]s.
+  ///
+  /// ThinkingPart is skipped during mapping since OpenAI doesn't need thinking
+  /// content sent back in conversation history.
   List<ChatCompletionMessage> toOpenAIMessages() {
     _logger.fine('Converting $length messages to OpenAI format');
 
@@ -81,7 +89,7 @@ extension MessageListToOpenAI on List<ChatMessage> {
             final content = ToolResultHelpers.serialize(toolResult.result);
             expandedMessages.add(
               ChatCompletionMessage.tool(
-                toolCallId: toolResult.id,
+                toolCallId: toolResult.callId,
                 content: content,
               ),
             );
@@ -127,7 +135,7 @@ extension MessageListToOpenAI on List<ChatMessage> {
       // ignore: avoid_dynamic_calls
       final content = ToolResultHelpers.serialize(toolResult.result);
       return ChatCompletionMessage.tool(
-        toolCallId: toolResult.id,
+        toolCallId: toolResult.callId,
         content: content,
       );
     }
@@ -169,6 +177,9 @@ extension MessageListToOpenAI on List<ChatMessage> {
         case ToolPart():
           // Skip tool parts in user messages (handled above)
           break;
+        case ThinkingPart():
+          // Thinking parts are not sent to OpenAI as input
+          break;
       }
     }
 
@@ -198,10 +209,10 @@ extension MessageListToOpenAI on List<ChatMessage> {
     final toolCalls = message.parts.toolCalls
         .map(
           (p) => ChatCompletionMessageToolCall(
-            id: p.id,
+            id: p.callId,
             type: ChatCompletionMessageToolCallType.function,
             function: ChatCompletionMessageFunctionCall(
-              name: p.name,
+              name: p.toolName,
               arguments: json.encode(p.arguments ?? {}),
             ),
           ),
@@ -308,8 +319,8 @@ ChatMessage createCompleteMessageWithTools(
 
     parts.add(
       ToolPart.call(
-        id: streamingCall.id,
-        name: streamingCall.name,
+        callId: streamingCall.id,
+        toolName: streamingCall.name,
         arguments: arguments,
       ),
     );
@@ -321,7 +332,7 @@ ChatMessage createCompleteMessageWithTools(
 /// Converts OpenAI completion response to Message.
 ChatMessage messageFromOpenAIResponse(CreateChatCompletionResponse response) {
   if (response.choices.isEmpty) {
-    return const ChatMessage(role: ChatMessageRole.model, parts: []);
+    return ChatMessage(role: ChatMessageRole.model, parts: const []);
   }
 
   final choice = response.choices.first;
@@ -354,8 +365,8 @@ ChatMessage messageFromOpenAIResponse(CreateChatCompletionResponse response) {
 
       parts.add(
         ToolPart.call(
-          id: toolCall.id,
-          name: toolCall.function.name,
+          callId: toolCall.id,
+          toolName: toolCall.function.name,
           arguments: arguments,
         ),
       );

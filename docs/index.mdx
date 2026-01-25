@@ -101,8 +101,8 @@ await for (final chunk in agent.sendStream('Tell me a story')) {
 final weatherTool = Tool(
   name: 'get_weather',
   description: 'Get weather for a location',
-  inputSchema: JsonSchema.object({
-    'location': JsonSchema.string(),
+  inputSchema: S.object(properties: {
+    'location': S.string(),
   }),
   onCall: (args) async => {'temp': 72, 'condition': 'sunny'},
 );

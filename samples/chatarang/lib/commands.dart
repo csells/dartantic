@@ -134,7 +134,7 @@ When responding:
                       }
 
                       print(
-                        '\x1B[96mTool.result\x1B[0m: ${part.name}: '
+                        '\x1B[96mTool.result\x1B[0m: ${part.toolName}: '
                         '$resultToShow',
                       );
                     }
@@ -150,7 +150,9 @@ When responding:
                       final args = const JsonEncoder.withIndent(
                         '  ',
                       ).convert(part.arguments);
-                      print('\x1B[95mTool.call\x1B[0m: ${part.name}($args)');
+                      print(
+                        '\x1B[95mTool.call\x1B[0m: ${part.toolName}($args)',
+                      );
                     }
                   }
                 }

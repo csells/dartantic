@@ -9,7 +9,7 @@
 /// 7. Each functionality should only be tested in ONE file - no duplication
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:json_schema/json_schema.dart';
+
 import 'package:test/test.dart';
 
 void main() {
@@ -29,7 +29,7 @@ void main() {
           description: 'A test tool',
           onCall: (input) => 'result',
         );
-        final schema = JsonSchema.create({
+        final schema = Schema.fromMap({
           'type': 'object',
           'properties': {
             'result': {'type': 'string'},
@@ -66,7 +66,12 @@ void main() {
         final errorTool = Tool<Map<String, dynamic>>(
           name: 'error_tool',
           description: 'A tool that always throws an error',
-
+          inputSchema: Schema.fromMap({
+            'type': 'object',
+            'properties': {
+              'message': {'type': 'string', 'description': 'Any message'},
+            },
+          }),
           onCall: (input) => throw Exception('Tool error: intentional'),
         );
 
@@ -83,24 +88,31 @@ void main() {
       });
 
       test('invalid tool arguments handled', () async {
-        // Create a tool that expects specific arguments
-        final strictTool = Tool<Map<String, dynamic>>(
-          name: 'strict_tool',
-          description: 'A tool with strict requirements',
-
+        // Create a tool that validates input and throws on invalid values
+        final validatingTool = Tool<Map<String, dynamic>>(
+          name: 'validating_tool',
+          description: 'A tool that validates input. The value must be > 0.',
+          inputSchema: Schema.fromMap({
+            'type': 'object',
+            'properties': {
+              'value': {'type': 'integer', 'description': 'A positive integer'},
+            },
+            'required': ['value'],
+          }),
           onCall: (input) {
-            if (!input.containsKey('required_field')) {
-              throw ArgumentError('Missing required_field');
+            final value = input['value'] as int;
+            if (value <= 0) {
+              throw ArgumentError('value must be positive, got $value');
             }
-            return 'Success';
+            return 'Success: $value';
           },
         );
 
-        final agent = Agent('openai:gpt-4o-mini', tools: [strictTool]);
+        final agent = Agent('openai:gpt-4o-mini', tools: [validatingTool]);
 
-        // Per our testing philosophy, exceptions should bubble up
-        expect(
-          () => agent.send('Use strict_tool but forget the required_field'),
+        // Per testing philosophy, ArgumentError (programming error) bubbles up
+        await expectLater(
+          () => agent.send('Use validating_tool with value 0 (zero)'),
           throwsA(isA<ArgumentError>()),
         );
       });

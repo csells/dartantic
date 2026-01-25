@@ -52,7 +52,7 @@ abstract class MediaGenerationModel<TOptions extends MediaGenerationModelOptions
     List<ChatMessage> history = const [],
     List<Part> attachments = const [],
     TOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
     required List<String> mimeTypes,
   });
 

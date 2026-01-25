@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:json_schema/json_schema.dart';
+import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:mime/mime.dart';
 
 /// Result of parsing an output schema.
 class SchemaParseResult {
   SchemaParseResult({this.schema, this.error});
 
-  final JsonSchema? schema;
+  final Schema? schema;
   final String? error;
 }
 
@@ -30,7 +30,7 @@ Future<SchemaParseResult> parseOutputSchema(String schemaStr) async {
 
   // Parse the JSON
   final schemaMap = jsonDecode(jsonStr) as Map<String, dynamic>;
-  return SchemaParseResult(schema: JsonSchema.create(schemaMap));
+  return SchemaParseResult(schema: Schema.fromMap(schemaMap));
 }
 
 /// Generate a filename based on MIME type.

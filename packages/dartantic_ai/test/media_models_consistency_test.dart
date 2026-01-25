@@ -27,10 +27,10 @@ void main() {
       final result = model.mapChunkForTest(
         ChatResult<ChatMessage>(
           output: ChatMessage.model('output'),
-          messages: const [
+          messages: [
             ChatMessage(
               role: ChatMessageRole.model,
-              parts: [TextPart('hello')],
+              parts: const [TextPart('hello')],
             ),
           ],
           finishReason: FinishReason.unspecified,
@@ -63,10 +63,10 @@ void main() {
       final result = model.mapChunkForTest(
         ChatResult<ChatMessage>(
           output: ChatMessage.model('output'),
-          messages: const [
+          messages: [
             ChatMessage(
               role: ChatMessageRole.model,
-              parts: [TextPart('hello')],
+              parts: const [TextPart('hello')],
             ),
           ],
           finishReason: FinishReason.unspecified,

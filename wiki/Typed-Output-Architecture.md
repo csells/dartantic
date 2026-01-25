@@ -65,11 +65,10 @@ flowchart LR
 |------------|--------------|--------|---------------------------|
 | OpenAI     | ✅          | Native response_format | ✅ |
 | OpenAI Responses | ✅     | Native text_format (stateful) | ✅ |
-| OpenRouter | ✅          | Native (OpenAI-compatible) | ✅ |
+| OpenRouter | ✅          | Native (OpenAI-compatible) | ❌ |
 | Anthropic  | ✅          | return_result tool | ✅ |
 | Google     | ✅          | Native responseSchema + Double Agent | ✅ |
-| Ollama     | ✅          | Native format param (as of ollama_dart ^0.3.0) | ❌ (future: add double agent) |
-| Together   | ✅          | Native (OpenAI-compatible) | ✅ |
+| Ollama     | ✅          | Native format param (as of ollama_dart ^0.3.0) | ❌ |
 | Cohere     | ✅          | Native (OpenAI-compatible) | ❌ (API limitation) |
 | Mistral    | ❌          | Not supported | ❌ |
 
@@ -86,10 +85,10 @@ OpenAI supports both tools and typed output simultaneously with no conflicts:
 ```dart
 // OpenAI uses response_format.json_schema
 ResponseFormat.jsonSchema(
-  jsonSchema: JsonSchemaObject(
+  jsonSchema: SchemaObject(
     name: 'response',
     description: 'Generated response following the provided schema',
-    schema: outputSchema.schemaMap,
+    schema: outputSchema.value,
     strict: true,
   ),
 )
@@ -101,9 +100,9 @@ The OpenAI Responses provider uses the stateful Responses API with session manag
 
 ```dart
 // OpenAI Responses uses text_format with session continuations
-TextFormatJsonSchema(
+TextFormatSchema(
   name: 'dartantic_output',
-  schema: outputSchema.schemaMap,
+  schema: outputSchema.value,
   strict: true,
 )
 ```
@@ -163,7 +162,7 @@ This pattern allows Google to support the same capability as Anthropic and OpenA
 ```dart
 // Ollama uses format parameter in HTTP request
 {
-  "format": outputSchema.schemaMap,
+  "format": outputSchema.value,
   "model": "...",
   "messages": [...],
 }
@@ -211,7 +210,7 @@ class TypedOutputStreamingOrchestrator extends DefaultStreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     state.resetForNewMessage();
 
@@ -255,7 +254,7 @@ class TypedOutputStreamingOrchestrator extends DefaultStreamingOrchestrator {
     // Check if this message has return_result tool call
     final hasReturnResultCall = consolidatedMessage.parts
         .whereType<ToolPart>()
-        .any((p) => p.kind == ToolPartKind.call && p.name == kReturnResultToolName);
+        .any((p) => p.kind == ToolPartKind.call && p.toolName == kReturnResultToolName);
 
     if (hasReturnResultCall) {
       // Execute tools and create synthetic message with JSON
@@ -271,14 +270,14 @@ class TypedOutputStreamingOrchestrator extends DefaultStreamingOrchestrator {
 
       // Extract return_result JSON
       for (final result in executionResults) {
-        if (result.toolPart.name == kReturnResultToolName && result.isSuccess) {
+        if (result.toolPart.toolName == kReturnResultToolName && result.isSuccess) {
           final returnResultJson = result.resultPart.result ?? '';
-          
+
           // Create synthetic message
           final syntheticMessage = ChatMessage(
             role: ChatMessageRole.model,
             parts: [TextPart(returnResultJson)],
-            metadata: {'toolId': result.toolPart.id},
+            metadata: {'toolId': result.toolPart.callId},
           );
 
           yield StreamingIterationResult(
@@ -332,7 +331,7 @@ The Agent automatically selects the TypedOutputStreamingOrchestrator when output
 ```dart
 // In Agent._selectOrchestrator()
 StreamingOrchestrator _selectOrchestrator({
-  JsonSchema? outputSchema,
+  Schema? outputSchema,
   List<Tool>? tools,
 }) {
   if (outputSchema != null) {
@@ -478,7 +477,7 @@ try {
 
 ```dart
 // Define schema
-final schema = JsonSchema.create({
+final schema = Schema.fromMap({
   'type': 'object',
   'properties': {
     'name': {'type': 'string'},

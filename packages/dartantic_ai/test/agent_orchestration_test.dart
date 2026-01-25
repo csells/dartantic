@@ -219,13 +219,13 @@ void main() {
         final agent = Agent(provider.name);
 
         final history = [
-          const ChatMessage(
+          ChatMessage(
             role: ChatMessageRole.system,
-            parts: [TextPart('You are a helpful assistant.')],
+            parts: const [TextPart('You are a helpful assistant.')],
           ),
-          const ChatMessage(
+          ChatMessage(
             role: ChatMessageRole.system,
-            parts: [TextPart('You are a pirate.')],
+            parts: const [TextPart('You are a pirate.')],
           ),
         ];
 

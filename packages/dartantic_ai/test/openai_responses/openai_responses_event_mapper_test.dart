@@ -153,7 +153,7 @@ void main() {
         final callPart = message.parts.whereType<ToolPart>().firstWhere(
           (part) => part.kind == ToolPartKind.call,
         );
-        expect(callPart.name, equals('fetchData'));
+        expect(callPart.toolName, equals('fetchData'));
 
         final resultPart = message.parts.whereType<ToolPart>().firstWhere(
           (part) => part.kind == ToolPartKind.result,

@@ -168,13 +168,13 @@ void main() {
         final result = await agent.send(
           'Tell me about the weather',
           history: [
-            ChatMessage.system('Always respond with exactly three words.'),
+            ChatMessage.system(
+              'Always start your response with "WEATHER REPORT:" (exactly).',
+            ),
           ],
         );
         expect(result.output, isNotEmpty);
-        // Check for roughly three words (some flexibility for punctuation)
-        final wordCount = result.output.trim().split(RegExp(r'\s+')).length;
-        expect(wordCount, lessThanOrEqualTo(5)); // Allow some flexibility
+        expect(result.output.toUpperCase(), startsWith('WEATHER REPORT:'));
       });
 
       runProviderTest('system prompt persists across conversation', (

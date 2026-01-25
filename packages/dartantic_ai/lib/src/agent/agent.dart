@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 
 import '../logging_options.dart';
@@ -199,7 +198,7 @@ class Agent {
     String prompt, {
     Iterable<ChatMessage> history = const [],
     List<Part> attachments = const [],
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async {
     _logger.info(
       'Running agent with prompt and ${history.length} history messages',
@@ -232,7 +231,7 @@ class Agent {
   /// otherwise returns the decoded JSON.
   Future<ChatResult<TOutput>> sendFor<TOutput extends Object>(
     String prompt, {
-    required JsonSchema outputSchema,
+    required Schema outputSchema,
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     Iterable<ChatMessage> history = const [],
     List<Part> attachments = const [],
@@ -273,7 +272,7 @@ class Agent {
     String prompt, {
     Iterable<ChatMessage> history = const [],
     List<Part> attachments = const [],
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     _logger.info(
       'Starting agent stream with prompt and ${history.length} '
@@ -329,17 +328,17 @@ class Agent {
             state,
             outputSchema: outputSchema,
           )) {
-            // Yield streaming text or metadata
+            // Yield streaming text, thinking, or metadata
             if (result.output.isNotEmpty ||
-                result.metadata.isNotEmpty ||
-                result.thinking != null) {
+                result.thinking != null ||
+                result.metadata.isNotEmpty) {
               yield ChatResult<String>(
                 id: state.lastResult.id.isEmpty ? '' : state.lastResult.id,
                 output: result.output,
+                thinking: result.thinking,
                 messages: const [],
                 finishReason: result.finishReason,
                 metadata: result.metadata,
-                thinking: result.thinking,
                 usage: result.usage,
               );
             }
@@ -355,7 +354,6 @@ class Agent {
                 messages: result.messages,
                 finishReason: result.finishReason,
                 metadata: result.metadata,
-                thinking: result.thinking,
                 usage: result.usage,
               );
             }
@@ -371,7 +369,6 @@ class Agent {
                 messages: const [],
                 finishReason: result.finishReason,
                 metadata: const {},
-                thinking: result.thinking,
                 usage: result.usage,
               );
             }
@@ -397,7 +394,7 @@ class Agent {
     Iterable<ChatMessage> history = const [],
     List<Part> attachments = const [],
     MediaGenerationModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async {
     if (mimeTypes.isEmpty) {
       throw ArgumentError.value(
@@ -440,7 +437,7 @@ class Agent {
     Iterable<ChatMessage> history = const [],
     List<Part> attachments = const [],
     MediaGenerationModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     if (mimeTypes.isEmpty) {
       throw ArgumentError.value(

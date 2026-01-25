@@ -1,5 +1,3 @@
-import 'package:json_schema/json_schema.dart';
-
 import '../chat/chat_message.dart';
 import '../tool.dart';
 import 'media_generation_model_options.dart';
@@ -37,7 +35,7 @@ abstract class MediaGenerationModel<
     List<ChatMessage> history = const [],
     List<Part> attachments = const [],
     TOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   });
 
   /// Disposes the media generation model.

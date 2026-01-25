@@ -70,7 +70,7 @@ For application code, use `listModels()` to discover what models are available a
 ```dart
 final provider = Agent.getProvider('openai');
 await for (final model in provider.listModels()) {
-  print('${model.name}: ${model.kinds}');
+  print('${model.id}: ${model.kinds}');
 }
 ```
 
@@ -105,40 +105,33 @@ wire. This ensures:
 
 ## Provider Registry
 
-The Provider class maintains a static registry of all available providers (see `lib/src/providers/provider.dart`):
+The Agent class maintains a factory registry for all available providers (see `lib/src/agent/agent.dart`):
 
 ```mermaid
 classDiagram
-    class ProviderRegistry {
-        +static openai : Provider
-        +static google : Provider
-        +static anthropic : Provider
-        +static mistral : Provider
-        +static cohere : Provider
-        +static ollama : Provider
-        +static forName(name) Provider
-        +static all List~Provider~
-        +static allWith(caps) List~Provider~
+    class Agent {
+        +static providerFactories Map~String, Function~
+        +static getProvider(name) Provider
+        +static allProviders List~Provider~
     }
-    
+
     class Provider {
         +name : String
-        +aliases : List~String~
         +displayName : String
         +createChatModel()
         +createEmbeddingsModel()
         +listModels()
     }
-    
-    ProviderRegistry ..> Provider : manages
-    
-    note for ProviderRegistry "Alias lookup:\n'claude' → Anthropic\n'gemini' → Google"
+
+    Agent ..> Provider : creates via factories
+
+    note for Agent "Alias lookup:\n'claude' → Anthropic\n'gemini' → Google"
 ```
 
-- **Lazy instances**: Each provider has a lazy getter (e.g., `Providers.openai`) to avoid initialization errors
-- **Name-based lookup**: `Providers.get(String)` with case-insensitive matching
+- **Factory functions**: `Agent.providerFactories` maps names/aliases to factory functions
+- **Name-based lookup**: `Agent.getProvider(String)` with case-insensitive matching
 - **Alias support**: Providers can have alternative names (e.g., 'claude' → 'anthropic')
-- **Discovery methods**: `Providers.all` lists all providers, `Providers.allWith()` filters by capabilities
+- **Discovery**: `Agent.allProviders` lists all registered providers (excluding alias duplicates)
 
 Providers are created lazily on first access to avoid initialization errors when API keys are missing. This allows users to use specific providers without needing all API keys configured.
 
@@ -159,7 +152,7 @@ sequenceDiagram
     rect rgb(200, 220, 240)
         note over Agent: AGENT LAYER
         Agent->>Agent: Parse "openai" → provider name
-        Agent->>Provider: Providers.get("openai")
+        Agent->>Provider: Agent.getProvider("openai")
         Provider-->>Agent: OpenAIProvider instance
         Agent->>Agent: Lazy model creation
     end
@@ -246,7 +239,7 @@ Key patterns:
 
 ### OpenAI-Compatible Pattern
 
-Many providers use OpenAI's API format. The `OpenAIProvider` class can be instantiated with different configurations to support multiple providers (OpenRouter, Together, etc.). See how `Providers.openrouter` and others are defined as configured OpenAIProvider instances.
+Many providers use OpenAI's API format. The `OpenAIProvider` class can be instantiated with different configurations to support multiple providers (OpenRouter, etc.). See how OpenRouter is defined in `Agent.providerFactories` as a configured OpenAIProvider factory.
 
 ### Custom Provider Pattern
 
@@ -254,7 +247,7 @@ For implementing new providers, follow the pattern in existing implementations:
 1. Define provider-specific option classes
 2. Extend Provider with appropriate type parameters
 3. Implement factory methods with proper configuration resolution
-4. Add static instance to Provider registry
+4. Register factory function in `Agent.providerFactories`
 
 ## Usage Patterns
 
@@ -308,38 +301,41 @@ While Agent is the primary interface, direct model creation is supported for adv
 
 ### Provider Capability Matrix
 
-| Provider         | Chat  | Embeddings | Tools | Typed Output | Tools+Typed | Vision | Media |
-| ---------------- | :---: | :--------: | :---: | :----------: | :---------: | :----: | :----: |
-| OpenAI           |   ✅   |     ✅      |   ✅   |      ✅       |      ✅      |   ✅    |   ❌   |
-| OpenAI Responses |   ✅   |     ✅      |   ✅   |      ✅       |      ✅      |   ✅    |   ✅   |
-| Google           |   ✅   |     ✅      |   ✅   |      ✅       |      ❌      |   ✅    |   ❌   |
-| Anthropic        |   ✅   |     ❌      |   ✅   |      ✅       |      ✅      |   ✅    |   ❌   |
-| Mistral          |   ✅   |     ✅      |   ❌   |      ❌       |      ❌      |   ✅    |   ❌   |
-| Cohere           |   ✅   |     ✅      |   ✅   |      ✅       |      ❌      |   ❌    |   ❌   |
-| Ollama           |   ✅   |     ❌      |   ✅   |      ✅       |      ✅      |   ✅    |   ❌   |
-| OpenRouter       |   ✅   |     ❌      |   ✅   |      ✅       |      ❌      |   ✅    |   ❌   |
-| Together         |   ✅   |     ❌      |   ❌   |      ✅       |      ❌      |   ✅    |   ❌   |
+| Provider         | Chat  | Embeddings | Tools | Typed Output | Tools+Typed | Vision | Thinking | Media |
+| ---------------- | :---: | :--------: | :---: | :----------: | :---------: | :----: | :------: | :---: |
+| OpenAI           |   ✅   |     ✅      |   ✅   |      ✅       |      ✅      |   ✅    |    ❌    |   ❌   |
+| OpenAI Responses |   ✅   |     ✅      |   ✅   |      ✅       |      ✅      |   ✅    |    ✅    |   ✅   |
+| Anthropic        |   ✅   |     ❌      |   ✅   |      ✅       |      ✅      |   ✅    |    ✅    |   ✅   |
+| Google           |   ✅   |     ✅      |   ✅   |      ✅       |      ✅      |   ✅    |    ✅    |   ✅   |
+| Mistral          |   ✅   |     ✅      |   ✅   |      ❌       |      ❌      |   ❌    |    ❌    |   ❌   |
+| Cohere           |   ✅   |     ✅      |   ✅   |      ✅       |      ❌      |   ❌    |    ❌    |   ❌   |
+| Ollama           |   ✅   |     ❌      |   ⚠️   |      ✅       |      ❌      |   ❌    |    ❌    |   ❌   |
+| OpenRouter       |   ✅   |     ❌      |   ✅   |      ✅       |      ❌      |   ✅    |    ❌    |   ❌   |
 
 **Legend:**
-- **Tools** = `multiToolCalls` capability
-- **Typed Output** = `typedOutput` capability  
+- **Tools** = `multiToolCalls` capability (⚠️ = limited reliability)
+- **Typed Output** = `typedOutput` capability
 - **Tools+Typed** = `typedOutputWithTools` capability
+- **Thinking** = Extended reasoning/thinking capability
 - **Media** = `mediaGeneration` capability
 
-### Chat-Only Providers
-- **Anthropic**: No embeddings support
-- **Ollama**: No embeddings in native API (use OpenAI-compatible endpoint)
-- **Together**: No embeddings support
+Note: Capabilities reflect the default model for each provider. Individual models may have different capabilities. Use `provider.listModels()` for runtime discovery.
 
-### Limited Tool Support
-- **Mistral**: No tool calling support
-- **Cohere**: Cannot use typed output with tools simultaneously
+### Chat-Only Providers (No Embeddings)
+- **Anthropic**: No embeddings support in native API
+- **Ollama**: No embeddings in native API (use OpenAI-compatible endpoint)
+- **OpenRouter**: Chat only through model aggregation
+
+### Limited Capabilities
+- **Mistral**: No typed output or vision support
+- **Cohere**: Cannot use typed output with tools simultaneously; no vision
+- **Ollama**: Tool calling works but not reliably for multiple tool calls
 
 ### Full-Featured Providers
-- **OpenAI Responses**: Supports all capabilities including media generation.
-- **OpenAI**: Supports all capabilities except `mediaGeneration`.
-- **Google**: Supports all capabilities except `typedOutputWithTools` and
-  `mediaGeneration`.
+- **OpenAI Responses**: Supports all capabilities including media generation and thinking
+- **OpenAI**: Supports all capabilities except thinking and media generation
+- **Google**: Supports all capabilities including media generation and thinking
+- **Anthropic**: Supports all capabilities including media generation and thinking (no embeddings)
 
 ## Summary
 

@@ -1,5 +1,4 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 import '../../shared/openai_utils.dart';
@@ -30,9 +29,9 @@ LanguageModelUsage mapUsage(CompletionUsage? usage) {
   );
 }
 
-/// Creates OpenAI ResponseFormat from JsonSchema
+/// Creates OpenAI ResponseFormat from Schema
 ResponseFormat? _createResponseFormat(
-  JsonSchema? outputSchema, {
+  Schema? outputSchema, {
   bool strictSchema = true,
 }) {
   if (outputSchema == null) return null;
@@ -42,7 +41,7 @@ ResponseFormat? _createResponseFormat(
       name: 'output_schema',
       description: 'Generated response following the provided schema',
       schema: OpenAIUtils.prepareSchemaForOpenAI(
-        Map<String, dynamic>.from(outputSchema.schemaMap ?? {}),
+        Map<String, dynamic>.from(outputSchema.value),
         strict: strictSchema,
       ),
       strict: strictSchema,
@@ -58,7 +57,7 @@ CreateChatCompletionRequest createChatCompletionRequest(
   List<Tool>? tools,
   double? temperature,
   OpenAIChatOptions? options,
-  JsonSchema? outputSchema,
+  Schema? outputSchema,
   bool strictSchema = true,
 }) => CreateChatCompletionRequest(
   model: ChatCompletionModel.modelId(modelName),
@@ -70,7 +69,11 @@ CreateChatCompletionRequest createChatCompletionRequest(
           function: FunctionObject(
             name: tool.name,
             description: tool.description,
-            parameters: tool.inputSchema.schemaMap as Map<String, dynamic>?,
+            // OpenAI requires 'properties' field on object schemas, even if
+            // empty
+            parameters: OpenAIUtils.prepareSchemaForOpenAI(
+              Map<String, dynamic>.from(tool.inputSchema.value),
+            ),
             strict: null, // Explicitly pass null to override any defaults
           ),
         ),

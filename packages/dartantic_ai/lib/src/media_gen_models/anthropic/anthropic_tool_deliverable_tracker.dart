@@ -175,7 +175,7 @@ class AnthropicToolDeliverableTracker {
       final inferredMime = ref.mimeType ?? downloaded.mimeType;
       final name = ref.filename ?? downloaded.filename;
       final extension = name == null && inferredMime != null
-          ? Part.extensionFromMimeType(inferredMime)
+          ? PartHelpers.extensionFromMimeType(inferredMime)
           : null;
       final resolvedName =
           name ?? _composeFileName('anthropic_file_', ref.fileId, extension);
@@ -413,7 +413,7 @@ class AnthropicToolDeliverableTracker {
 
   String? _extensionFromMime(String? mime) {
     if (mime == null) return null;
-    return Part.extensionFromMimeType(mime);
+    return PartHelpers.extensionFromMimeType(mime);
   }
 
   String _sanitizeFileName(String name) =>
@@ -425,7 +425,7 @@ class AnthropicToolDeliverableTracker {
         ref.mimeType ?? lookupMimeType('image.bin', headerBytes: bytes);
     final extension = inferredMime == null
         ? null
-        : Part.extensionFromMimeType(inferredMime);
+        : PartHelpers.extensionFromMimeType(inferredMime);
     final baseName =
         ref.filename ??
         _composeFileName(
@@ -447,7 +447,7 @@ class AnthropicToolDeliverableTracker {
   String? _preferredTextExtension(String mimeType) {
     if (mimeType == 'text/plain') return 'txt';
     if (mimeType == 'text/markdown') return 'md';
-    return Part.extensionFromMimeType(mimeType);
+    return PartHelpers.extensionFromMimeType(mimeType);
   }
 }
 

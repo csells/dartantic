@@ -88,9 +88,9 @@ void main() {
         final agent = Agent('openai:gpt-4o-mini');
 
         final history = [
-          const ChatMessage(
+          ChatMessage(
             role: ChatMessageRole.system,
-            parts: [TextPart('You are a math tutor. Always show work.')],
+            parts: const [TextPart('You are a math tutor. Always show work.')],
           ),
         ];
 

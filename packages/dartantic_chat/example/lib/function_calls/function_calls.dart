@@ -5,7 +5,6 @@
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:dartantic_chat/dartantic_chat.dart';
-import 'package:json_schema/json_schema.dart';
 
 const _apiKey = String.fromEnvironment('GEMINI_API_KEY');
 
@@ -52,16 +51,14 @@ class ChatPage extends StatelessWidget {
             Tool<Map<String, dynamic>>(
               name: 'c_to_f',
               description: 'Convert a temperature from Celsius to Fahrenheit',
-              inputSchema: JsonSchema.create({
-                'type': 'object',
-                'properties': {
-                  'temperature': {
-                    'type': 'number',
-                    'description': 'The temperature in Celsius',
-                  },
+              inputSchema: S.object(
+                properties: {
+                  'temperature': S.number(
+                    description: 'The temperature in Celsius',
+                  ),
                 },
-                'required': ['temperature'],
-              }),
+                required: ['temperature'],
+              ),
               onCall:
                   (args) async => {
                     'temperature':

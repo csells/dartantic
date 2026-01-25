@@ -1,4 +1,4 @@
-import 'package:json_schema/json_schema.dart';
+import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:openai_core/openai_core.dart' as openai;
 
 import '../../shared/openai_utils.dart';
@@ -92,13 +92,12 @@ class OpenAIResponsesOptionsMapper {
   /// strict mode enabled. Otherwise delegates to the explicit responseFormat
   /// if provided.
   static openai.TextFormat? resolveTextFormat(
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
     Map<String, dynamic>? responseFormat,
   ) {
     if (outputSchema != null) {
-      final raw = outputSchema.schemaMap ?? const <String, dynamic>{};
       final schema = OpenAIUtils.prepareSchemaForOpenAI(
-        Map<String, dynamic>.from(raw),
+        Map<String, dynamic>.from(outputSchema.value),
       );
       return openai.TextFormatJsonSchema(
         name: 'dartantic_output',

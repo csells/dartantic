@@ -1,6 +1,5 @@
 import 'package:dartantic_ai/dartantic_ai.dart';
 
-import 'package:json_schema/json_schema.dart';
 import 'package:test/test.dart';
 
 import 'test_helpers/run_provider_test.dart';
@@ -65,7 +64,7 @@ class DummyChatModel extends ChatModel<ChatModelOptions> {
   Stream<ChatResult<ChatMessage>> sendStream(
     List<ChatMessage> messages, {
     ChatModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     sendCalls++;
 
@@ -78,14 +77,17 @@ class DummyChatModel extends ChatModel<ChatModelOptions> {
 
     if (!hasToolResults) {
       const toolCall = ToolPart.call(
-        id: 'call_1',
-        name: 'write_file',
+        callId: 'call_1',
+        toolName: 'write_file',
         arguments: {'path': 'lib/x.dart', 'content': 'hello'},
       );
-      const msg = ChatMessage(role: ChatMessageRole.model, parts: [toolCall]);
+      final msg = ChatMessage(
+        role: ChatMessageRole.model,
+        parts: const [toolCall],
+      );
       yield ChatResult<ChatMessage>(
         output: msg,
-        messages: const [msg],
+        messages: [msg],
         finishReason: FinishReason.toolCalls,
         metadata: const {},
         usage: const LanguageModelUsage(),
@@ -94,10 +96,10 @@ class DummyChatModel extends ChatModel<ChatModelOptions> {
     }
 
     // Stage 2+: After tool results, return an empty assistant message
-    const empty = ChatMessage(role: ChatMessageRole.model, parts: []);
+    final empty = ChatMessage(role: ChatMessageRole.model, parts: const []);
     yield ChatResult<ChatMessage>(
       output: empty,
-      messages: const [ChatMessage(role: ChatMessageRole.model, parts: [])],
+      messages: [ChatMessage(role: ChatMessageRole.model, parts: const [])],
       finishReason: FinishReason.stop,
       metadata: const {},
       usage: const LanguageModelUsage(),
@@ -164,7 +166,7 @@ class DummyModel extends ChatModel<ChatModelOptions> {
   Stream<ChatResult<ChatMessage>> sendStream(
     List<ChatMessage> messages, {
     ChatModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     sendCalls++;
     final hasToolResults = messages.any(
@@ -176,14 +178,17 @@ class DummyModel extends ChatModel<ChatModelOptions> {
     if (!hasToolResults) {
       // Emit a single tool call on first pass
       const toolCall = ToolPart.call(
-        id: 'call_1',
-        name: 'write_file',
+        callId: 'call_1',
+        toolName: 'write_file',
         arguments: {'path': 'lib/x.dart', 'content': 'hello'},
       );
-      const msg = ChatMessage(role: ChatMessageRole.model, parts: [toolCall]);
+      final msg = ChatMessage(
+        role: ChatMessageRole.model,
+        parts: const [toolCall],
+      );
       yield ChatResult<ChatMessage>(
         output: msg,
-        messages: const [msg],
+        messages: [msg],
         finishReason: FinishReason.toolCalls,
         metadata: const {},
         usage: const LanguageModelUsage(),
@@ -192,10 +197,10 @@ class DummyModel extends ChatModel<ChatModelOptions> {
     }
 
     // After tool results, return an empty assistant message
-    const empty = ChatMessage(role: ChatMessageRole.model, parts: []);
+    final empty = ChatMessage(role: ChatMessageRole.model, parts: const []);
     yield ChatResult<ChatMessage>(
       output: empty,
-      messages: const [empty],
+      messages: [empty],
       finishReason: FinishReason.stop,
       metadata: const {},
       usage: const LanguageModelUsage(),
@@ -213,7 +218,7 @@ void main() {
     final writeFile = Tool(
       name: 'write_file',
       description: 'Create or overwrite a file',
-      inputSchema: JsonSchema.create({
+      inputSchema: Schema.fromMap({
         'type': 'object',
         'properties': {
           'path': {'type': 'string'},
@@ -248,7 +253,7 @@ void main() {
     final writeFile = Tool(
       name: 'write_file',
       description: 'Create or overwrite a file',
-      inputSchema: JsonSchema.create({
+      inputSchema: Schema.fromMap({
         'type': 'object',
         'properties': {
           'path': {'type': 'string'},
@@ -292,7 +297,7 @@ void main() {
       requiredCaps: {ProviderTestCaps.chat, ProviderTestCaps.multiToolCalls},
     );
 
-    final outputSchema = JsonSchema.create({
+    final outputSchema = Schema.fromMap({
       'type': 'object',
       'properties': {
         'ok': {'type': 'boolean'},

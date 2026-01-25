@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_ai/src/platform/platform.dart' as platform;
-import 'package:json_schema/json_schema.dart';
+
 import 'package:test/test.dart';
 
 void main() {
@@ -656,7 +656,7 @@ class TestChatModel extends ChatModel<TestChatOptions> {
   Stream<ChatResult<ChatMessage>> sendStream(
     List<ChatMessage> messages, {
     TestChatOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     // Not implemented - just for testing configuration
     throw UnimplementedError();

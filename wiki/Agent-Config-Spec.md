@@ -160,25 +160,25 @@ parameters. These are set at the provider level through the constructor. Provide
 ### 4. Provider Discovery
 
 Providers can be discovered by:
-- **Name**: `Providers.get('openai')`
-- **Alias**: `Providers.get('claude')` → resolves to Anthropic
-- **All Providers**: `Providers.all`
+- **Name**: `Agent.getProvider('openai')`
+- **Alias**: `Agent.getProvider('claude')` → resolves to Anthropic
+- **All Providers**: `Agent.allProviders`
 - **Runtime Capabilities**: Use `Provider.listModels()` to discover model-specific capabilities
 
 ### 5. Provider-Specific Environment Variables
 
 Each provider defines its own environment variable for API keys:
 
-| Provider   | apiKeyName           | Example           |
-| ---------- | -------------------- | ----------------- |
-| OpenAI     | `OPENAI_API_KEY`     | `sk-...`          |
-| Anthropic  | `ANTHROPIC_API_KEY`  | `sk-ant-...`      |
-| Google     | `GEMINI_API_KEY`     | `...`             |
-| Mistral    | `MISTRAL_API_KEY`    | `...`             |
-| Cohere     | `COHERE_API_KEY`     | `...`             |
-| OpenRouter | `OPENROUTER_API_KEY` | `sk-or-...`       |
-| Together   | `TOGETHER_API_KEY`   | `...`             |
-| Ollama     | `null`               | No API key needed |
+| Provider         | apiKeyName           | Aliases                           | Example           |
+| ---------------- | -------------------- | --------------------------------- | ----------------- |
+| OpenAI           | `OPENAI_API_KEY`     | -                                 | `sk-...`          |
+| OpenAI Responses | `OPENAI_API_KEY`     | -                                 | `sk-...`          |
+| Anthropic        | `ANTHROPIC_API_KEY`  | `claude`                          | `sk-ant-...`      |
+| Google           | `GEMINI_API_KEY`     | `gemini`, `googleai`, `google-gla`| `...`             |
+| Mistral          | `MISTRAL_API_KEY`    | `mistralai`                       | `...`             |
+| Cohere           | `COHERE_API_KEY`     | -                                 | `...`             |
+| OpenRouter       | `OPENROUTER_API_KEY` | -                                 | `sk-or-...`       |
+| Ollama           | `null`               | -                                 | No API key needed |
 
 ## Interaction Rules
 
@@ -309,7 +309,6 @@ final provider = OpenAIProvider(
   apiKeyName: 'OPENAI_API_KEY',
   apiKey: 'sk-custom-key',
   baseUrl: Uri.parse('https://proxy.company.com/v1'),
-  caps: Providers.openai.caps,
 );
 
 final agent = Agent.forProvider(provider);
@@ -330,7 +329,6 @@ final provider = OpenAIProvider(
   },
   apiKeyName: 'OPENAI_API_KEY',
   baseUrl: Uri.parse('https://custom.api.com'),
-  caps: Providers.openai.caps,
 );
 
 final agent = Agent.forProvider(provider);
@@ -350,7 +348,6 @@ final provider = OpenAIProvider(
   apiKeyName: 'OPENAI_API_KEY',
   apiKey: 'sk-provider-key',  // Override API key
   baseUrl: Uri.parse('https://provider.api.com'),  // Override base URL
-  caps: Providers.openai.caps,
 );
 
 final chatModel = provider.createChatModel();
@@ -370,7 +367,6 @@ final provider = OpenAIProvider(
   apiKeyName: 'OPENAI_API_KEY',
   apiKey: 'sk-custom-key',
   baseUrl: Uri.parse('https://custom.api.com'),
-  caps: Providers.openai.caps,
 );
 
 // List models will use the provider's apiKey and baseUrl

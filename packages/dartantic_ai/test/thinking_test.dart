@@ -226,15 +226,17 @@ void main() {
                   final parts = m.parts.toList();
                   // Has thinking parts but NO text or tool parts
                   final hasThinking = parts.any((p) => p is ThinkingPart);
-                  final hasTextOrTool =
-                      parts.any((p) => p is TextPart || p is ToolPart);
+                  final hasTextOrTool = parts.any(
+                    (p) => p is TextPart || p is ToolPart,
+                  );
                   return hasThinking && !hasTextOrTool;
                 });
 
             expect(
               thinkingOnlyMessages,
               isEmpty,
-              reason: 'Should not have ThinkingPart-only messages - '
+              reason:
+                  'Should not have ThinkingPart-only messages - '
                   'thinking should be consolidated with text/tool parts. '
                   'Found ${thinkingOnlyMessages.length} ThinkingPart-only '
                   'messages in history.',

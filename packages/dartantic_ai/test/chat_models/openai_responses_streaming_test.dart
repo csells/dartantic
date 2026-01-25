@@ -41,7 +41,8 @@ void main() {
       expect(
         thinkingBuffer.toString(),
         isNotEmpty,
-        reason: 'gpt-5 with detailed reasoning MUST produce thinking output '
+        reason:
+            'gpt-5 with detailed reasoning MUST produce thinking output '
             'via chunk.thinking',
       );
 

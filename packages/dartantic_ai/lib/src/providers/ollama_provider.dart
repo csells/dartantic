@@ -20,11 +20,7 @@ class OllamaProvider
     super.baseUrl,
     super.apiKeyName,
     super.headers,
-  }) : super(
-         defaultModelNames: {
-           ModelKind.chat: 'qwen2.5:7b-instruct',
-         },
-       );
+  }) : super(defaultModelNames: {ModelKind.chat: 'qwen2.5:7b-instruct'});
 
   static final Logger _logger = Logger('dartantic.chat.providers.ollama');
 

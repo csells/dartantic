@@ -49,6 +49,5 @@ class GoogleThinkingMetadata {
   /// Returns an empty map if signatures is empty.
   static Map<String, dynamic> buildMetadata({
     required Map<String, dynamic> signatures,
-  }) =>
-      signatures.isEmpty ? const {} : {signaturesKey: signatures};
+  }) => signatures.isEmpty ? const {} : {signaturesKey: signatures};
 }

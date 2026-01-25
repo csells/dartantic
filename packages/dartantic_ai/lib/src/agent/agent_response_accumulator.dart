@@ -38,7 +38,8 @@ class AgentResponseAccumulator {
     // (which has ThinkingPart + TextPart/ToolPart, or ThinkingPart with
     // signature metadata) is what mappers need for multi-turn tool calling.
     for (final message in result.messages) {
-      final isStreamingThinkingOnly = message.parts.isNotEmpty &&
+      final isStreamingThinkingOnly =
+          message.parts.isNotEmpty &&
           message.parts.every((p) => p is ThinkingPart);
       if (!isStreamingThinkingOnly) {
         _allNewMessages.add(message);

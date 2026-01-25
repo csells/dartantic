@@ -47,15 +47,17 @@ void main() {
             );
 
             for (final message in modelMessages) {
-              final thinkingParts =
-                  message.parts.whereType<ThinkingPart>().toList();
+              final thinkingParts = message.parts
+                  .whereType<ThinkingPart>()
+                  .toList();
               final textParts = message.parts.whereType<TextPart>().toList();
 
               // At most one ThinkingPart
               expect(
                 thinkingParts.length,
                 lessThanOrEqualTo(1),
-                reason: 'Should have at most one ThinkingPart, '
+                reason:
+                    'Should have at most one ThinkingPart, '
                     'got ${thinkingParts.length}',
               );
 
@@ -63,7 +65,8 @@ void main() {
               expect(
                 textParts.length,
                 lessThanOrEqualTo(1),
-                reason: 'Should have at most one TextPart, '
+                reason:
+                    'Should have at most one TextPart, '
                     'got ${textParts.length}',
               );
             }
@@ -90,8 +93,9 @@ void main() {
 
             for (final message in modelMessages) {
               final textIndex = message.parts.indexWhere((p) => p is TextPart);
-              final thinkingIndex =
-                  message.parts.indexWhere((p) => p is ThinkingPart);
+              final thinkingIndex = message.parts.indexWhere(
+                (p) => p is ThinkingPart,
+              );
 
               // If both exist, TextPart should come first
               if (textIndex != -1 && thinkingIndex != -1) {
@@ -140,15 +144,17 @@ void main() {
             );
 
             for (final message in consolidatedModelMessages) {
-              final thinkingParts =
-                  message.parts.whereType<ThinkingPart>().toList();
+              final thinkingParts = message.parts
+                  .whereType<ThinkingPart>()
+                  .toList();
               final textParts = message.parts.whereType<TextPart>().toList();
 
               // At most one ThinkingPart
               expect(
                 thinkingParts.length,
                 lessThanOrEqualTo(1),
-                reason: 'Consolidated message should have at most one '
+                reason:
+                    'Consolidated message should have at most one '
                     'ThinkingPart, got ${thinkingParts.length}',
               );
 
@@ -156,7 +162,8 @@ void main() {
               expect(
                 textParts.length,
                 lessThanOrEqualTo(1),
-                reason: 'Consolidated message should have at most one '
+                reason:
+                    'Consolidated message should have at most one '
                     'TextPart, got ${textParts.length}',
               );
             }
@@ -188,15 +195,17 @@ void main() {
 
             for (final message in consolidatedModelMessages) {
               final textIndex = message.parts.indexWhere((p) => p is TextPart);
-              final thinkingIndex =
-                  message.parts.indexWhere((p) => p is ThinkingPart);
+              final thinkingIndex = message.parts.indexWhere(
+                (p) => p is ThinkingPart,
+              );
 
               // If both exist, TextPart should come first
               if (textIndex != -1 && thinkingIndex != -1) {
                 expect(
                   textIndex,
                   lessThan(thinkingIndex),
-                  reason: 'TextPart should come before ThinkingPart '
+                  reason:
+                      'TextPart should come before ThinkingPart '
                       'in consolidated message',
                 );
               }
@@ -235,7 +244,8 @@ void main() {
             expect(
               thinkingOnlyMessages,
               isEmpty,
-              reason: 'Streaming-only ThinkingPart messages should be filtered '
+              reason:
+                  'Streaming-only ThinkingPart messages should be filtered '
                   'by AgentResponseAccumulator',
             );
 

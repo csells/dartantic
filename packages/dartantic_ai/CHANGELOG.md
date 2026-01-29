@@ -1,3 +1,9 @@
+## 3.0.1
+
+- Update examples to use the new `createJsonSchema` support in
+  json_serializable v6.12.0. Thanks to @kevmoo for taking [my
+  PR!](https://github.com/google/json_serializable.dart/pull/1545)
+
 ## 3.0.0
 
 ### Streaming Thinking via `chunk.thinking`

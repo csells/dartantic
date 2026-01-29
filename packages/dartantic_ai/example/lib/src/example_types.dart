@@ -1,14 +1,10 @@
 import 'package:chrono_dart/chrono_dart.dart' show Chrono;
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:freezed_annotation/freezed_annotation.dart' show Freezed;
 import 'package:json_annotation/json_annotation.dart';
-import 'package:soti_schema_plus/soti_schema_plus.dart';
 
 part 'example_types.g.dart';
 
-@SotiSchema()
-@Freezed()
-@JsonSerializable()
+@JsonSerializable(createJsonSchema: true)
 class TownAndCountry {
   const TownAndCountry({required this.town, required this.country});
 
@@ -18,8 +14,7 @@ class TownAndCountry {
   final String town;
   final String country;
 
-  @jsonSchema
-  static Map<String, dynamic> get schemaMap => _$TownAndCountrySchemaMap;
+  static Map<String, dynamic> get schemaMap => _$TownAndCountryJsonSchema;
 }
 
 class TimeAndTemperature {

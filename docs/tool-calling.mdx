@@ -120,11 +120,10 @@ final tool = Tool(
 
 ## Automatic Schema Generation
 
-Use `json_serializable` and `soti_schema_plus` for type-safe tools:
+Use `json_serializable` with `createJsonSchema: true` for type-safe tools:
 
 ```dart
-@SotiSchema()
-@JsonSerializable()
+@JsonSerializable(createJsonSchema: true)
 class WeatherInput {
   WeatherInput({required this.city});
 
@@ -134,9 +133,7 @@ class WeatherInput {
   factory WeatherInput.fromJson(Map<String, dynamic> json) =>
       _$WeatherInputFromJson(json);
 
-  @jsonSchema
-  static Map<String, dynamic> get schemaMap =>
-      _$WeatherInputSchemaMap;
+  static Map<String, dynamic> get schemaMap => _$WeatherInputJsonSchema;
 }
 
 // Use the generated schema

@@ -81,31 +81,27 @@ print('${result.output.city}: ${result.output.temp}°F');
 
 ## Schema Generation
 
-Hand-writing schemas and JSON serialization is a lot of boilerplate. Consider
-using the `json_serializable` and `soti_schema_plus` packages to automate this:
+Hand-writing schemas and JSON serialization is a lot of boilerplate. Use
+`json_serializable` with `createJsonSchema: true` to automate this:
 
 ```dart
-// let's use the `soti_schema_plus` package to generate the schema and JSON serialization
-@SotiSchema()
-@JsonSerializable()
+@JsonSerializable(createJsonSchema: true)
 class TownAndCountry {
   final String town;
   final String country;
-  
+
   TownAndCountry({required this.town, required this.country});
-  
+
   factory TownAndCountry.fromJson(Map<String, dynamic> json) =>
       _$TownAndCountryFromJson(json);
-  
-  @jsonSchema
-  static Map<String, dynamic> get schemaMap => 
-      _$TownAndCountrySchemaMap;
+
+  static Map<String, dynamic> get schemaMap => _$TownAndCountryJsonSchema;
 }
 
-// now we pass the schema and JSON serialization to the agent and magic happens
+// now we pass the schema and JSON serialization to the agent
 final result = await agent.sendFor<TownAndCountry>(
   'What is the capital of France?',
-  outputSchema: TownAndCountry.schema,
+  outputSchema: Schema.fromMap(TownAndCountry.schemaMap),
   outputFromJson: TownAndCountry.fromJson,
 );
 

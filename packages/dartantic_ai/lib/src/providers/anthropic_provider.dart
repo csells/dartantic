@@ -135,12 +135,6 @@ class AnthropicProvider
     }
   }
 
-  /// The name of the return_result tool.
-  ///
-  /// Note: This is an alias to the shared constant in
-  /// `shared/typed_output_constants.dart` for backwards compatibility.
-  static const kAnthropicReturnResultTool = typed_output.kAnthropicReturnResultTool;
-
   @override
   (StreamingOrchestrator, List<Tool>?) getChatOrchestratorAndTools({
     required Schema? outputSchema,
@@ -163,9 +157,9 @@ class AnthropicProvider
     if (outputSchema == null) return tools;
 
     // Check for tool name collision
-    if (tools?.any((t) => t.name == kAnthropicReturnResultTool) ?? false) {
+    if (tools?.any((t) => t.name == typed_output.kAnthropicReturnResultTool) ?? false) {
       throw ArgumentError(
-        'Tool name "$kAnthropicReturnResultTool" is reserved by '
+        'Tool name "${typed_output.kAnthropicReturnResultTool}" is reserved by '
         'Anthropic provider for typed output. '
         'Please use a different tool name.',
       );
@@ -174,7 +168,7 @@ class AnthropicProvider
     return [
       ...?tools,
       Tool<Map<String, dynamic>>(
-        name: kAnthropicReturnResultTool,
+        name: typed_output.kAnthropicReturnResultTool,
         description:
             'CRITICAL: You MUST ALWAYS call this tool to return ANY response. '
             'Never respond with plain text - ONLY use this tool. '

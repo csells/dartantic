@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
 
-import '../../agent/orchestrators/default_streaming_orchestrator.dart';
-import '../../agent/orchestrators/streaming_orchestrator.dart';
-import '../../agent/streaming_state.dart';
-import '../../agent/tool_executor.dart';
-import '../../providers/anthropic_provider.dart';
+import '../../shared/typed_output_constants.dart';
+import '../streaming_state.dart';
+import '../tool_executor.dart';
+import 'default_streaming_orchestrator.dart';
+import 'streaming_orchestrator.dart';
 
 /// Orchestrator for Anthropic's typed output with return_result tool pattern.
 ///
@@ -126,8 +126,7 @@ class AnthropicTypedOutputOrchestrator extends DefaultStreamingOrchestrator {
     ToolExecutionResult? returnResult;
 
     for (final result in executionResults) {
-      if (result.toolPart.toolName ==
-              AnthropicProvider.kAnthropicReturnResultTool &&
+      if (result.toolPart.toolName == kAnthropicReturnResultTool &&
           result.isSuccess) {
         returnResult = result;
       } else {
@@ -204,7 +203,7 @@ class AnthropicTypedOutputOrchestrator extends DefaultStreamingOrchestrator {
   ToolPart? _findReturnResultCall(ChatMessage message) {
     for (final part in message.parts.whereType<ToolPart>()) {
       if (part.kind == ToolPartKind.call &&
-          part.toolName == AnthropicProvider.kAnthropicReturnResultTool) {
+          part.toolName == kAnthropicReturnResultTool) {
         return part;
       }
     }

@@ -2,13 +2,14 @@ import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart' as a;
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
 
+import '../agent/orchestrators/anthropic_typed_output_orchestrator.dart';
 import '../agent/orchestrators/default_streaming_orchestrator.dart';
 import '../agent/orchestrators/streaming_orchestrator.dart';
 import '../chat_models/anthropic_chat/anthropic_chat.dart';
-import '../chat_models/anthropic_chat/anthropic_typed_output_orchestrator.dart';
 import '../media_gen_models/anthropic/anthropic_media_gen_model.dart';
 import '../media_gen_models/anthropic/anthropic_media_gen_model_options.dart';
 import '../platform/platform.dart';
+import '../shared/typed_output_constants.dart' as typed_output;
 import 'chat_orchestrator_provider.dart';
 
 /// Provider for Anthropic Claude native API.
@@ -135,7 +136,10 @@ class AnthropicProvider
   }
 
   /// The name of the return_result tool.
-  static const kAnthropicReturnResultTool = 'return_result';
+  ///
+  /// Note: This is an alias to the shared constant in
+  /// `shared/typed_output_constants.dart` for backwards compatibility.
+  static const kAnthropicReturnResultTool = typed_output.kAnthropicReturnResultTool;
 
   @override
   (StreamingOrchestrator, List<Tool>?) getChatOrchestratorAndTools({

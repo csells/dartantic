@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
 
-import '../../agent/orchestrators/default_streaming_orchestrator.dart';
-import '../../agent/orchestrators/streaming_orchestrator.dart';
-import '../../agent/streaming_state.dart';
+import '../streaming_state.dart';
+import 'default_streaming_orchestrator.dart';
+import 'streaming_orchestrator.dart';
 
 /// Orchestrator for Google's double agent typed output with tools pattern.
 ///

@@ -5,10 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
 import '../agent/orchestrators/default_streaming_orchestrator.dart';
+import '../agent/orchestrators/google_double_agent_orchestrator.dart';
 import '../agent/orchestrators/streaming_orchestrator.dart';
 import '../chat_models/google_chat/google_chat_model.dart';
 import '../chat_models/google_chat/google_chat_options.dart';
-import '../chat_models/google_chat/google_double_agent_orchestrator.dart';
 import '../chat_models/google_chat/google_server_side_tools.dart';
 import '../custom_http_client.dart';
 import '../embeddings_models/google_embeddings/google_embeddings_model.dart';

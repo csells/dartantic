@@ -16,18 +16,16 @@ void main() async {
 
   // Example 1: Simplest path - Agent('llama')
   await example1SimplestPath();
-
   stdout.writeln('\n${"=" * 60}\n');
 
   // Example 2: Specific model name
-  await example2SpecificModel();
-
-  stdout.writeln('\n${"=" * 60}\n');
+  // await example2SpecificModel();
+  // stdout.writeln('\n${"=" * 60}\n');
 
   // Example 3: Custom configuration
-  await example3CustomConfiguration();
+  // await example3CustomConfiguration();
+  // stdout.writeln('\n=== All Examples Complete ===');
 
-  stdout.writeln('\n=== All Examples Complete ===');
   exit(0);
 }
 
@@ -60,9 +58,10 @@ Future<void> example1SimplestPath() async {
   await for (final chunk in agent.sendStream(prompt)) {
     stdout.write(chunk.output);
   }
+  stdout.writeln();
 
   final loadTime = DateTime.now().difference(startTime);
-  stdout.writeln('\n\n[Model loaded and responded in ${loadTime.inSeconds}s');
+  stdout.writeln('\n[Model loaded and responded in ${loadTime.inSeconds}s');
 }
 
 /// Example 2: Specify a particular model name
@@ -147,9 +146,9 @@ Future<void> example3CustomConfiguration() async {
   await for (final chunk in agent.sendStream(testPrompt)) {
     stdout.write(chunk.output);
   }
-  stdout.write('');
+  stdout.writeln();
 
   final duration = DateTime.now().difference(startTime);
 
-  stdout.writeln('\n\nTime: ${duration.inMilliseconds}ms');
+  stdout.writeln('\nTime: ${duration.inMilliseconds}ms');
 }

@@ -294,6 +294,30 @@ Llamadart lacks native support for several Dartantic features:
 
 ## Known Limitations
 
+### Backend Initialization Logs Cannot Be Suppressed
+
+**Limitation**: Metal/GPU backend initialization logs (~28 lines) always appear on first model load, even with `logLevel: LlamaLogLevel.none`.
+
+**Root Cause**: llamadart's worker isolate architecture performs backend initialization (`ggml_backend_load_all()`, `llama_backend_init()`) before the logging configuration message can be processed. The initialization happens in `llamaWorkerEntry()` before the message loop starts listening for `LogLevelRequest`.
+
+**Impact**:
+- First agent/model initialization outputs unavoidable Metal/GPU logs to stderr
+- Subsequent operations are properly silent when `logLevel: none`
+- Model loading logs ARE successfully suppressed
+- Only affects aesthetic output, not functionality
+
+**Current Behavior**:
+- **Backend initialization**: ~28 lines of Metal logs (one-time, unavoidable)
+- **Model loading**: Silent ✅ (successfully suppressed via `ModelParams.logLevel`)
+- **Inference**: Silent ✅
+
+**Workaround**: None available without modifying llamadart package.
+
+**Upstream Issue**: Requires llamadart changes to default logging to disabled or configure logging before backend initialization. Potential solutions:
+1. Set no-op log callback BEFORE `ggml_backend_load_all()` in `llamaWorkerEntry()`
+2. Accept log level as parameter during isolate spawn
+3. Default to logging disabled, enable on request
+
 ### No Token Usage Statistics
 
 **Limitation**: `ChatResult.usage` is always `null` when using llamadart.
@@ -308,23 +332,48 @@ Llamadart lacks native support for several Dartantic features:
 
 **Workaround**: None available without modifying llamadart package.
 
-**Future**: Token counting could be added if:
-1. llamadart exposes tokenization methods from llama.cpp
-2. Dartantic implements manual tokenization (complex, inefficient)
+**Upstream Issue**: llamadart should expose llama.cpp's tokenization methods. Potential API additions:
+1. `LlamaTokenizer.countTokens(String text)` → `int`
+2. `LlamaEngine.getTokenUsage()` → `{promptTokens: int, responseTokens: int}`
+3. Populate token counts in generation response metadata
 
-### No Tool Calling
+### No Tool Calling Support
 
 **Limitation**: Tool calling not supported in current implementation.
 
-**Reason**: llamadart doesn't have native tool calling support like cloud providers. While some GGUF models support function calling via prompt engineering, this requires custom orchestration.
+**Reason**: llamadart doesn't have native tool calling support like cloud providers. While some GGUF models (e.g., Functionary, Hermes) support function calling via prompt engineering, this requires custom orchestration and llamadart doesn't expose the necessary APIs for reliable tool calling.
 
-**Future**: Could be added via prompt engineering (see Future Enhancements).
+**Impact**:
+- Cannot use Dartantic's tool calling features with local models
+- Agent throws `UnsupportedError` if tools are provided
+- Limits usefulness for agentic workflows
 
-### No Structured Output
+**Workaround**: Could be implemented via prompt engineering (see Future Enhancements), but requires significant effort and model-specific templates.
+
+**Upstream Issue**: llamadart should provide APIs to support tool calling. Potential additions:
+1. **Chat Template Support**: Expose tool/function calling templates from GGUF models
+2. **Grammar Constraints**: Allow GBNF grammars to enforce tool call JSON format
+3. **Tool Schema Injection**: API to inject tool definitions into system prompt
+4. **Response Parsing**: Helpers to parse tool calls from model responses
+
+### No Structured Output Support
 
 **Limitation**: `outputSchema` parameter throws `UnsupportedError`.
 
-**Reason**: Would require grammar constraints or JSON mode, which aren't exposed in llamadart's current API.
+**Reason**: Would require grammar constraints (GBNF) or JSON mode, which aren't exposed in llamadart's current API. llama.cpp supports GBNF (Grammar-Based Natural Language Format) for constrained output, but llamadart v0.3.0 doesn't provide access to this feature.
+
+**Impact**:
+- Cannot enforce JSON schemas on model output
+- Cannot use Dartantic's typed output features with local models
+- Must parse and validate unstructured text responses manually
+
+**Workaround**: None available without modifying llamadart package.
+
+**Upstream Issue**: llamadart should expose llama.cpp's GBNF grammar support. Potential API additions:
+1. **Grammar API**: `ModelParams.grammar` or `GenerationParams.grammar` to accept GBNF string
+2. **Schema to GBNF Converter**: Helper to convert JSON schemas to GBNF format
+3. **JSON Mode**: Simple boolean flag for strict JSON output (built-in GBNF grammar)
+4. **Validation**: Ensure generated output conforms to grammar
 
 ### No Extended Thinking
 
@@ -332,23 +381,64 @@ Llamadart lacks native support for several Dartantic features:
 
 **Reason**: Extended reasoning is a cloud provider feature not applicable to local GGUF models.
 
+**Impact**: Cannot use Dartantic's thinking mode with local models.
+
+**Upstream Issue**: Not applicable - this is a design choice, not a llamadart limitation.
+
 ## Future Enhancements
 
-### Tool Calling via Prompt Engineering
+**Note**: Many enhancements require upstream changes to the llamadart package. See "Known Limitations" section for tracked issues.
+
+### Suppress Backend Initialization Logs (Requires Upstream)
+
+**Status**: Blocked by llamadart architecture
 
 **Approach**:
+- Submit PR to llamadart to set no-op log callback before backend initialization
+- OR: Add isolate spawn parameter for initial log level
+- OR: Default to logging disabled in llamadart worker
+
+**Benefit**: Truly silent operation from first use, cleaner CLI output
+
+### Tool Calling Support (Requires Upstream)
+
+**Status**: Blocked by missing llamadart APIs
+
+**Short-term Approach** (without llamadart changes):
 - Serialize tool schemas to JSON in system prompt
 - Parse model's JSON responses for tool calls
-- Requires models with function calling support (e.g., Functionary)
+- Requires models with function calling support (e.g., Functionary, Hermes)
 - Implement custom orchestrator (similar to Google's double agent pattern)
+- Limitation: Unreliable, model-specific, no grammar enforcement
 
-### Structured Output via GBNF
+**Long-term Approach** (with llamadart changes):
+- Use llamadart's GBNF grammar API to enforce tool call format
+- Leverage model's built-in function calling templates
+- Reliable parsing via grammar constraints
+- See "Upstream Issue" in "No Tool Calling Support" limitation
+
+### Structured Output via GBNF (Requires Upstream)
+
+**Status**: Blocked by missing llamadart GBNF API
 
 **Approach**:
-- Use llama.cpp's grammar-based constrained output (GBNF)
+- Wait for llamadart to expose llama.cpp's GBNF grammar support
 - Generate GBNF grammar from JSON schema
 - Enforce structured output at generation time
-- Requires investigation of llamadart's GBNF support
+- Validate conformance
+
+**Benefit**: Type-safe model outputs, reliable parsing, works with any model
+
+### Token Usage Statistics (Requires Upstream)
+
+**Status**: Blocked by missing llamadart tokenization API
+
+**Approach**:
+- Wait for llamadart to expose llama.cpp's tokenization methods
+- Populate `ChatResult.usage` with prompt and response token counts
+- Enable cost tracking and monitoring for local models
+
+**Benefit**: Parity with cloud providers, usage analytics
 
 ### Embeddings Support
 

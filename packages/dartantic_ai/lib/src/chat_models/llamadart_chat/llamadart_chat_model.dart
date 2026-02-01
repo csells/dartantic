@@ -1,7 +1,5 @@
 // ignore_for_file: discarded_futures
 
-import 'dart:async';
-
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:llamadart/llamadart.dart';
 import 'package:logging/logging.dart';
@@ -26,38 +24,42 @@ class LlamadartChatModel extends ChatModel<LlamadartChatOptions> {
     LlamadartChatOptions? defaultOptions,
   })  : _modelName = name,
         _resolver = resolver,
-        _engine = LlamaEngine(_selectBackend()),
         super(
           defaultOptions: defaultOptions ?? const LlamadartChatOptions(),
-        ) {
-    // Set log level immediately to suppress verbose output by default
-    final opts = defaultOptions ?? const LlamadartChatOptions();
-    final logLevel = opts.verbose ? LlamaLogLevel.info : LlamaLogLevel.none;
-    unawaited(_engine.setLogLevel(logLevel));
-  }
+        );
 
   static final Logger _logger = Logger('dartantic.chat.models.llamadart');
 
   final String _modelName;
   final ModelResolver _resolver;
-  final LlamaEngine _engine;
+  LlamaEngine? _engine;
   bool _modelLoaded = false;
 
-  /// Use llamadart's factory which handles platform detection
-  static LlamaBackend _selectBackend() => createBackend();
+  Future<void> _ensureEngineInitialized(LlamadartChatOptions? options) async {
+    if (_engine == null) {
+      // Determine log level before creating engine
+      final logLevel =
+          options?.logLevel ?? defaultOptions.logLevel ?? LlamaLogLevel.none;
+
+      _logger.fine('Creating LlamaEngine with log level: $logLevel');
+
+      // Create backend and engine
+      final backend = createBackend();
+      _engine = LlamaEngine(backend);
+
+      // Set log level immediately after engine creation
+      await _engine!.setLogLevel(logLevel);
+    }
+  }
 
   Future<void> _ensureModelLoaded(LlamadartChatOptions? options) async {
     if (!_modelLoaded) {
-      // Set log level before loading model
-      final verbose = options?.verbose ?? defaultOptions.verbose;
-      await _engine.setLogLevel(
-        verbose ? LlamaLogLevel.info : LlamaLogLevel.none,
-      );
+      await _ensureEngineInitialized(options);
 
       final resolvedPath = await _resolveModelPath(_modelName);
       _logger.info('Loading model from: $resolvedPath');
 
-      await _engine.loadModel(resolvedPath);
+      await _engine!.loadModel(resolvedPath);
       _modelLoaded = true;
     }
   }
@@ -94,7 +96,7 @@ class LlamadartChatModel extends ChatModel<LlamadartChatOptions> {
     final llamaMessages = messages.toLlamaMessages();
     var chunkCount = 0;
 
-    await for (final token in _engine.chat(llamaMessages)) {
+    await for (final token in _engine!.chat(llamaMessages)) {
       chunkCount++;
       _logger.fine('Received llamadart stream chunk $chunkCount');
 
@@ -130,6 +132,6 @@ class LlamadartChatModel extends ChatModel<LlamadartChatOptions> {
   @override
   void dispose() {
     _logger.info('Disposing Llamadart model and engine');
-    _engine.dispose();
+    _engine?.dispose();
   }
 }

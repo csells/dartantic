@@ -1,4 +1,5 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
+import 'package:llamadart/llamadart.dart' show LlamaLogLevel;
 import 'package:meta/meta.dart';
 
 import 'model_resolvers.dart';
@@ -12,7 +13,7 @@ class LlamadartChatOptions extends ChatModelOptions {
     this.temperature,
     this.topP,
     this.resolver,
-    this.verbose = false,
+    this.logLevel,
   });
 
   /// Maximum number of tokens to generate
@@ -27,18 +28,19 @@ class LlamadartChatOptions extends ChatModelOptions {
   /// Model resolver for resolving model names to paths/URLs
   final ModelResolver? resolver;
 
-  /// Enable verbose logging from the llamadart engine
+  /// Log level for the llamadart native engine
   ///
-  /// When true, sets the native llama.cpp log level to INFO, showing detailed
-  /// diagnostic information including model loading, tensor operations, and
-  /// GPU/Metal configuration.
+  /// Controls the verbosity of logging output from the underlying llama.cpp
+  /// library. Available levels:
+  /// - `LlamaLogLevel.none` - No logging output (default)
+  /// - `LlamaLogLevel.error` - Critical error messages only
+  /// - `LlamaLogLevel.warn` - Warnings about potential issues
+  /// - `LlamaLogLevel.info` - General execution information
+  /// - `LlamaLogLevel.debug` - Detailed debug information
   ///
-  /// When false (default), sets the log level to NONE to minimize output.
+  /// When null (default), uses `LlamaLogLevel.none` to minimize output.
   ///
   /// **Note**: Llamadart's native library writes logs directly to stderr/stdout,
-  /// bypassing Dart's logging system. Due to timing of native initialization,
-  /// some output may appear regardless of this setting. The verbose option
-  /// controls the log level but cannot guarantee complete suppression of all
-  /// native library output.
-  final bool verbose;
+  /// bypassing Dart's logging system.
+  final LlamaLogLevel? logLevel;
 }

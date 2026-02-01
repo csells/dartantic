@@ -19,12 +19,12 @@ void main() async {
   stdout.writeln('\n${"=" * 60}\n');
 
   // Example 2: Specific model name
-  // await example2SpecificModel();
-  // stdout.writeln('\n${"=" * 60}\n');
+  await example2SpecificModel();
+  stdout.writeln('\n${"=" * 60}\n');
 
   // Example 3: Custom configuration
-  // await example3CustomConfiguration();
-  // stdout.writeln('\n=== All Examples Complete ===');
+  await example3CustomConfiguration();
+  stdout.writeln('\n=== All Examples Complete ===');
 
   exit(0);
 }
@@ -61,7 +61,7 @@ Future<void> example1SimplestPath() async {
   stdout.writeln();
 
   final loadTime = DateTime.now().difference(startTime);
-  stdout.writeln('\n[Model loaded and responded in ${loadTime.inSeconds}s');
+  stdout.writeln('\n[Model loaded and responded in ${loadTime.inSeconds}s]');
 }
 
 /// Example 2: Specify a particular model name
@@ -126,7 +126,7 @@ Future<void> example3CustomConfiguration() async {
         cacheDir: customCacheDir,
       ),
       temperature: 0.7,
-      logLevel: LlamaLogLevel.info, // Enable verbose logging
+      // logLevel: LlamaLogLevel.info, // Enable verbose logging
     ),
   );
 
@@ -137,18 +137,17 @@ Future<void> example3CustomConfiguration() async {
 
   // Performance test
   stdout.writeln('--- Performance Test ---');
-  const testPrompt = 'Count from 1 to 5.';
+  const prompt = 'Give me a haiku about the plight of AI agents.';
 
   final startTime = DateTime.now();
-  stdout.writeln('Prompt: "$testPrompt"');
+  stdout.writeln('Prompt: "$prompt"');
   stdout.write('Response: ');
 
-  await for (final chunk in agent.sendStream(testPrompt)) {
+  await for (final chunk in agent.sendStream(prompt)) {
     stdout.write(chunk.output);
   }
   stdout.writeln();
 
   final duration = DateTime.now().difference(startTime);
-
   stdout.writeln('\nTime: ${duration.inMilliseconds}ms');
 }

@@ -35,31 +35,30 @@ class LlamadartChatModel extends ChatModel<LlamadartChatOptions> {
   LlamaEngine? _engine;
   bool _modelLoaded = false;
 
-  Future<void> _ensureEngineInitialized(LlamadartChatOptions? options) async {
+  Future<void> _ensureEngineInitialized() async {
     if (_engine == null) {
-      // Determine log level before creating engine
-      final logLevel =
-          options?.logLevel ?? defaultOptions.logLevel ?? LlamaLogLevel.none;
-
-      _logger.fine('Creating LlamaEngine with log level: $logLevel');
+      _logger.fine('Creating LlamaEngine');
 
       // Create backend and engine
+      // Note: Log level will be set via ModelParams during model loading
       final backend = createBackend();
       _engine = LlamaEngine(backend);
-
-      // Set log level immediately after engine creation
-      await _engine!.setLogLevel(logLevel);
     }
   }
 
   Future<void> _ensureModelLoaded(LlamadartChatOptions? options) async {
     if (!_modelLoaded) {
-      await _ensureEngineInitialized(options);
+      await _ensureEngineInitialized();
 
       final resolvedPath = await _resolveModelPath(_modelName);
       _logger.info('Loading model from: $resolvedPath');
 
-      await _engine!.loadModel(resolvedPath);
+      // Pass log level to ModelParams to ensure it's set correctly
+      final logLevel =
+          options?.logLevel ?? defaultOptions.logLevel ?? LlamaLogLevel.none;
+      final modelParams = ModelParams(logLevel: logLevel);
+
+      await _engine!.loadModel(resolvedPath, modelParams: modelParams);
       _modelLoaded = true;
     }
   }

@@ -30,17 +30,23 @@ class LlamadartChatOptions extends ChatModelOptions {
 
   /// Log level for the llamadart native engine
   ///
-  /// Controls the verbosity of logging output from the underlying llama.cpp
-  /// library. Available levels:
-  /// - `LlamaLogLevel.none` - No logging output (default)
-  /// - `LlamaLogLevel.error` - Critical error messages only
-  /// - `LlamaLogLevel.warn` - Warnings about potential issues
-  /// - `LlamaLogLevel.info` - General execution information
-  /// - `LlamaLogLevel.debug` - Detailed debug information
+  /// Controls logging output from the underlying llama.cpp library.
   ///
-  /// When null (default), uses `LlamaLogLevel.none` to minimize output.
+  /// **Native Platforms (iOS, Android, macOS, Linux, Windows)**:
+  /// - `LlamaLogLevel.none` - Completely suppresses all logging (default)
+  /// - `LlamaLogLevel.error`, `warn`, `info`, `debug` - All enable full
+  ///   logging to stderr. These levels are treated identically on native
+  ///   platforms as an on/off toggle for stability. Granular filtering is
+  ///   not supported.
   ///
-  /// **Note**: Llamadart's native library writes logs directly to stderr/stdout,
-  /// bypassing Dart's logging system.
+  /// **Web Platform**:
+  /// - Full granular filtering supported: `none`, `debug`, `info`, `warn`,
+  ///   `error`
+  ///
+  /// When null (default), uses `LlamaLogLevel.none` to suppress all output.
+  ///
+  /// **Note**: On native platforms, llamadart writes logs directly to
+  /// stderr, bypassing Dart's logging system. This is a limitation of the
+  /// llama.cpp native library.
   final LlamaLogLevel? logLevel;
 }

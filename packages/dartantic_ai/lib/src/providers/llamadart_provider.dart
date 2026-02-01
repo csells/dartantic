@@ -90,6 +90,7 @@ class LlamadartProvider extends Provider<
         topP: options?.topP ?? _defaultChatOptions.topP,
         maxTokens: options?.maxTokens ?? _defaultChatOptions.maxTokens,
         resolver: resolver,
+        logLevel: options?.logLevel ?? _defaultChatOptions.logLevel,
       ),
     );
   }

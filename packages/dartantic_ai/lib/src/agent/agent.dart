@@ -10,6 +10,7 @@ import '../providers/anthropic_provider.dart';
 import '../providers/chat_orchestrator_provider.dart';
 import '../providers/cohere_provider.dart';
 import '../providers/google_provider.dart';
+import '../providers/llamadart_provider.dart';
 import '../providers/mistral_provider.dart';
 import '../providers/ollama_provider.dart';
 import '../providers/openai_provider.dart';
@@ -645,6 +646,10 @@ class Agent {
 
     // Ollama
     'ollama': OllamaProvider.new,
+
+    // Llamadart (local llama.cpp)
+    'llamadart': LlamadartProvider.new,
+    'llama': LlamadartProvider.new,
 
     // OpenRouter
     'openrouter': _createOpenRouterProvider,

@@ -97,6 +97,10 @@ const providerTestCaps = <String, Set<ProviderTestCaps>>{
     // calls: validate_code(code="(default_api.get_secret_code())")
     ProviderTestCaps.chatVision,
   },
+  'llamadart': {
+    ProviderTestCaps.chat,
+    // Note: No tool calling, embeddings, thinking, or structured output support
+  },
 };
 
 /// Returns the test capabilities for the given provider name, or an empty set

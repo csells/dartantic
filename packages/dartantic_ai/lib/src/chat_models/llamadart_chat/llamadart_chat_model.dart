@@ -1,5 +1,7 @@
 // ignore_for_file: discarded_futures
 
+import 'dart:async';
+
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:llamadart/llamadart.dart';
 import 'package:logging/logging.dart';
@@ -27,7 +29,12 @@ class LlamadartChatModel extends ChatModel<LlamadartChatOptions> {
         _engine = LlamaEngine(_selectBackend()),
         super(
           defaultOptions: defaultOptions ?? const LlamadartChatOptions(),
-        );
+        ) {
+    // Set log level immediately to suppress verbose output by default
+    final opts = defaultOptions ?? const LlamadartChatOptions();
+    final logLevel = opts.verbose ? LlamaLogLevel.info : LlamaLogLevel.none;
+    unawaited(_engine.setLogLevel(logLevel));
+  }
 
   static final Logger _logger = Logger('dartantic.chat.models.llamadart');
 
@@ -39,10 +46,17 @@ class LlamadartChatModel extends ChatModel<LlamadartChatOptions> {
   /// Use llamadart's factory which handles platform detection
   static LlamaBackend _selectBackend() => createBackend();
 
-  Future<void> _ensureModelLoaded() async {
+  Future<void> _ensureModelLoaded(LlamadartChatOptions? options) async {
     if (!_modelLoaded) {
+      // Set log level before loading model
+      final verbose = options?.verbose ?? defaultOptions.verbose;
+      await _engine.setLogLevel(
+        verbose ? LlamaLogLevel.info : LlamaLogLevel.none,
+      );
+
       final resolvedPath = await _resolveModelPath(_modelName);
       _logger.info('Loading model from: $resolvedPath');
+
       await _engine.loadModel(resolvedPath);
       _modelLoaded = true;
     }
@@ -75,7 +89,7 @@ class LlamadartChatModel extends ChatModel<LlamadartChatOptions> {
       throw UnsupportedError('Structured output not supported by Llamadart');
     }
 
-    await _ensureModelLoaded();
+    await _ensureModelLoaded(options);
 
     final llamaMessages = messages.toLlamaMessages();
     var chunkCount = 0;

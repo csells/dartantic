@@ -127,6 +127,7 @@ Future<void> example3CustomConfiguration() async {
         cacheDir: customCacheDir,
       ),
       temperature: 0.7,
+      verbose: true, // Enable verbose logging to show model loading details
     ),
   );
 

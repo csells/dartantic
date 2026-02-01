@@ -38,3 +38,4 @@ tmp/
 .svn/
 migrate_working_dir/
 AGENT.md
+***/hg-model-cache/*

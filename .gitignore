@@ -38,4 +38,7 @@ tmp/
 .svn/
 migrate_working_dir/
 AGENT.md
-***/hg-model-cache/*
+
+# HuggingFace model caches
+**/hf-cache/
+**/hf-model-cache/

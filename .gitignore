@@ -40,5 +40,4 @@ migrate_working_dir/
 AGENT.md
 
 # HuggingFace model caches
-**/hf-cache/
 **/hf-model-cache/

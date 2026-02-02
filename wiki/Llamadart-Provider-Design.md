@@ -9,6 +9,7 @@ The Llamadart provider enables local LLM inference in Dartantic using the llamad
 ### Model Downloading and Resolution
 
 **Problem**: Local models require explicit downloading and loading:
+
 - Models are large files (hundreds of MB to several GB)
 - Users need visibility into download progress
 - Downloaded models must be organized and cached efficiently
@@ -33,6 +34,7 @@ The Llamadart provider enables local LLM inference in Dartantic using the llamad
 **Purpose**: Download GGUF models from Hugging Face Hub with progress tracking.
 
 **Key Features**:
+
 - Checks if model already cached before downloading
 - Rich progress callbacks with `DownloadProgress` class
 - Repo-based cache structure: `{cacheDir}/{repo}/{model}.gguf`
@@ -42,9 +44,10 @@ The Llamadart provider enables local LLM inference in Dartantic using the llamad
 - Returns full absolute path to downloaded file
 
 **API**:
+
 ```dart
 // Create downloader with cache directory
-final downloader = HFModelDownloader(cacheDir: './hf-cache');
+final downloader = HFModelDownloader(cacheDir: './hf-model-cache');
 
 // Check if model is cached
 final cached = await downloader.isModelCached(
@@ -61,11 +64,12 @@ final modelPath = await downloader.downloadModel(
           '${progress.speedMBps.toStringAsFixed(1)} MB/s');
   },
 );
-// Returns: './hf-cache/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/tinyllama-1.1b-chat-v1.0.Q2_K.gguf'
+// Returns: './hf-model-cache-cache/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/tinyllama-1.1b-chat-v1.0.Q2_K.gguf'
 ```
 
 **Progress Tracking**:
 The `DownloadProgress` class provides comprehensive metrics:
+
 - `progress` (double): 0.0 to 1.0
 - `downloadedBytes` (int): Bytes downloaded so far
 - `totalBytes` (int): Total file size
@@ -75,8 +79,9 @@ The `DownloadProgress` class provides comprehensive metrics:
 
 **Cache Directory Structure**:
 Models are organized by repository to avoid naming conflicts:
+
 ```
-hf-cache/
+hf-model-cache-cache/
   TheBloke/
     TinyLlama-1.1B-Chat-v1.0-GGUF/
       tinyllama-1.1b-chat-v1.0.Q2_K.gguf
@@ -91,6 +96,7 @@ This structure mirrors Hugging Face's organization and prevents conflicts betwee
 #### ModelResolver Abstraction
 
 **Interface**: Abstract class with two operations:
+
 1. `resolveModel(String name)` → `Future<String>` - Converts model name to loadable path/URL
 2. `listModels()` → `Stream<ModelInfo>` - Discovers available models
 
@@ -142,7 +148,7 @@ Skip resolution entirely by providing the full path:
 
 ```dart
 // Download first
-final downloader = HFModelDownloader(cacheDir: './hf-cache');
+final downloader = HFModelDownloader(cacheDir: './hf-model-cache-cache');
 final modelPath = await downloader.downloadModel(
   'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF',
   'tinyllama-1.1b-chat-v1.0.Q2_K.gguf',
@@ -159,6 +165,7 @@ final agent = Agent('llama', chatModelName: modelPath);
 **Core Principle**: ChatModel ONLY streams ChatResult items. NO accumulation, consolidation, or orchestration.
 
 **Behavior**:
+
 - Maps each token/chunk from llamadart to a ChatResult
 - Each ChatResult contains a single token in a TextPart
 - Yields ChatResult for each chunk
@@ -166,6 +173,7 @@ final agent = Agent('llama', chatModelName: modelPath);
 - Agent/Orchestrator handles accumulation and consolidation
 
 **Token Usage Limitation**:
+
 - `ChatResult.usage` is always `null` - llamadart doesn't expose token counting
 - The underlying llama.cpp library supports tokenization, but llamadart's Dart bindings (v0.3.0) don't expose this functionality
 - This is a limitation of the llamadart package, not Dartantic
@@ -176,12 +184,14 @@ final agent = Agent('llama', chatModelName: modelPath);
 #### Resource Lifecycle
 
 **LlamaEngine Management**:
+
 - One LlamaEngine instance per ChatModel instance
 - Engine created in constructor with platform-specific backend (Native vs Web)
 - Model loaded lazily on first `sendStream()` call
 - **Critical**: Engine must be disposed via `dispose()` to prevent hanging processes
 
 **Model Loading**:
+
 - Lazy loading defers heavy operation until first request
 - Resolved path determined via resolver or URI scheme detection
 - First request slower (model loading), subsequent requests fast
@@ -190,6 +200,7 @@ final agent = Agent('llama', chatModelName: modelPath);
 #### Backend Selection
 
 llamadart supports two backends selected automatically:
+
 - `NativeLlamaBackend`: FFI-based for desktop/mobile
 - `WebLlamaBackend`: WASM-based for web browsers
 
@@ -200,6 +211,7 @@ Backend selected via `kIsWeb` platform detection in ChatModel constructor.
 #### Provider Pattern Compliance
 
 Follows standard Dartantic provider pattern:
+
 - Static fields: `_logger`, `defaultBaseUrl`, `defaultApiKeyName`
 - Constructor takes `defaultChatOptions` parameter (includes resolver)
 - `createChatModel()` validates unsupported features, creates models with resolver
@@ -233,11 +245,13 @@ Llamadart lacks native support for several Dartantic features:
 **Message Format**: Convert Dartantic ChatMessage to llamadart LlamaChatMessage
 
 **Role Mapping**:
+
 - `ChatMessageRole.system` → `'system'`
 - `ChatMessageRole.user` → `'user'`
 - `ChatMessageRole.model` → `'assistant'`
 
 **Part Handling**:
+
 - Extract text content only via `msg.parts.text` helper
 - **CRITICAL**: Assert ThinkingPart never sent to LLM (model-generated output only)
 - Skip ToolPart (tool calling not supported)
@@ -252,12 +266,14 @@ Llamadart lacks native support for several Dartantic features:
 **Principle**: Never suppress exceptions. Let errors propagate with full context.
 
 **ModelNotFoundException**:
+
 - Thrown when model not found after all resolver strategies
 - Includes complete list of searched locations
 - Logs all search attempts for debugging
 - Provides actionable error message
 
 **Other Exceptions**:
+
 - Model loading errors propagate unchanged
 - llamadart API errors bubble up
 - No try-catch blocks in examples or implementation (except for resolver fallback logic)
@@ -274,11 +290,13 @@ Llamadart lacks native support for several Dartantic features:
 ### Provider Customization
 
 **Default Configuration**:
+
 - Uses FileModelResolver pointing to `LLAMADART_MODELS_PATH` or current directory
 - No automatic downloads
 - Simple file path resolution
 
 **Custom Configuration**:
+
 ```dart
 // Custom resolver with specific directory
 final provider = LlamadartProvider(
@@ -292,9 +310,10 @@ final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
 ```
 
 **Recommended Workflow**:
+
 ```dart
 // 1. Download model explicitly
-final downloader = HFModelDownloader(cacheDir: './hf-cache');
+final downloader = HFModelDownloader(cacheDir: './hf-model-cache-cache');
 final modelPath = await downloader.downloadModel(
   'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF',
   'tinyllama-1.1b-chat-v1.0.Q2_K.gguf',
@@ -313,20 +332,23 @@ await agent.send('Hello!');
 ### Native Platforms (Desktop/Mobile)
 
 **Capabilities**:
+
 - Full resolver support (File, URL)
 - Filesystem access via `dart:io`
 - Model downloading and caching via `HFModelDownloader`
 - FFI-based llamadart backend
 
 **Typical Workflow**:
+
 1. Download model from Hugging Face with `HFModelDownloader`
 2. Use downloaded file path directly or via `FileModelResolver`
 3. Cached models persist across sessions
 
 **Example**:
+
 ```dart
 // Download once
-final downloader = HFModelDownloader(cacheDir: './hf-cache');
+final downloader = HFModelDownloader(cacheDir: './hf-model-cache-cache');
 final modelPath = await downloader.downloadModel(
   'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF',
   'tinyllama-1.1b-chat-v1.0.Q2_K.gguf',
@@ -339,22 +361,26 @@ final agent = Agent('llama', chatModelName: modelPath);
 ### Web Platform
 
 **Capabilities**:
+
 - Limited to URL resolver (no filesystem)
 - WASM-based llamadart backend
 - Models loaded via network (HTTP URLs)
 - Asset bundles compiled into app (requires Flutter)
 
 **Typical Workflow**:
+
 1. Load models from HTTP(S) URLs using `UrlModelResolver`
 2. Or bundle small models as assets (Flutter only)
 
 **Limitations**:
+
 - No filesystem access
 - No `HFModelDownloader` support (no `dart:io`)
 - No local file caching (relies on browser cache)
 - Model downloads not persisted across sessions
 
 **Example**:
+
 ```dart
 final provider = LlamadartProvider(
   defaultChatOptions: LlamadartChatOptions(
@@ -371,6 +397,7 @@ final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
 **Approach**: Write tests first, implement to pass tests
 
 **Test Categories**:
+
 1. **Unit Tests**: Downloader, resolvers, message mappers, individual components
 2. **Integration Tests**: End-to-end scenarios with Agent
 3. **Platform Tests**: Web vs native behavior
@@ -378,11 +405,13 @@ final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
 ### HFModelDownloader Testing
 
 **DownloadProgress**:
+
 - Test value object creation and properties
 - Test toString() formatting
 - Test nullable `estimatedRemaining` handling
 
 **HFModelDownloader**:
+
 - Test `isModelCached()` returns false when not cached
 - Test `isModelCached()` returns true when cached
 - Test `downloadModel()` returns cached path without download if cached
@@ -396,12 +425,14 @@ final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
 ### Resolver Testing
 
 **FileModelResolver**:
+
 - Test path resolution with various base directories
 - Test `.gguf` extension appending
 - Test file existence checking
 - Test model listing with metadata
 
 **UrlModelResolver**:
+
 - Test URL construction with base URL
 - Test `.gguf` extension appending
 
@@ -435,12 +466,14 @@ final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
 **Root Cause**: llamadart's worker isolate architecture performs backend initialization (`ggml_backend_load_all()`, `llama_backend_init()`) before the logging configuration message can be processed. The initialization happens in `llamaWorkerEntry()` before the message loop starts listening for `LogLevelRequest`.
 
 **Impact**:
+
 - First agent/model initialization outputs unavoidable Metal/GPU logs to stderr
 - Subsequent operations are properly silent when `logLevel: none`
 - Model loading logs ARE successfully suppressed
 - Only affects aesthetic output, not functionality
 
 **Current Behavior**:
+
 - **Backend initialization**: ~28 lines of Metal logs (one-time, unavoidable)
 - **Model loading**: Silent ✅ (successfully suppressed via `ModelParams.logLevel`)
 - **Inference**: Silent ✅
@@ -448,6 +481,7 @@ final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
 **Workaround**: None available without modifying llamadart package.
 
 **Upstream Issue**: Requires llamadart changes to default logging to disabled or configure logging before backend initialization. Potential solutions:
+
 1. Set no-op log callback BEFORE `ggml_backend_load_all()` in `llamaWorkerEntry()`
 2. Accept log level as parameter during isolate spawn
 3. Default to logging disabled, enable on request
@@ -459,6 +493,7 @@ final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
 **Reason**: The llamadart Dart package (v0.3.0) doesn't expose token counting from the underlying llama.cpp library. While llama.cpp supports tokenization and token counting, these capabilities aren't accessible through llamadart's current API.
 
 **Impact**:
+
 - Cannot track prompt tokens (input)
 - Cannot track response tokens (output)
 - Cannot calculate total tokens or estimate costs
@@ -467,6 +502,7 @@ final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
 **Workaround**: None available without modifying llamadart package.
 
 **Upstream Issue**: llamadart should expose llama.cpp's tokenization methods. Potential API additions:
+
 1. `LlamaTokenizer.countTokens(String text)` → `int`
 2. `LlamaEngine.getTokenUsage()` → `{promptTokens: int, responseTokens: int}`
 3. Populate token counts in generation response metadata
@@ -478,6 +514,7 @@ final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
 **Reason**: llamadart doesn't have native tool calling support like cloud providers. While some GGUF models (e.g., Functionary, Hermes) support function calling via prompt engineering, this requires custom orchestration and llamadart doesn't expose the necessary APIs for reliable tool calling.
 
 **Impact**:
+
 - Cannot use Dartantic's tool calling features with local models
 - Agent throws `UnsupportedError` if tools are provided
 - Limits usefulness for agentic workflows
@@ -485,6 +522,7 @@ final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
 **Workaround**: Could be implemented via prompt engineering (see Future Enhancements), but requires significant effort and model-specific templates.
 
 **Upstream Issue**: llamadart should provide APIs to support tool calling. Potential additions:
+
 1. **Chat Template Support**: Expose tool/function calling templates from GGUF models
 2. **Grammar Constraints**: Allow GBNF grammars to enforce tool call JSON format
 3. **Tool Schema Injection**: API to inject tool definitions into system prompt
@@ -497,6 +535,7 @@ final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
 **Reason**: Would require grammar constraints (GBNF) or JSON mode, which aren't exposed in llamadart's current API. llama.cpp supports GBNF (Grammar-Based Natural Language Format) for constrained output, but llamadart v0.3.0 doesn't provide access to this feature.
 
 **Impact**:
+
 - Cannot enforce JSON schemas on model output
 - Cannot use Dartantic's typed output features with local models
 - Must parse and validate unstructured text responses manually
@@ -504,6 +543,7 @@ final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
 **Workaround**: None available without modifying llamadart package.
 
 **Upstream Issue**: llamadart should expose llama.cpp's GBNF grammar support. Potential API additions:
+
 1. **Grammar API**: `ModelParams.grammar` or `GenerationParams.grammar` to accept GBNF string
 2. **Schema to GBNF Converter**: Helper to convert JSON schemas to GBNF format
 3. **JSON Mode**: Simple boolean flag for strict JSON output (built-in GBNF grammar)
@@ -524,12 +564,14 @@ final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
 ### Changes from Previous Architecture
 
 **What Changed**:
+
 - **Removed**: `HFModelResolver` (automatic Hugging Face downloads)
 - **Removed**: `FallbackResolver` (multi-strategy resolution)
 - **Added**: `HFModelDownloader` (explicit download utility)
 - **Simplified**: Only `FileModelResolver` and `UrlModelResolver` remain
 
 **Why the Change**:
+
 - Explicit downloads provide better user experience (progress visibility, control)
 - Simpler architecture with clear separation of concerns
 - No automatic network calls hidden in model resolution
@@ -545,7 +587,7 @@ final provider = LlamadartProvider(
   defaultChatOptions: LlamadartChatOptions(
     resolver: FallbackResolver(
       fileBasePath: './models',
-      hfCacheDir: './hf-cache',
+      hfCacheDir: './hf-model-cache-cache',
     ),
   ),
 );
@@ -560,7 +602,7 @@ final agent = Agent.forProvider(
 
 ```dart
 // NEW: Explicit download with progress tracking
-final downloader = HFModelDownloader(cacheDir: './hf-cache');
+final downloader = HFModelDownloader(cacheDir: './hf-model-cache-cache');
 final modelPath = await downloader.downloadModel(
   'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF',
   'tinyllama-1.1b-chat-v1.0.Q2_K.gguf',
@@ -575,7 +617,7 @@ final agent = Agent('llama', chatModelName: modelPath);
 // Or use FileModelResolver if you prefer relative paths
 final provider = LlamadartProvider(
   defaultChatOptions: LlamadartChatOptions(
-    resolver: FileModelResolver('./hf-cache'),
+    resolver: FileModelResolver('./hf-model-cache-cache'),
   ),
 );
 final agent = Agent.forProvider(
@@ -649,6 +691,7 @@ export LLAMADART_MODELS_PATH=/path/to/models
 **Status**: Blocked by llamadart architecture
 
 **Approach**:
+
 - Submit PR to llamadart to set no-op log callback before backend initialization
 - OR: Add isolate spawn parameter for initial log level
 - OR: Default to logging disabled in llamadart worker
@@ -660,6 +703,7 @@ export LLAMADART_MODELS_PATH=/path/to/models
 **Status**: Blocked by missing llamadart APIs
 
 **Short-term Approach** (without llamadart changes):
+
 - Serialize tool schemas to JSON in system prompt
 - Parse model's JSON responses for tool calls
 - Requires models with function calling support (e.g., Functionary, Hermes)
@@ -667,6 +711,7 @@ export LLAMADART_MODELS_PATH=/path/to/models
 - Limitation: Unreliable, model-specific, no grammar enforcement
 
 **Long-term Approach** (with llamadart changes):
+
 - Use llamadart's GBNF grammar API to enforce tool call format
 - Leverage model's built-in function calling templates
 - Reliable parsing via grammar constraints
@@ -677,6 +722,7 @@ export LLAMADART_MODELS_PATH=/path/to/models
 **Status**: Blocked by missing llamadart GBNF API
 
 **Approach**:
+
 - Wait for llamadart to expose llama.cpp's GBNF grammar support
 - Generate GBNF grammar from JSON schema
 - Enforce structured output at generation time
@@ -689,6 +735,7 @@ export LLAMADART_MODELS_PATH=/path/to/models
 **Status**: Blocked by missing llamadart tokenization API
 
 **Approach**:
+
 - Wait for llamadart to expose llama.cpp's tokenization methods
 - Populate `ChatResult.usage` with prompt and response token counts
 - Enable cost tracking and monitoring for local models
@@ -698,6 +745,7 @@ export LLAMADART_MODELS_PATH=/path/to/models
 ### Embeddings Support
 
 **Approach**:
+
 - Investigate if llama.cpp supports embeddings mode
 - Implement `createEmbeddingsModel()` if supported
 - Use same resolver pattern for model loading
@@ -705,6 +753,7 @@ export LLAMADART_MODELS_PATH=/path/to/models
 ### LoRA Adapter Support
 
 **Approach**:
+
 - Expose llamadart's dynamic LoRA loading
 - Add adapter configuration to LlamadartChatOptions
 - Support runtime adapter switching
@@ -712,6 +761,7 @@ export LLAMADART_MODELS_PATH=/path/to/models
 ### Advanced Generation Parameters
 
 **Approach**:
+
 - Expose context size, threads, batch size
 - Add to LlamadartChatOptions as discovered in llamadart API
 - Document performance implications
@@ -719,11 +769,13 @@ export LLAMADART_MODELS_PATH=/path/to/models
 ### Flutter Asset Bundle Support
 
 **Context**:
+
 - Asset bundles (`asset://` URIs) only work with Flutter framework
 - Current implementation is pure Dart and doesn't depend on Flutter
 - AssetModelResolver requires Flutter's asset system for bundle access
 
 **Approach**:
+
 - Create separate Flutter-specific package (e.g., `dartantic_flutter`)
 - Implement AssetModelResolver using Flutter's `rootBundle` API
 - Add asset verification using `rootBundle.load()` to check existence
@@ -732,6 +784,7 @@ export LLAMADART_MODELS_PATH=/path/to/models
 - Document asset bundling in `pubspec.yaml` for Flutter apps
 
 **Usage Pattern**:
+
 ```yaml
 # pubspec.yaml
 flutter:

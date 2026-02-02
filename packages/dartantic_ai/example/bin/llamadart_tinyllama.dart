@@ -39,13 +39,13 @@ void main() async {
 Future<String> example0DownloadModel() async {
   stdout.writeln('## Example 0: Download Model with Progress\n');
 
-  final downloader = HFModelDownloader(cacheDir: './hf-cache');
+  final downloader = HFModelDownloader(cacheDir: './hf-model-cache');
   const repo = 'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF';
   const model = 'tinyllama-1.1b-chat-v1.0.Q2_K.gguf';
 
   stdout.writeln('Repository: $repo');
   stdout.writeln('Model: $model');
-  stdout.writeln('Cache: ./hf-cache/\n');
+  stdout.writeln('Cache: ./hf-model-cache/\n');
 
   // Check cache status
   final isCached = await downloader.isModelCached(repo, model);

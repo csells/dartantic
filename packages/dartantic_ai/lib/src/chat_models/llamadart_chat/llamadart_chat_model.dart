@@ -22,11 +22,9 @@ class LlamadartChatModel extends ChatModel<LlamadartChatOptions> {
     super.tools,
     super.temperature,
     LlamadartChatOptions? defaultOptions,
-  })  : _modelName = name,
-        _resolver = resolver,
-        super(
-          defaultOptions: defaultOptions ?? const LlamadartChatOptions(),
-        );
+  }) : _modelName = name,
+       _resolver = resolver,
+       super(defaultOptions: defaultOptions ?? const LlamadartChatOptions());
 
   static final Logger _logger = Logger('dartantic.chat.models.llamadart');
 
@@ -114,10 +112,7 @@ class LlamadartChatModel extends ChatModel<LlamadartChatOptions> {
           parts: [TextPart(token)],
         ),
         messages: [
-          ChatMessage(
-            role: ChatMessageRole.model,
-            parts: [TextPart(token)],
-          ),
+          ChatMessage(role: ChatMessageRole.model, parts: [TextPart(token)]),
         ],
         finishReason: FinishReason.unspecified,
         usage: null, // llamadart API doesn't provide token counts

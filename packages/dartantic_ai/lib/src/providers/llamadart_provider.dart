@@ -7,26 +7,29 @@ import '../chat_models/llamadart_chat/model_resolvers.dart';
 import '../platform/platform.dart';
 
 /// Provider for Llamadart (local llama.cpp models)
-class LlamadartProvider extends Provider<
-    LlamadartChatOptions,
-    EmbeddingsModelOptions,
-    MediaGenerationModelOptions> {
+class LlamadartProvider
+    extends
+        Provider<
+          LlamadartChatOptions,
+          EmbeddingsModelOptions,
+          MediaGenerationModelOptions
+        > {
   /// Creates a [LlamadartProvider]
   LlamadartProvider({
     super.baseUrl,
     super.headers,
     LlamadartChatOptions? defaultChatOptions,
-  })  : _defaultChatOptions = defaultChatOptions ?? _createDefaultChatOptions(),
-        super(
-          apiKey: null,
-          apiKeyName: null,
-          name: 'llamadart',
-          displayName: 'Llamadart',
-          aliases: const ['llama'],
-          defaultModelNames: const {
-            ModelKind.chat: 'tinyllama-1.1b-chat-v1.0.Q2_K.gguf',
-          },
-        );
+  }) : _defaultChatOptions = defaultChatOptions ?? _createDefaultChatOptions(),
+       super(
+         apiKey: null,
+         apiKeyName: null,
+         name: 'llamadart',
+         displayName: 'Llamadart',
+         aliases: const ['llama'],
+         defaultModelNames: const {
+           ModelKind.chat: 'tinyllama-1.1b-chat-v1.0.Q2_K.gguf',
+         },
+       );
 
   static final Logger _logger = Logger('dartantic.chat.providers.llamadart');
 
@@ -36,14 +39,9 @@ class LlamadartProvider extends Provider<
   final LlamadartChatOptions _defaultChatOptions;
 
   static LlamadartChatOptions _createDefaultChatOptions() {
-    // Use LLAMADART_MODELS_PATH for both file resolution and HF caching
-    final modelsPath = tryGetEnv('LLAMADART_MODELS_PATH');
-    return LlamadartChatOptions(
-      resolver: FallbackResolver(
-        fileBasePath: modelsPath,
-        hfCacheDir: modelsPath ?? './hg-model-cache',
-      ),
-    );
+    // Use LLAMADART_MODELS_PATH or current directory for file resolution
+    final modelsPath = tryGetEnv('LLAMADART_MODELS_PATH') ?? '.';
+    return LlamadartChatOptions(resolver: FileModelResolver(modelsPath));
   }
 
   @override
@@ -84,7 +82,8 @@ class LlamadartProvider extends Provider<
       resolver: resolver,
       temperature: temperature,
       defaultOptions: LlamadartChatOptions(
-        temperature: temperature ??
+        temperature:
+            temperature ??
             options?.temperature ??
             _defaultChatOptions.temperature,
         topP: options?.topP ?? _defaultChatOptions.topP,

@@ -76,52 +76,6 @@ void main() {
     });
   });
 
-  group('FallbackResolver', () {
-    test('returns file path when model exists', () async {
-      final tempDir = await Directory.systemTemp.createTemp('test_models');
-      final modelFile = File('${tempDir.path}/test.gguf');
-      await modelFile.create();
-
-      final resolver = FallbackResolver(
-        fileBasePath: tempDir.path,
-      );
-
-      final resolved = await resolver.resolveModel('test');
-      // Should return file path
-      expect(resolved, '${tempDir.path}/test.gguf');
-
-      await tempDir.delete(recursive: true);
-    });
-
-    test('throws ModelNotFoundException when file not found', () async {
-      final resolver = FallbackResolver(
-        fileBasePath: '/nonexistent/path',
-        hfCacheDir: '/nonexistent/hf',
-      );
-
-      // Should throw since no file and HF download will fail
-      expect(
-        () => resolver.resolveModel('test'),
-        throwsA(isA<ModelNotFoundException>()),
-      );
-    });
-
-    test('auto-appends .gguf extension', () async {
-      final tempDir = await Directory.systemTemp.createTemp('test_models');
-      await File('${tempDir.path}/mymodel.gguf').create();
-
-      final resolver = FallbackResolver(
-        fileBasePath: tempDir.path,
-      );
-
-      final resolved = await resolver.resolveModel('mymodel');
-      // Should have .gguf appended
-      expect(resolved, '${tempDir.path}/mymodel.gguf');
-
-      await tempDir.delete(recursive: true);
-    });
-  });
-
   group('ModelNotFoundException', () {
     test('includes message and searched locations', () {
       const exception = ModelNotFoundException(

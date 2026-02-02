@@ -5,52 +5,106 @@ import 'dart:io';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 
-/// Example demonstrating Llamadart with TinyLlama model.
+/// Example demonstrating Llamadart with explicit model downloading.
 ///
-/// Shows three different usage patterns:
-/// 1. Simplest: Agent('llama') - auto-downloads default model
-/// 2. Specific model: Agent('llama:model-name')
-/// 3. Custom configuration: custom resolver and cache directory
+/// This example shows:
+/// 0. Downloading a model from Hugging Face with progress tracking
+/// 1. Using the downloaded model with Agent
+/// 2. Multi-turn conversation
+/// 3. Custom provider configuration
 void main() async {
   stdout.writeln('=== Llamadart TinyLlama Examples ===\n');
 
-  // Example 1: Simplest path - Agent('llama')
-  await example1SimplestPath();
+  // Example 0: Download model with progress
+  // ignore: unused_local_variable
+  final modelPath = await example0DownloadModel();
   stdout.writeln('\n${"=" * 60}\n');
 
-  // Example 2: Specific model name
-  await example2SpecificModel();
+  // Example 1: Simplest path - use downloaded model
+  await example1SimplestPath(modelPath);
+  stdout.writeln('\n${"=" * 60}\n');
+
+  // Example 2: Multi-turn conversation
+  await example2MultiTurnChat(modelPath);
   stdout.writeln('\n${"=" * 60}\n');
 
   // Example 3: Custom configuration
-  await example3CustomConfiguration();
+  await example3CustomConfiguration(modelPath);
   stdout.writeln('\n=== All Examples Complete ===');
 
   exit(0);
 }
 
-/// Example 1: Simplest path using Agent('llama')
-///
-/// This uses all defaults:
-/// - Model: tinyllama-1.1b-chat-v1.0.Q2_K.gguf (~480MB)
-/// - Auto-downloads from Hugging Face on first run
-/// - Caches to ./hg-model-cache/
-/// - Subsequent runs use cached model instantly
-Future<void> example1SimplestPath() async {
-  stdout.writeln('## Example 1: Simplest Path - Agent("llama")\n');
-  stdout.writeln(
-    'This will auto-download TinyLlama Q2_K (~480MB) on first run',
+/// Example 0: Download model with progress tracking
+Future<String> example0DownloadModel() async {
+  stdout.writeln('## Example 0: Download Model with Progress\n');
+
+  final downloader = HFModelDownloader(cacheDir: './hf-cache');
+  const repo = 'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF';
+  const model = 'tinyllama-1.1b-chat-v1.0.Q2_K.gguf';
+
+  stdout.writeln('Repository: $repo');
+  stdout.writeln('Model: $model');
+  stdout.writeln('Cache: ./hf-cache/\n');
+
+  // Check cache status
+  final isCached = await downloader.isModelCached(repo, model);
+
+  if (isCached) {
+    stdout.writeln('✓ Model already cached');
+    stdout.writeln(
+      '  To force re-download, set force: true in downloadModel()',
+    );
+    // Return cached path without downloading
+    final modelPath = await downloader.downloadModel(repo, model);
+    return modelPath;
+  }
+
+  // Model not cached - download it
+  stdout.writeln('Downloading model (~480MB)...');
+  var lastPct = -1;
+
+  final modelPath = await downloader.downloadModel(
+    repo,
+    model,
+    onProgress: (p) {
+      final pct = (p.progress * 100).toInt();
+      // Only show progress every 10%
+      if (pct >= lastPct + 10 || pct == 100) {
+        lastPct = pct;
+        final mb = (p.downloadedBytes / (1024 * 1024)).toStringAsFixed(0);
+        final totalMb = (p.totalBytes / (1024 * 1024)).toStringAsFixed(0);
+        final speed = p.speedMBps.toStringAsFixed(1);
+        final etaMin = (p.estimatedRemaining?.inSeconds ?? 0) ~/ 60;
+        final etaSec = (p.estimatedRemaining?.inSeconds ?? 0) % 60;
+        stdout.writeln(
+          '$pct% ($mb/$totalMb MB) - $speed MB/s - ETA: ${etaMin}m ${etaSec}s',
+        );
+      }
+    },
   );
-  stdout.writeln('Cache location: ./hg-model-cache/');
-  stdout.writeln('Model: tinyllama-1.1b-chat-v1.0.Q2_K.gguf\n');
 
-  // Just create an agent with 'llama' - that's it!
-  final agent = Agent('llama');
+  stdout.writeln('✓ Downloaded to: $modelPath');
+  return modelPath;
+}
 
-  stdout.writeln('--- Loading model ---');
-  final startTime = DateTime.now();
+/// Example 1: Simplest path using downloaded model
+Future<void> example1SimplestPath(String modelPath) async {
+  stdout.writeln('## Example 1: Using Downloaded Model\n');
+  stdout.writeln('Model path: $modelPath\n');
 
-  // Single-turn chat with streaming
+  // Create agent with downloaded model
+  final provider = LlamadartProvider(
+    defaultChatOptions: LlamadartChatOptions(
+      resolver: FileModelResolver(File(modelPath).parent.parent.path),
+    ),
+  );
+  final relativePath = modelPath.substring(
+    File(modelPath).parent.parent.path.length + 1,
+  );
+  final agent = Agent.forProvider(provider, chatModelName: relativePath);
+
+  stdout.writeln('--- Single-turn chat ---');
   const prompt = 'What is the Dart programming language in one sentence?';
   stdout.writeln('\nUser: $prompt');
   stdout.write('Assistant: ');
@@ -59,27 +113,21 @@ Future<void> example1SimplestPath() async {
     stdout.write(chunk.output);
   }
   stdout.writeln();
-
-  final loadTime = DateTime.now().difference(startTime);
-  stdout.writeln('\n[Model loaded and responded in ${loadTime.inSeconds}s]');
 }
 
-/// Example 2: Specify a particular model name
-///
-/// Use Agent('llama:model-name') to select a different quantization
-/// or model from the same Hugging Face repository.
-Future<void> example2SpecificModel() async {
-  stdout.writeln('## Example 2: Specific Model - Agent("llama:model-name")\n');
-  stdout.writeln('Specify a different quantization from the TinyLlama repo');
+/// Example 2: Multi-turn conversation
+Future<void> example2MultiTurnChat(String modelPath) async {
+  stdout.writeln('## Example 2: Multi-Turn Conversation\n');
 
-  // You can specify a different GGUF file from the same repo
-  // For example, Q4_K_M for better quality (~669MB instead of ~480MB)
-  const modelName = 'tinyllama-1.1b-chat-v1.0.Q2_K.gguf';
-  final agent = Agent('llama:$modelName');
-
-  stdout.writeln('Model: $modelName\n');
-
-  // Multi-turn conversation to show context retention
+  final provider = LlamadartProvider(
+    defaultChatOptions: LlamadartChatOptions(
+      resolver: FileModelResolver(File(modelPath).parent.parent.path),
+    ),
+  );
+  final relativePath = modelPath.substring(
+    File(modelPath).parent.parent.path.length + 1,
+  );
+  final agent = Agent.forProvider(provider, chatModelName: relativePath);
   final chat = Chat(
     agent,
     history: [ChatMessage.system('You are a concise AI assistant.')],
@@ -104,40 +152,33 @@ Future<void> example2SpecificModel() async {
   stdout.writeln();
 }
 
-/// Example 3: Custom configuration
-///
-/// Advanced: configure your own resolver, cache location, and options.
-/// Useful when you need fine-grained control over model resolution.
-Future<void> example3CustomConfiguration() async {
+/// Example 3: Custom configuration with FileModelResolver
+Future<void> example3CustomConfiguration(String modelPath) async {
   stdout.writeln('## Example 3: Custom Configuration\n');
-  stdout.writeln('Full control over resolver, cache, and model source');
+  stdout.writeln('Using FileModelResolver with custom cache directory');
 
-  // Use default cache directory (same as examples 1 & 2)
-  // This reuses the cached model while still demonstrating custom configuration
-  const customCacheDir = './hg-model-cache';
+  // Extract cache directory from model path
+  final cacheDir = File(modelPath).parent.parent.path;
 
-  stdout.writeln('Cache directory: $customCacheDir\n');
-
-  // Create custom provider with HF resolver pointing to specific repo
+  // Create custom provider with FileModelResolver
   final provider = LlamadartProvider(
-    defaultChatOptions: const LlamadartChatOptions(
-      resolver: HFModelResolver(
-        repo: 'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF',
-        cacheDir: customCacheDir,
-      ),
+    defaultChatOptions: LlamadartChatOptions(
+      resolver: FileModelResolver(cacheDir),
       temperature: 0.7,
-      // logLevel: LlamaLogLevel.info, // Enable verbose logging
+      // logLevel: LlamaLogLevel.info, // Enable for verbose logging
     ),
   );
 
-  final agent = Agent.forProvider(
-    provider,
-    chatModelName: 'tinyllama-1.1b-chat-v1.0.Q2_K.gguf',
-  );
+  // Use the model name relative to cache directory
+  final relativePath = modelPath.substring(cacheDir.length + 1);
+  final agent = Agent.forProvider(provider, chatModelName: relativePath);
+
+  stdout.writeln('Cache directory: $cacheDir');
+  stdout.writeln('Relative path: $relativePath\n');
 
   // Performance test
   stdout.writeln('--- Performance Test ---');
-  const prompt = 'Give me a haiku about the plight of AI agents.';
+  const prompt = 'Give me a haiku about AI assistants.';
 
   final startTime = DateTime.now();
   stdout.writeln('Prompt: "$prompt"');

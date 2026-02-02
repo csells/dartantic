@@ -6,25 +6,87 @@ The Llamadart provider enables local LLM inference in Dartantic using the llamad
 
 ## Architecture
 
-### Model Resolution via URI Schemes and Resolvers
+### Model Downloading and Resolution
 
-**Problem**: Local models require different loading strategies across platforms:
-- Native platforms (desktop/mobile): Load from filesystem paths
-- Web platforms: Load from URLs, assets, or Hugging Face Hub
-- Users need flexibility: file paths, asset bundles, remote URLs, or automatic discovery
+**Problem**: Local models require explicit downloading and loading:
+- Models are large files (hundreds of MB to several GB)
+- Users need visibility into download progress
+- Downloaded models must be organized and cached efficiently
+- Model files must be resolved to absolute paths for llamadart
 
-**Solution**: ModelResolver abstraction with multiple implementations and URI scheme support.
+**Solution**: Separate downloading (HFModelDownloader) from resolution (FileModelResolver).
 
-#### URI Scheme Support
+#### Two-Phase Workflow
 
-Model names can be specified as URIs with platform-specific schemes:
+1. **Download Phase**: Use `HFModelDownloader` to explicitly download models from Hugging Face
+   - Rich progress tracking (%, speed, ETA)
+   - Repo-based cache organization
+   - Returns full absolute path to downloaded file
 
-- `file:///absolute/path/model.gguf` - Direct filesystem path (native only)
-- `https://example.com/models/llama.gguf` - HTTP(S) URL (web or download)
-- `hf://org/repo/model.gguf` - Hugging Face Hub (web or cached download)
-- Plain name: `my-model` - Resolved via ModelResolver chain
+2. **Resolution Phase**: Use downloaded path directly or via `FileModelResolver`
+   - Simple file path resolution
+   - No automatic downloads
+   - Fast, predictable behavior
 
-**Note**: Asset bundle support (`asset://` URIs) requires Flutter framework integration and is planned for a separate Flutter-specific package.
+#### HFModelDownloader - Explicit Model Downloading
+
+**Purpose**: Download GGUF models from Hugging Face Hub with progress tracking.
+
+**Key Features**:
+- Checks if model already cached before downloading
+- Rich progress callbacks with `DownloadProgress` class
+- Repo-based cache structure: `{cacheDir}/{repo}/{model}.gguf`
+- Atomic downloads (temp file + rename)
+- Automatic retry on network failures via `RetryHttpClient`
+- Auto-appends `.gguf` extension if missing
+- Returns full absolute path to downloaded file
+
+**API**:
+```dart
+// Create downloader with cache directory
+final downloader = HFModelDownloader(cacheDir: './hf-cache');
+
+// Check if model is cached
+final cached = await downloader.isModelCached(
+  'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF',
+  'tinyllama-1.1b-chat-v1.0.Q2_K.gguf',
+);
+
+// Download model with progress tracking
+final modelPath = await downloader.downloadModel(
+  'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF',  // repo
+  'tinyllama-1.1b-chat-v1.0.Q2_K.gguf',       // model name
+  onProgress: (progress) {
+    print('${(progress.progress * 100).toInt()}% - '
+          '${progress.speedMBps.toStringAsFixed(1)} MB/s');
+  },
+);
+// Returns: './hf-cache/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/tinyllama-1.1b-chat-v1.0.Q2_K.gguf'
+```
+
+**Progress Tracking**:
+The `DownloadProgress` class provides comprehensive metrics:
+- `progress` (double): 0.0 to 1.0
+- `downloadedBytes` (int): Bytes downloaded so far
+- `totalBytes` (int): Total file size
+- `elapsed` (Duration): Time elapsed since download started
+- `speedMBps` (double): Current download speed (MB/s, rolling 5-sample average)
+- `estimatedRemaining` (Duration?): Estimated time remaining (nullable initially)
+
+**Cache Directory Structure**:
+Models are organized by repository to avoid naming conflicts:
+```
+hf-cache/
+  TheBloke/
+    TinyLlama-1.1B-Chat-v1.0-GGUF/
+      tinyllama-1.1b-chat-v1.0.Q2_K.gguf
+      tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+  meta-llama/
+    Llama-3.2-1B-Instruct-GGUF/
+      Llama-3.2-1B-Instruct-Q4_K_M.gguf
+```
+
+This structure mirrors Hugging Face's organization and prevents conflicts between models with similar names from different repositories.
 
 #### ModelResolver Abstraction
 
@@ -39,49 +101,56 @@ Model names can be specified as URIs with platform-specific schemes:
    - Auto-appends `.gguf` extension if missing
    - Returns full absolute path
    - Lists all `.gguf` files in directory with metadata (size, modified date)
+   - **Use Case**: Resolve model names to absolute paths within a directory
 
 2. **UrlModelResolver** - HTTP(S) URL resolution (web or remote models)
    - Configured with base URL
    - Returns fully-qualified HTTP(S) URL
    - No caching (pure streaming)
    - Listing requires server API support
-
-3. **HFModelResolver** - Hugging Face Hub integration
-   - Configured with repo name (e.g., `meta-llama/Llama-2-7b-chat`)
-   - Checks local cache first (native platforms)
-   - Downloads and caches models to file resolver's location
-   - On web: Returns `hf://` URI for llamadart's WebLlamaBackend
-   - On native: Downloads via HF API and caches to filesystem
-
-4. **FallbackResolver** - Multi-strategy resolver (default)
-   - Tries multiple strategies in order until success
-   - Strategy sequence:
-     1. **FileResolver**: Check `LLAMADART_MODELS_PATH` env var or current directory (native only)
-     2. **HFModelResolver**: Download from Hugging Face Hub and cache (native only)
-   - Auto-appends `.gguf` extension at each step
-   - Logs all search locations for debugging
-   - Throws `ModelNotFoundException` with complete list of searched locations
+   - **Use Case**: Load models directly from HTTP(S) URLs
 
 #### Resolver Configuration
 
-**Three levels of configuration** (from most specific to least):
+**Default Configuration**:
+LlamadartProvider uses FileModelResolver with `LLAMADART_MODELS_PATH` environment variable or current directory:
 
-1. **Per-request**: `LlamadartChatOptions.resolver` - Override resolver for single request
-2. **Provider-level**: `LlamadartProvider(defaultChatOptions: LlamadartChatOptions(resolver: ...))` - Provider-wide default
-3. **Global fallback**: `FallbackResolver` - Used when no resolver specified
+```dart
+// Default: Uses LLAMADART_MODELS_PATH or current directory
+final agent = Agent('llama', chatModelName: 'model.gguf');
 
-**Custom provider pattern**:
-Users create tailored providers with specific resolvers and pass to `Agent.forProvider()`:
-- Define resolver with base paths
-- Set other defaults (temperature, etc.)
-- Create provider with `defaultChatOptions`
-- Pass provider to Agent
+// Custom: Specify directory via environment variable
+// export LLAMADART_MODELS_PATH=/path/to/models
+final agent = Agent('llama', chatModelName: 'model.gguf');
+```
 
-#### Platform Detection
+**Custom Provider Pattern**:
+For more control, create a custom provider with specific resolver:
 
-Platform-specific behavior uses `kIsWeb` constant:
-- Web platforms: Skip file operations, use URL/asset/HF resolvers only
-- Native platforms: Full resolver support including filesystem access
+```dart
+final provider = LlamadartProvider(
+  defaultChatOptions: LlamadartChatOptions(
+    resolver: FileModelResolver('./my-models'),
+    temperature: 0.7,
+  ),
+);
+final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
+```
+
+**Direct Path Usage**:
+Skip resolution entirely by providing the full path:
+
+```dart
+// Download first
+final downloader = HFModelDownloader(cacheDir: './hf-cache');
+final modelPath = await downloader.downloadModel(
+  'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF',
+  'tinyllama-1.1b-chat-v1.0.Q2_K.gguf',
+);
+
+// Use path directly
+final agent = Agent('llama', chatModelName: modelPath);
+```
 
 ### Streaming Architecture
 
@@ -198,52 +267,102 @@ Llamadart lacks native support for several Dartantic features:
 ### Environment Variables
 
 - `LLAMADART_MODELS_PATH`: Default directory for FileModelResolver
-  - Used by FallbackResolver if no `fileBasePath` specified
+  - Used by LlamadartProvider when no custom resolver specified
   - Falls back to current working directory if not set
+  - Example: `export LLAMADART_MODELS_PATH=/path/to/models`
 
 ### Provider Customization
 
 **Default Configuration**:
-- Uses FallbackResolver with standard search sequence
-- Asset base path: `assets/models`
-- File base path: from `LLAMADART_MODELS_PATH` or current directory
+- Uses FileModelResolver pointing to `LLAMADART_MODELS_PATH` or current directory
+- No automatic downloads
+- Simple file path resolution
 
 **Custom Configuration**:
-- Create `LlamadartChatOptions` with custom resolver
-- Pass via `defaultChatOptions` to provider constructor
-- Use `Agent.forProvider(provider)` to create agent
+```dart
+// Custom resolver with specific directory
+final provider = LlamadartProvider(
+  defaultChatOptions: LlamadartChatOptions(
+    resolver: FileModelResolver('/path/to/models'),
+    temperature: 0.7,
+    maxTokens: 2048,
+  ),
+);
+final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
+```
+
+**Recommended Workflow**:
+```dart
+// 1. Download model explicitly
+final downloader = HFModelDownloader(cacheDir: './hf-cache');
+final modelPath = await downloader.downloadModel(
+  'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF',
+  'tinyllama-1.1b-chat-v1.0.Q2_K.gguf',
+  onProgress: (p) => print('${(p.progress * 100).toInt()}%'),
+);
+
+// 2. Use downloaded model path directly
+final agent = Agent('llama', chatModelName: modelPath);
+
+// 3. Chat with model
+await agent.send('Hello!');
+```
 
 ## Platform-Specific Behavior
 
 ### Native Platforms (Desktop/Mobile)
 
 **Capabilities**:
-- Full resolver support (File, Asset, URL, HF)
+- Full resolver support (File, URL)
 - Filesystem access via `dart:io`
-- Model caching to filesystem
+- Model downloading and caching via `HFModelDownloader`
 - FFI-based llamadart backend
 
-**Typical Flow**:
-1. Check assets first
-2. Check files in `LLAMADART_MODELS_PATH`
-3. Download from Hugging Face and cache
+**Typical Workflow**:
+1. Download model from Hugging Face with `HFModelDownloader`
+2. Use downloaded file path directly or via `FileModelResolver`
+3. Cached models persist across sessions
+
+**Example**:
+```dart
+// Download once
+final downloader = HFModelDownloader(cacheDir: './hf-cache');
+final modelPath = await downloader.downloadModel(
+  'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF',
+  'tinyllama-1.1b-chat-v1.0.Q2_K.gguf',
+);
+
+// Use many times
+final agent = Agent('llama', chatModelName: modelPath);
+```
 
 ### Web Platform
 
 **Capabilities**:
-- Limited to URL, Asset, and HF resolvers (no filesystem)
+- Limited to URL resolver (no filesystem)
 - WASM-based llamadart backend
-- Models loaded via network (HTTP, HF Hub)
-- Asset bundles compiled into app
+- Models loaded via network (HTTP URLs)
+- Asset bundles compiled into app (requires Flutter)
 
-**Typical Flow**:
-1. Check assets (bundled with app)
-2. Fetch from URL or Hugging Face
+**Typical Workflow**:
+1. Load models from HTTP(S) URLs using `UrlModelResolver`
+2. Or bundle small models as assets (Flutter only)
 
 **Limitations**:
 - No filesystem access
+- No `HFModelDownloader` support (no `dart:io`)
 - No local file caching (relies on browser cache)
 - Model downloads not persisted across sessions
+
+**Example**:
+```dart
+final provider = LlamadartProvider(
+  defaultChatOptions: LlamadartChatOptions(
+    resolver: UrlModelResolver('https://example.com/models'),
+  ),
+);
+final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
+```
 
 ## Testing Strategy
 
@@ -252,9 +371,27 @@ Llamadart lacks native support for several Dartantic features:
 **Approach**: Write tests first, implement to pass tests
 
 **Test Categories**:
-1. **Unit Tests**: Resolvers, message mappers, individual components
+1. **Unit Tests**: Downloader, resolvers, message mappers, individual components
 2. **Integration Tests**: End-to-end scenarios with Agent
 3. **Platform Tests**: Web vs native behavior
+
+### HFModelDownloader Testing
+
+**DownloadProgress**:
+- Test value object creation and properties
+- Test toString() formatting
+- Test nullable `estimatedRemaining` handling
+
+**HFModelDownloader**:
+- Test `isModelCached()` returns false when not cached
+- Test `isModelCached()` returns true when cached
+- Test `downloadModel()` returns cached path without download if cached
+- Test repo-based cache structure: `{cacheDir}/{repo}/{model}.gguf`
+- Test auto-appends `.gguf` extension
+- Test returns full absolute path to downloaded file
+- Test progress callback receives correct metrics (integration test)
+- Test cleanup on partial download failure (integration test)
+- Test error on HTTP 404/network failure (integration test)
 
 ### Resolver Testing
 
@@ -264,11 +401,9 @@ Llamadart lacks native support for several Dartantic features:
 - Test file existence checking
 - Test model listing with metadata
 
-**FallbackResolver**:
-- Test search sequence (assets → files → HF)
-- Test logging of all search locations
-- Test ModelNotFoundException with complete location list
-- Test platform-specific behavior (web vs native)
+**UrlModelResolver**:
+- Test URL construction with base URL
+- Test `.gguf` extension appending
 
 ### Message Mapper Testing
 
@@ -280,7 +415,6 @@ Llamadart lacks native support for several Dartantic features:
 ### ChatModel Testing
 
 - Test lazy model loading on first request
-- Test URI scheme resolution
 - Test resolver delegation
 - Test streaming (one ChatResult per chunk)
 - Test disposal lifecycle
@@ -385,6 +519,127 @@ Llamadart lacks native support for several Dartantic features:
 
 **Upstream Issue**: Not applicable - this is a design choice, not a llamadart limitation.
 
+## Migration Guide
+
+### Changes from Previous Architecture
+
+**What Changed**:
+- **Removed**: `HFModelResolver` (automatic Hugging Face downloads)
+- **Removed**: `FallbackResolver` (multi-strategy resolution)
+- **Added**: `HFModelDownloader` (explicit download utility)
+- **Simplified**: Only `FileModelResolver` and `UrlModelResolver` remain
+
+**Why the Change**:
+- Explicit downloads provide better user experience (progress visibility, control)
+- Simpler architecture with clear separation of concerns
+- No automatic network calls hidden in model resolution
+- Repo-based cache structure prevents naming conflicts
+
+### Migrating Existing Code
+
+#### Before: Automatic Download via FallbackResolver
+
+```dart
+// OLD: Automatic download hidden in resolver
+final provider = LlamadartProvider(
+  defaultChatOptions: LlamadartChatOptions(
+    resolver: FallbackResolver(
+      fileBasePath: './models',
+      hfCacheDir: './hf-cache',
+    ),
+  ),
+);
+// This would automatically download from HF if model not found locally
+final agent = Agent.forProvider(
+  provider,
+  chatModelName: 'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF',
+);
+```
+
+#### After: Explicit Download with HFModelDownloader
+
+```dart
+// NEW: Explicit download with progress tracking
+final downloader = HFModelDownloader(cacheDir: './hf-cache');
+final modelPath = await downloader.downloadModel(
+  'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF',
+  'tinyllama-1.1b-chat-v1.0.Q2_K.gguf',
+  onProgress: (p) {
+    print('${(p.progress * 100).toInt()}% - ${p.speedMBps.toStringAsFixed(1)} MB/s');
+  },
+);
+
+// Use downloaded model path directly (no resolver needed)
+final agent = Agent('llama', chatModelName: modelPath);
+
+// Or use FileModelResolver if you prefer relative paths
+final provider = LlamadartProvider(
+  defaultChatOptions: LlamadartChatOptions(
+    resolver: FileModelResolver('./hf-cache'),
+  ),
+);
+final agent = Agent.forProvider(
+  provider,
+  chatModelName: 'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/tinyllama-1.1b-chat-v1.0.Q2_K.gguf',
+);
+```
+
+### What Still Works
+
+✅ **Local file paths**: No change if you're already using local files
+
+```dart
+// Still works exactly the same
+final agent = Agent('llama', chatModelName: '/absolute/path/model.gguf');
+```
+
+✅ **FileModelResolver**: Still works for relative paths
+
+```dart
+// Still works exactly the same
+final provider = LlamadartProvider(
+  defaultChatOptions: LlamadartChatOptions(
+    resolver: FileModelResolver('./models'),
+  ),
+);
+final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
+```
+
+✅ **UrlModelResolver**: Still works for HTTP(S) URLs
+
+```dart
+// Still works exactly the same
+final provider = LlamadartProvider(
+  defaultChatOptions: LlamadartChatOptions(
+    resolver: UrlModelResolver('https://example.com/models'),
+  ),
+);
+final agent = Agent.forProvider(provider, chatModelName: 'model.gguf');
+```
+
+✅ **LLAMADART_MODELS_PATH environment variable**: Still works as before
+
+```bash
+export LLAMADART_MODELS_PATH=/path/to/models
+```
+
+### What Requires Changes
+
+❌ **Using HFModelResolver**: Replace with explicit download via `HFModelDownloader`
+
+❌ **Using FallbackResolver**: Replace with explicit download + direct path usage or `FileModelResolver`
+
+❌ **Relying on automatic downloads**: Download models explicitly before use
+
+### Migration Checklist
+
+1. **Install latest version** with `HFModelDownloader` support
+2. **Identify automatic download usage**: Search codebase for `HFModelResolver` or `FallbackResolver`
+3. **Add explicit download step**: Use `HFModelDownloader` to download models upfront
+4. **Update model paths**: Use returned absolute path from downloader or relative path with `FileModelResolver`
+5. **Test download progress**: Verify progress callbacks work as expected
+6. **Update documentation**: Document where downloaded models are cached
+
 ## Future Enhancements
 
 **Note**: Many enhancements require upstream changes to the llamadart package. See "Known Limitations" section for tracked issues.
@@ -460,14 +715,6 @@ Llamadart lacks native support for several Dartantic features:
 - Expose context size, threads, batch size
 - Add to LlamadartChatOptions as discovered in llamadart API
 - Document performance implications
-
-### Hugging Face Download Implementation
-
-**Approach**:
-- Implement HF API integration for downloading GGUF models
-- Add progress tracking for large downloads
-- Cache models to `LLAMADART_MODELS_PATH` for reuse
-- Support model sharding (large models split into chunks)
 
 ### Flutter Asset Bundle Support
 

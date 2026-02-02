@@ -53,10 +53,7 @@ void main() {
       final messages = [
         ChatMessage(
           role: ChatMessageRole.user,
-          parts: const [
-            TextPart('Hello '),
-            TextPart('world'),
-          ],
+          parts: const [TextPart('Hello '), TextPart('world')],
         ),
       ];
 
@@ -74,10 +71,7 @@ void main() {
         ),
       ];
 
-      expect(
-        messages.toLlamaMessages,
-        throwsA(isA<AssertionError>()),
-      );
+      expect(messages.toLlamaMessages, throwsA(isA<AssertionError>()));
     });
 
     test('skips ToolPart in message conversion', () {
@@ -104,10 +98,7 @@ void main() {
 
     test('handles empty message parts', () {
       final messages = [
-        ChatMessage(
-          role: ChatMessageRole.user,
-          parts: const [],
-        ),
+        ChatMessage(role: ChatMessageRole.user, parts: const []),
       ];
 
       final llamaMessages = messages.toLlamaMessages();

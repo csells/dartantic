@@ -24,9 +24,7 @@ void main() {
         temperature: 0.7,
       );
 
-      final provider = LlamadartProvider(
-        defaultChatOptions: customOptions,
-      );
+      final provider = LlamadartProvider(defaultChatOptions: customOptions);
 
       expect(provider, isNotNull);
 
@@ -102,19 +100,13 @@ void main() {
     test('createEmbeddingsModel throws UnsupportedError', () {
       final provider = LlamadartProvider();
 
-      expect(
-        provider.createEmbeddingsModel,
-        throwsA(isA<UnsupportedError>()),
-      );
+      expect(provider.createEmbeddingsModel, throwsA(isA<UnsupportedError>()));
     });
 
     test('createMediaModel throws UnsupportedError', () {
       final provider = LlamadartProvider();
 
-      expect(
-        provider.createMediaModel,
-        throwsA(isA<UnsupportedError>()),
-      );
+      expect(provider.createMediaModel, throwsA(isA<UnsupportedError>()));
     });
 
     test('listModels delegates to resolver', () async {
@@ -136,10 +128,7 @@ void main() {
     test('has correct default model name', () {
       final provider = LlamadartProvider();
 
-      expect(
-        provider.defaultModelNames[ModelKind.chat],
-        isNotNull,
-      );
+      expect(provider.defaultModelNames[ModelKind.chat], isNotNull);
     });
 
     test('has llamadart and llama aliases', () {

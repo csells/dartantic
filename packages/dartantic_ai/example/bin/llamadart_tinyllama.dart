@@ -24,7 +24,7 @@ void main() async {
   await example1SimplestPath(modelPath);
   stdout.writeln('\n${"=" * 60}\n');
 
-  // Example 2: Multi-turn conversation
+  // Example 2: Multi-turn conversationar
   await example2MultiTurnChat(modelPath);
   stdout.writeln('\n${"=" * 60}\n');
 

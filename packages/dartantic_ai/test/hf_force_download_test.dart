@@ -56,13 +56,13 @@ void main() {
       modelFile.writeAsStringSync('original content');
 
       // Mock HTTP client that returns new content
-      final mockClient = MockClient((request) async {
-        return http.Response(
+      final mockClient = MockClient(
+        (request) async => http.Response(
           'new content from download',
           200,
           headers: {'content-length': '25'},
-        );
-      });
+        ),
+      );
 
       downloader = HFModelDownloader(
         cacheDir: tempDir.path,
@@ -88,13 +88,13 @@ void main() {
       const model = 'test.gguf';
 
       // Mock HTTP client
-      final mockClient = MockClient((request) async {
-        return http.Response(
+      final mockClient = MockClient(
+        (request) async => http.Response(
           'downloaded content',
           200,
           headers: {'content-length': '18'},
-        );
-      });
+        ),
+      );
 
       downloader = HFModelDownloader(
         cacheDir: tempDir.path,

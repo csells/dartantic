@@ -62,11 +62,15 @@ class GoogleProvider
   (StreamingOrchestrator, List<Tool>?) getChatOrchestratorAndTools({
     required Schema? outputSchema,
     required List<Tool>? tools,
+    bool hasServerSideTools = false,
   }) {
-    final hasTools = tools != null && tools.isNotEmpty;
+    final hasUserTools = tools != null && tools.isNotEmpty;
 
-    if (outputSchema != null && hasTools) {
-      // Double agent: tools + typed output (requires stateful orchestrator)
+    if (outputSchema != null && (hasUserTools || hasServerSideTools)) {
+      // Double agent: tools + typed output (requires stateful orchestrator).
+      // This applies to both user-defined tools AND server-side tools (Google
+      // Search, Code Execution) since Gemini doesn't support tools +
+      // outputSchema in a single request.
       return (GoogleDoubleAgentOrchestrator(), tools);
     }
 

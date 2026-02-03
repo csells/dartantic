@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
 
+import '../chat_models/google_chat/google_chat_options.dart';
 import '../logging_options.dart';
 import '../platform/platform.dart';
 import '../providers/anthropic_provider.dart';
@@ -279,10 +280,18 @@ class Agent {
       'history messages',
     );
 
+    // Detect if server-side tools are configured (e.g., Google Search)
+    final hasServerSideTools = switch (chatModelOptions) {
+      final GoogleChatModelOptions opts =>
+        opts.serverSideTools?.isNotEmpty ?? false,
+      _ => false,
+    };
+
     final (orchestrator, toolsToUse) = (_provider is ChatOrchestratorProvider
         ? (_provider as ChatOrchestratorProvider).getChatOrchestratorAndTools(
             outputSchema: outputSchema,
             tools: _tools,
+            hasServerSideTools: hasServerSideTools,
           )
         : (const DefaultStreamingOrchestrator(), _tools));
 

@@ -49,5 +49,91 @@ void main() {
       },
       timeout: const Timeout(Duration(minutes: 2)),
     );
+
+    test(
+      'Google Search with typed output: uses double agent orchestrator',
+      () async {
+        // This test verifies the fix for GitHub issue #96:
+        // Server-side tools combined with typed output should work.
+        // The double agent orchestrator handles this by:
+        // - Phase 1: Execute server-side tools (no outputSchema)
+        // - Phase 2: Get structured output (no tools)
+        //
+        // Before the fix, this would fail with:
+        // "Tool use with a response mime type: 'application/json' is
+        // unsupported"
+        final outputSchema = Schema.fromMap({
+          'type': 'object',
+          'properties': {
+            'language': {'type': 'string'},
+            'year': {'type': 'integer'},
+            'creator': {'type': 'string'},
+          },
+          'required': ['language', 'year', 'creator'],
+        });
+
+        final agent = Agent(
+          'google',
+          chatModelOptions: const GoogleChatModelOptions(
+            serverSideTools: {GoogleServerSideTool.googleSearch},
+          ),
+        );
+
+        final result = await agent.sendFor<Map<String, dynamic>>(
+          'Search for "Dart programming language" and return information '
+          'about when it was released and who created it.',
+          outputSchema: outputSchema,
+          outputFromJson: (json) => json,
+        );
+
+        // Verify we got valid typed output
+        expect(result.output['language'], isNotNull);
+        expect(result.output['year'], isA<int>());
+        expect(result.output['creator'], isNotNull);
+
+        // The year should be 2011 (announced) or 2013 (1.0 release)
+        expect(result.output['year'], anyOf(equals(2011), equals(2013)));
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
+
+    test(
+      'Code Execution with typed output: uses double agent orchestrator',
+      () async {
+        // Test code execution server-side tool with typed output.
+        //
+        // Before the fix, this would fail with:
+        // "Tool use with a response mime type: 'application/json' is
+        // unsupported"
+        final outputSchema = Schema.fromMap({
+          'type': 'object',
+          'properties': {
+            'result': {'type': 'integer'},
+            'calculation': {'type': 'string'},
+          },
+          'required': ['result', 'calculation'],
+        });
+
+        final agent = Agent(
+          'google',
+          chatModelOptions: const GoogleChatModelOptions(
+            serverSideTools: {GoogleServerSideTool.codeExecution},
+          ),
+        );
+
+        // 123 * 456 = 56088
+        final result = await agent.sendFor<Map<String, dynamic>>(
+          'Use code execution to calculate 123 * 456, then return the result '
+          'in the specified JSON format.',
+          outputSchema: outputSchema,
+          outputFromJson: (json) => json,
+        );
+
+        // Verify we got valid typed output with the correct calculation
+        expect(result.output['result'], equals(56088));
+        expect(result.output['calculation'], isNotNull);
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
   });
 }

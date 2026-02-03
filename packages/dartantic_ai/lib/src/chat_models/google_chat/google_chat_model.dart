@@ -92,9 +92,11 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
     final serverSideTools =
         options?.serverSideTools ?? defaultOptions.serverSideTools ?? const {};
 
-    final enableCodeExecution = serverSideTools.contains(
-      GoogleServerSideTool.codeExecution,
-    );
+    // Google doesn't support server-side tools + outputSchema simultaneously.
+    // When outputSchema is provided, exclude server-side tools (double agent
+    // phase 2). This matches the behavior for user-defined tools below.
+    final enableCodeExecution = outputSchema == null &&
+        serverSideTools.contains(GoogleServerSideTool.codeExecution);
 
     final generationConfig = _buildGenerationConfig(
       options: options,
@@ -129,9 +131,8 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
       tools:
           toolsToSend.toToolList(
             enableCodeExecution: enableCodeExecution,
-            enableGoogleSearch: serverSideTools.contains(
-              GoogleServerSideTool.googleSearch,
-            ),
+            enableGoogleSearch: outputSchema == null &&
+                serverSideTools.contains(GoogleServerSideTool.googleSearch),
           ) ??
           const [],
     );

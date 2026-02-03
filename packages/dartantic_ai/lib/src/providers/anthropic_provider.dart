@@ -141,6 +141,7 @@ class AnthropicProvider
   (StreamingOrchestrator, List<Tool>?) getChatOrchestratorAndTools({
     required Schema? outputSchema,
     required List<Tool>? tools,
+    bool hasServerSideTools = false,
   }) => (
     outputSchema == null
         ? const DefaultStreamingOrchestrator()

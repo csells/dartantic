@@ -25,25 +25,67 @@ class AttachmentActionBar extends StatefulWidget {
   /// Creates an [AttachmentActionBar].
   ///
   /// The [onAttachments] parameter is required and is called when attachments
-  /// are selected.
-  const AttachmentActionBar({required this.onAttachments, super.key});
+  /// are selected. The [offset] parameter can be used to adjust the position
+  /// of the menu that appears when the attachment button is pressed.
+  ///
+  /// The [key] parameter is forwarded to the superclass.
+  AttachmentActionBar({required this.onAttachments, this.offset, super.key})
+    : _key = GlobalKey<AttachmentActionBarState>();
+
+  /// The key used to identify this widget's state.
+  final GlobalKey<AttachmentActionBarState> _key;
+
+  /// Controls the visibility of the attachments menu.
+  ///
+  /// When [visible] is true, the menu will be shown if it's not already visible.
+  /// When false, the menu will be hidden if it's currently visible.
+  void setMenuVisible(bool visible) {
+    _key.currentState?.setMenuVisible(visible);
+  }
 
   /// Callback function that is called when attachments are selected.
   ///
   /// The selected [Part]s are passed as an argument to this function.
   final Function(Iterable<Part> attachments) onAttachments;
 
+  /// The offset used to position the attachment menu.
+  ///
+  /// This can be used to adjust where the menu appears relative to the
+  /// attachment button. If null, default positioning is used.
+  final Offset? offset;
+
   @override
-  State<AttachmentActionBar> createState() => _AttachmentActionBarState();
+  AttachmentActionBarState createState() => AttachmentActionBarState();
 }
 
-class _AttachmentActionBarState extends State<AttachmentActionBar> {
+/// The state for the [AttachmentActionBar] widget.
+///
+/// This class manages the state and behavior of the attachment action bar,
+/// including handling user interactions with the attachment menu and managing
+/// the attachment selection process.
+class AttachmentActionBarState extends State<AttachmentActionBar> {
   late final bool _canCamera;
+  final _menuController = MenuController();
 
   @override
   void initState() {
     super.initState();
     _canCamera = canTakePhoto();
+  }
+
+  /// Controls the visibility of the attachment menu.
+  ///
+  /// If [visible] is true, opens the menu if it's not already open.
+  /// If [visible] is false, closes the menu if it's currently open.
+  ///
+  /// This is called by the parent [AttachmentActionBar] widget's public
+  /// [setMenuVisible] method.
+  void setMenuVisible(bool visible) {
+    if (visible) {
+      _menuController.open();
+    } else {
+      _menuController.close();
+    }
   }
 
   @override
@@ -99,6 +141,7 @@ class _AttachmentActionBarState extends State<AttachmentActionBar> {
       ];
 
       return MenuAnchor(
+        controller: _menuController,
         style: MenuStyle(
           backgroundColor: WidgetStateProperty.all(chatStyle.menuColor),
         ),
@@ -125,9 +168,6 @@ class _AttachmentActionBarState extends State<AttachmentActionBar> {
     ChatViewStyle chatStyle,
     int menuItems,
   ) {
-    // Limit the potential damage on this hack to mobile platforms
-    if (!isMobile) return null;
-
     // From MenuAnchor source: minimum height is 48.0 + some padding for
     // safety
     final double itemHeight = 48.0 + 8.0;
@@ -135,6 +175,18 @@ class _AttachmentActionBarState extends State<AttachmentActionBar> {
 
     // Calculate menu height based on actual number of items
     final double estimatedMenuHeight = (menuItems * itemHeight) + menuPadding;
+
+    if (widget.offset != null) {
+      // If an offset is provided (e.g. from slash command), we use it.
+      // On mobile, we still need to ensure it doesn't get covered by the keyboard
+      // if it's too low, but for now we'll trust the offset and adjust height
+      // to make it appear above the calculated point.
+      return Offset(widget.offset!.dx, widget.offset!.dy - estimatedMenuHeight);
+    }
+
+    // Limit the potential damage on this hack to mobile platforms
+    if (!isMobile) return null;
+
     return Offset(0, -estimatedMenuHeight);
   }
 

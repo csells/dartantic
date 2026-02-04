@@ -151,7 +151,10 @@ class _ChatInputState extends State<ChatInput> {
 
   final _textController = TextEditingController();
   final _waveController = WaveformRecorderController();
+  final _attachmentActionBarKey = GlobalKey<AttachmentActionBarState>();
+  final _textFieldKey = GlobalKey();
 
+  Offset? _menuOffset;
   ChatViewModel? _viewModel;
   ChatInputStyle? _inputStyle;
   ChatViewStyle? _chatStyle;
@@ -192,7 +195,14 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _textController.addListener(_onTextChanged);
+  }
+
+  @override
   void dispose() {
+    _textController.removeListener(_onTextChanged);
     _textController.dispose();
     _waveController.dispose();
     _focusNode.dispose();
@@ -222,6 +232,8 @@ class _ChatInputState extends State<ChatInput> {
                     padding: const EdgeInsets.only(bottom: 14),
                     child: AttachmentActionBar(
                       onAttachments: widget.onAttachments,
+                      key: _attachmentActionBarKey,
+                      offset: _menuOffset,
                     ),
                   ),
                 Expanded(
@@ -238,6 +250,7 @@ class _ChatInputState extends State<ChatInput> {
                     cancelButtonStyle: _chatStyle!.cancelButtonStyle!,
                     voiceNoteRecorderStyle: _chatStyle!.voiceNoteRecorderStyle!,
                     onAttachments: widget.onAttachments,
+                    key: _textFieldKey,
                   ),
                 ),
                 Padding(
@@ -308,5 +321,91 @@ class _ChatInputState extends State<ChatInput> {
 
     // Pass current attachments to onTranslateStt
     widget.onTranslateStt(file, List.from(widget.attachments));
+  }
+
+  void _onTextChanged() {
+    final text = _textController.text;
+    final selection = _textController.selection;
+
+    if (!selection.isValid || selection.baseOffset == 0) {
+      _attachmentActionBarKey.currentState?.setMenuVisible(false);
+      _menuOffset = null;
+      return;
+    }
+
+    final cursorPos = selection.baseOffset;
+    final charBeforeCursor = text[cursorPos - 1];
+
+    if (charBeforeCursor == '/') {
+      final isStartOfInput = cursorPos == 1;
+      final isAfterWhitespace =
+          cursorPos >= 2 &&
+          (text[cursorPos - 2] == ' ' || text[cursorPos - 2] == '\n');
+
+      if (isStartOfInput || isAfterWhitespace) {
+        _calculateMenuOffset(selection);
+        _attachmentActionBarKey.currentState?.setMenuVisible(true);
+      }
+    } else {
+      _attachmentActionBarKey.currentState?.setMenuVisible(false);
+      _menuOffset = null;
+    }
+  }
+
+  void _calculateMenuOffset(TextSelection selection) {
+    final textFieldRenderBox =
+        _textFieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final actionBarRenderBox =
+        _attachmentActionBarKey.currentContext?.findRenderObject()
+            as RenderBox?;
+
+    if (textFieldRenderBox == null || actionBarRenderBox == null) return;
+
+    final textStyle = _inputStyle?.textStyle ?? const TextStyle(fontSize: 14.0);
+    // The width available for text inside TextOrAudioInput is its width minus padding.
+    // TextOrAudioInput has 16px horizontal padding.
+    const horizontalPadding = 32.0;
+    // ChatTextField also has internal padding of 12.0 horizontal.
+    const internalPadding = 24.0;
+
+    final textPainter =
+        TextPainter(
+          text: TextSpan(
+            text: _textController.text.substring(0, selection.baseOffset),
+            style: textStyle,
+          ),
+          textDirection: TextDirection.ltr,
+          textAlign: TextAlign.start,
+          maxLines: null,
+        )..layout(
+          maxWidth:
+              textFieldRenderBox.size.width -
+              horizontalPadding -
+              internalPadding,
+        );
+
+    final caretOffset = textPainter.getOffsetForCaret(
+      TextPosition(offset: selection.baseOffset),
+      Rect.zero,
+    );
+
+    // Adjust for the padding/alignment within TextOrAudioInput
+    final adjustedCaretOffset = Offset(
+      caretOffset.dx + 16.0 + 12.0, // Left padding + internal padding
+      caretOffset.dy +
+          (widget.onCancelEdit != null ? 24.0 : 8.0) +
+          8.0, // Top padding + internal padding
+    );
+
+    final globalCaretPos = textFieldRenderBox.localToGlobal(
+      adjustedCaretOffset,
+    );
+    final localCaretPos = actionBarRenderBox.globalToLocal(globalCaretPos);
+
+    setState(() {
+      _menuOffset = localCaretPos;
+    });
+
+    textPainter.dispose();
   }
 }

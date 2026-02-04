@@ -1,10 +1,43 @@
+## 3.1.0
+
+### Fixed: Google Server-Side Tools with Structured Output
+
+Fixed issue [#96](https://github.com/csells/dartantic/issues/96) where combining
+Google server-side tools (Google Search, Code Execution) with typed output would
+fail with "Tool use with a response mime type: 'application/json' is
+unsupported".
+
+Server-side tools now work with typed output using the same two-phase
+`GoogleDoubleAgentOrchestrator` approach as user-defined tools:
+- **Phase 1**: Execute server-side tools (no outputSchema)
+- **Phase 2**: Get structured JSON output (no tools)
+
+```dart
+// Now works! Previously failed with API error
+final agent = Agent(
+  'google',
+  chatModelOptions: const GoogleChatModelOptions(
+    serverSideTools: {GoogleServerSideTool.googleSearch},
+  ),
+);
+
+final result = await agent.sendFor<MyOutput>(
+  'Search for current weather and return as JSON',
+  outputSchema: MyOutput.schema,
+  outputFromJson: MyOutput.fromJson,
+);
+```
+
+The fix automatically detects server-side tools and selects the appropriate
+orchestrator, with no code changes required for existing applications.
+
 ## 3.0.0
 
 ### Streaming Thinking via `chunk.thinking`
 
-Added a dedicated `thinking` field to `ChatResult<String>` for streaming thinking
-content. This provides symmetric access to thinking during streaming, matching
-how `chunk.output` provides streaming text:
+Added a dedicated `thinking` field to `ChatResult<String>` for streaming
+thinking content. This provides symmetric access to thinking during streaming,
+matching how `chunk.output` provides streaming text:
 
 ```dart
 await for (final chunk in agent.sendStream(prompt)) {

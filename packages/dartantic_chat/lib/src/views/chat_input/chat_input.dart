@@ -381,7 +381,7 @@ class _ChatInputState extends State<ChatInput> {
             text: _textController.text.substring(0, selection.baseOffset),
             style: textStyle,
           ),
-          textDirection: TextDirection.ltr,
+          textDirection: Directionality.of(context),
           textAlign: TextAlign.start,
           maxLines: null,
         )..layout(

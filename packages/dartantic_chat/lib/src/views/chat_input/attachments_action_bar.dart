@@ -40,10 +40,16 @@ class AttachmentActionBar extends StatefulWidget {
   /// When [visible] is true, the menu will be shown if it's not already visible.
   /// When false, the menu will be hidden if it's currently visible.
   void setMenuVisible(bool visible) {
-    if (key is GlobalKey<AttachmentActionBarState>) {
-      (key as GlobalKey<AttachmentActionBarState>).currentState?.setMenuVisible(
-        visible,
-      );
+    assert(
+      key is GlobalKey<AttachmentActionBarState>,
+      'AttachmentActionBar.setMenuVisible was called, but the widget handle is incorrectly configured. '
+      'A GlobalKey<AttachmentActionBarState> must be provided to the AttachmentActionBar constructor '
+      'to enable external menu control. Current key: $key',
+    );
+
+    final stateKey = key;
+    if (stateKey is GlobalKey<AttachmentActionBarState>) {
+      stateKey.currentState?.setMenuVisible(visible);
     }
   }
 

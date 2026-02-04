@@ -224,6 +224,47 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
         expect(find.byType(MenuItemButton), findsNothing);
       });
+
+      testWidgets('updates menu offset relative to caret position', (
+        tester,
+      ) async {
+        await tester.pumpWidget(buildTestApp());
+
+        final textFieldFinder = find.byType(TextField);
+        final controller = tester
+            .widget<TextField>(textFieldFinder)
+            .controller!;
+
+        // Enter text with two potential '/' trigger points
+        const text = '/ some long text /';
+        await tester.enterText(textFieldFinder, text);
+
+        // 1. Move caret after the first '/'
+        controller.selection = const TextSelection.collapsed(offset: 1);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100)); // Wait for menu
+
+        expect(find.byType(MenuItemButton), findsWidgets);
+        final menuAnchorFinder = find.byType(MenuAnchor);
+        final offsetAtFirst = tester
+            .widget<MenuAnchor>(menuAnchorFinder)
+            .alignmentOffset;
+        expect(offsetAtFirst, isNotNull);
+
+        // 2. Move caret after the second '/'
+        controller.selection = TextSelection.collapsed(offset: text.length);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        final offsetAtSecond = tester
+            .widget<MenuAnchor>(menuAnchorFinder)
+            .alignmentOffset;
+        expect(offsetAtSecond, isNotNull);
+
+        // The second offset should be further to the right (greater dx)
+        expect(offsetAtSecond!.dx, greaterThan(offsetAtFirst!.dx));
+        expect(offsetAtSecond.dy, equals(offsetAtFirst.dy));
+      });
     });
 
     group('Post-frame Callback Safety', () {

@@ -29,18 +29,22 @@ class AttachmentActionBar extends StatefulWidget {
   /// of the menu that appears when the attachment button is pressed.
   ///
   /// The [key] parameter is forwarded to the superclass.
-  AttachmentActionBar({required this.onAttachments, this.offset, super.key})
-    : _key = GlobalKey<AttachmentActionBarState>();
-
-  /// The key used to identify this widget's state.
-  final GlobalKey<AttachmentActionBarState> _key;
+  const AttachmentActionBar({
+    required this.onAttachments,
+    this.offset,
+    super.key,
+  });
 
   /// Controls the visibility of the attachments menu.
   ///
   /// When [visible] is true, the menu will be shown if it's not already visible.
   /// When false, the menu will be hidden if it's currently visible.
   void setMenuVisible(bool visible) {
-    _key.currentState?.setMenuVisible(visible);
+    if (key is GlobalKey<AttachmentActionBarState>) {
+      (key as GlobalKey<AttachmentActionBarState>).currentState?.setMenuVisible(
+        visible,
+      );
+    }
   }
 
   /// Callback function that is called when attachments are selected.
@@ -66,6 +70,12 @@ class AttachmentActionBar extends StatefulWidget {
 class AttachmentActionBarState extends State<AttachmentActionBar> {
   late final bool _canCamera;
   final _menuController = MenuController();
+
+  /// Internal flag used for testing mobile behavior.
+  @visibleForTesting
+  bool? testIsMobile;
+
+  bool get _isMobile => testIsMobile ?? isMobile;
 
   @override
   void initState() {
@@ -185,7 +195,7 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
     }
 
     // Limit the potential damage on this hack to mobile platforms
-    if (!isMobile) return null;
+    if (!_isMobile) return null;
 
     return Offset(0, -estimatedMenuHeight);
   }

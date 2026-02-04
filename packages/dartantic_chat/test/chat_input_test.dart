@@ -3,6 +3,9 @@
 // found in the LICENSE file.
 
 import 'package:dartantic_chat/dartantic_chat.dart';
+import 'package:dartantic_chat/src/chat_view_model/chat_view_model.dart';
+import 'package:dartantic_chat/src/chat_view_model/chat_view_model_provider.dart';
+import 'package:dartantic_chat/src/views/chat_input/chat_input.dart';
 import 'package:dartantic_chat/src/views/chat_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,16 +17,40 @@ void main() {
       bool enableAttachments = true,
       bool enableVoiceNotes = true,
     }) {
+      final viewModel = ChatViewModel(
+        provider: provider ?? EchoProvider(),
+        style: const ChatViewStyle(),
+        suggestions: const [],
+        welcomeMessage: null,
+        responseBuilder: null,
+        messageSender: null,
+        enableAttachments: enableAttachments,
+        enableVoiceNotes: enableVoiceNotes,
+      );
       return MaterialApp(
         home: Scaffold(
-          body: AgentChatView(
-            provider: provider ?? EchoProvider(),
-            enableAttachments: enableAttachments,
-            enableVoiceNotes: enableVoiceNotes,
+          body: ChatViewModelProvider(
+            viewModel: viewModel,
+            child: AgentChatView(
+              provider: provider ?? EchoProvider(),
+              enableAttachments: enableAttachments,
+              enableVoiceNotes: enableVoiceNotes,
+            ),
           ),
         ),
       );
     }
+
+    final viewModel = ChatViewModel(
+      provider: EchoProvider(),
+      style: const ChatViewStyle(),
+      suggestions: const [],
+      welcomeMessage: null,
+      responseBuilder: null,
+      messageSender: null,
+      enableAttachments: true,
+      enableVoiceNotes: true,
+    );
 
     group('Text Input', () {
       testWidgets('accepts text input', (tester) async {
@@ -166,6 +193,90 @@ void main() {
 
         final textField = tester.widget<TextField>(find.byType(TextField));
         expect(textField.decoration?.hintText, equals('Custom hint'));
+      });
+    });
+    group('Command Menu Visibility', () {
+      testWidgets('closes menu when / is not at start or after whitespace', (
+        tester,
+      ) async {
+        await tester.pumpWidget(buildTestApp());
+
+        final textField = find.byType(TextField);
+
+        // Type a word and then /
+        await tester.enterText(textField, 'word/');
+        await tester.pump();
+
+        // Menu should not be open
+        expect(find.byType(MenuItemButton), findsNothing);
+
+        // Type / at start
+        await tester.enterText(textField, '/');
+        await tester.pump();
+
+        // Menu should be open (need to wait for pump)
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.byType(MenuItemButton), findsWidgets);
+
+        // Type a char to make it "word/" again (invalid)
+        await tester.enterText(textField, 'a/');
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.byType(MenuItemButton), findsNothing);
+      });
+    });
+
+    group('Post-frame Callback Safety', () {
+      testWidgets('post-frame callbacks do not crash when unmounted', (
+        tester,
+      ) async {
+        // We use a StatefulWidget to control the lifecycle and trigger an update in ChatInput
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: ChatViewModelProvider(
+                viewModel: viewModel,
+                child: ChatInput(
+                  onSendMessage: (text, parts) {},
+                  onTranslateStt: (file, parts) {},
+                  attachments: const [],
+                  onAttachments: (parts) {},
+                  onRemoveAttachment: (part) {},
+                  onClearAttachments: () {},
+                  onReplaceAttachments: (parts) {},
+                  initialMessage: null,
+                ),
+              ),
+            ),
+          ),
+        );
+
+        // Schedule an update that will trigger addPostFrameCallback inside didUpdateWidget
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: ChatViewModelProvider(
+                viewModel: viewModel,
+                child: ChatInput(
+                  onSendMessage: (text, parts) {},
+                  onTranslateStt: (file, parts) {},
+                  attachments: const [],
+                  onAttachments: (parts) {},
+                  onRemoveAttachment: (part) {},
+                  onClearAttachments: () {},
+                  onReplaceAttachments: (parts) {},
+                  initialMessage: ChatMessage.user('New text', parts: []),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        // Immediatley unmount the widget bridge by pumping a different widget
+        await tester.pumpWidget(const SizedBox());
+
+        // This will execute the post-frame callback scheduled in the previous pumpWidget.
+        await tester.pump();
       });
     });
   });

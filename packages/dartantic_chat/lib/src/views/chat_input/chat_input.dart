@@ -179,9 +179,11 @@ class _ChatInputState extends State<ChatInput> {
       _textController.text = widget.initialMessage!.text;
       // Extract non-text parts as attachments
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        widget.onReplaceAttachments(
-          widget.initialMessage!.parts.whereType<DataPart>().toList(),
-        );
+        if (mounted) {
+          widget.onReplaceAttachments(
+            widget.initialMessage!.parts.whereType<DataPart>().toList(),
+          );
+        }
       });
     } else if (oldWidget.initialMessage != null) {
       // Clear both text and attachments when initialMessage becomes null
@@ -189,7 +191,9 @@ class _ChatInputState extends State<ChatInput> {
       // the input field returns to a clean state
       _textController.clear();
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        widget.onClearAttachments();
+        if (mounted) {
+          widget.onClearAttachments();
+        }
       });
     }
   }
@@ -345,6 +349,9 @@ class _ChatInputState extends State<ChatInput> {
       if (isStartOfInput || isAfterWhitespace) {
         _calculateMenuOffset(selection);
         _attachmentActionBarKey.currentState?.setMenuVisible(true);
+      } else {
+        _attachmentActionBarKey.currentState?.setMenuVisible(false);
+        _menuOffset = null;
       }
     } else {
       _attachmentActionBarKey.currentState?.setMenuVisible(false);

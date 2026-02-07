@@ -40,7 +40,9 @@ class TextOrAudioInput extends StatelessWidget {
     required InputState inputState,
     required ActionButtonStyle cancelButtonStyle,
     required VoiceNoteRecorderStyle voiceNoteRecorderStyle,
-  }) : _cancelButtonStyle = cancelButtonStyle,
+    bool allowSubmit = true,
+  }) : _allowSubmit = allowSubmit,
+       _cancelButtonStyle = cancelButtonStyle,
        _inputState = inputState,
        _autofocus = autofocus,
        _focusNode = focusNode,
@@ -65,6 +67,7 @@ class TextOrAudioInput extends StatelessWidget {
   final InputState _inputState;
   final ActionButtonStyle _cancelButtonStyle;
   final VoiceNoteRecorderStyle _voiceNoteRecorderStyle;
+  final bool _allowSubmit;
   static const _minInputHeight = 48.0;
   static const _maxInputHeight = 144.0;
 
@@ -113,6 +116,7 @@ class TextOrAudioInput extends StatelessWidget {
                       horizontal: 12,
                       vertical: 8,
                     ),
+                    allowSubmit: _allowSubmit,
                     onAttachments: _onAttachments,
                   ),
           ),

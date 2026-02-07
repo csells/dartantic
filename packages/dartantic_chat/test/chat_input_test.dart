@@ -7,7 +7,9 @@ import 'package:dartantic_chat/src/chat_view_model/chat_view_model.dart';
 import 'package:dartantic_chat/src/chat_view_model/chat_view_model_provider.dart';
 import 'package:dartantic_chat/src/views/chat_input/chat_input.dart';
 import 'package:dartantic_chat/src/views/chat_text_field.dart';
+import 'package:dartantic_chat/src/views/chat_input/attachments_action_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -265,6 +267,80 @@ void main() {
         expect(offsetAtSecond!.dx, greaterThan(offsetAtFirst!.dx));
         expect(offsetAtSecond.dy, equals(offsetAtFirst.dy));
       });
+
+      testWidgets('filters command menu as user types', (tester) async {
+        await tester.pumpWidget(buildTestApp());
+
+        final textField = find.byType(TextField);
+
+        // 1. Initial slash
+        await tester.enterText(textField, '/');
+        await tester.pumpAndSettle();
+
+        expect(find.text('Attach Image'), findsOneWidget);
+        expect(find.text('Attach File'), findsOneWidget);
+        expect(find.text('Attach Link'), findsOneWidget);
+
+        // 2. Type 'g' - should narrow to 'Attach Image' (matches 'Gallery')
+        await tester.enterText(textField, '/g');
+        await tester.pumpAndSettle();
+
+        expect(find.text('Attach Image'), findsOneWidget);
+        expect(find.text('Attach File'), findsNothing);
+        expect(find.text('Attach Link'), findsNothing);
+
+        // 3. Type 'fi' - should narrow to 'Attach File' (matches 'File')
+        await tester.enterText(textField, '/fi');
+        await tester.pumpAndSettle();
+
+        expect(find.text('Attach Image'), findsNothing);
+        expect(find.text('Attach File'), findsOneWidget);
+      });
+
+      testWidgets(
+        'navigates command menu with arrow keys and selects with Enter',
+        (tester) async {
+          await tester.pumpWidget(buildTestApp());
+
+          final textFieldFinder = find.byType(TextField);
+          await tester.tap(textFieldFinder);
+          await tester.pump();
+
+          // Start command - should show all items
+          await tester.enterText(textFieldFinder, '/');
+          await tester.pumpAndSettle();
+
+          final attachmentState = tester.state<AttachmentActionBarState>(
+            find.byType(AttachmentActionBar),
+          );
+          final initialIndex = attachmentState.activeIndex;
+          expect(initialIndex, isNotNull);
+
+          // Arrow Down to next item
+          await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+          await tester.pump();
+          expect(attachmentState.activeIndex, (initialIndex + 1));
+
+          // Arrow Up back
+          await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+          await tester.pump();
+          expect(attachmentState.activeIndex, initialIndex);
+
+          // Filter to URL manually by typing 'url'
+          await tester.enterText(textFieldFinder, '/url');
+          await tester.pumpAndSettle();
+
+          expect(find.text('Attach Link'), findsOneWidget);
+
+          // Enter to trigger URL dialog
+          await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+          // pumpAndSettle to wait for dialog animation
+          await tester.pumpAndSettle();
+
+          // Verify URL dialog appeared
+          expect(find.text('Attach URL'), findsOneWidget);
+        },
+      );
     });
 
     group('Post-frame Callback Safety', () {

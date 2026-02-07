@@ -9,14 +9,15 @@ import 'package:dartantic_chat/src/utility.dart';
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart'
-    show Icons, MenuAnchor, MenuItemButton, MenuStyle;
+    show ButtonStyle, Icons, MenuAnchor, MenuItemButton, MenuStyle, Theme;
 import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../chat_view_model/chat_view_model_client.dart';
+import '../../chat_view_model/chat_view_model_provider.dart';
 import '../../dialogs/adaptive_snack_bar/adaptive_snack_bar.dart';
 import '../../platform_helper/platform_helper.dart';
-import '../../styles/chat_view_style.dart';
+import '../../styles/styles.dart';
 import '../action_button.dart';
 
 /// A widget that provides an action bar for attaching files or images.
@@ -39,7 +40,7 @@ class AttachmentActionBar extends StatefulWidget {
   ///
   /// When [visible] is true, the menu will be shown if it's not already visible.
   /// When false, the menu will be hidden if it's currently visible.
-  void setMenuVisible(bool visible) {
+  void setMenuVisible(bool visible, {String? filter}) {
     assert(
       key is GlobalKey<AttachmentActionBarState>,
       'AttachmentActionBar.setMenuVisible was called, but the widget handle is incorrectly configured. '
@@ -49,7 +50,7 @@ class AttachmentActionBar extends StatefulWidget {
 
     final stateKey = key;
     if (stateKey is GlobalKey<AttachmentActionBarState>) {
-      stateKey.currentState?.setMenuVisible(visible);
+      stateKey.currentState?.setMenuVisible(visible, filter: filter);
     }
   }
 
@@ -89,72 +90,166 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
     _canCamera = canTakePhoto();
   }
 
+  String? _filterQuery;
+  int _activeIndex = 0;
+  List<MenuItemButton> _filteredItems = [];
+
   /// Controls the visibility of the attachment menu.
   ///
   /// If [visible] is true, opens the menu if it's not already open.
   /// If [visible] is false, closes the menu if it's currently open.
-  ///
-  /// This is called by the parent [AttachmentActionBar] widget's public
+  /// Whether the attachment menu is currently open.
+  bool get isMenuOpen => _menuController.isOpen || _filterQuery != null;
+
+  /// The currently active index in the filtered menu.
+  @visibleForTesting
+  int get activeIndex => _activeIndex;
+
+  /// Controls the visibility of the attachment menu.
   /// [setMenuVisible] method.
-  void setMenuVisible(bool visible) {
-    if (visible) {
-      _menuController.open();
-    } else {
-      _menuController.close();
+  void setMenuVisible(bool visible, {String? filter}) {
+    setState(() {
+      if (_filterQuery != filter) {
+        _filterQuery = filter;
+        _activeIndex = 0;
+      }
+      if (visible) {
+        if (!_menuController.isOpen) {
+          _activeIndex = 0;
+          _menuController.open();
+        }
+      } else {
+        _menuController.close();
+        _filterQuery = null;
+      }
+    });
+  }
+
+  /// Sets the filter query for the command menu.
+  void setFilter(String? query) {
+    if (_filterQuery == query) return;
+    setState(() {
+      _filterQuery = query;
+      _activeIndex = 0;
+    });
+  }
+
+  /// Selects the next item in the filtered list.
+  void selectNext() {
+    if (_filteredItems.isEmpty) return;
+    setState(() {
+      _activeIndex = (_activeIndex + 1) % _filteredItems.length;
+    });
+  }
+
+  /// Selects the previous item in the filtered list.
+  void selectPrevious() {
+    if (_filteredItems.isEmpty) return;
+    setState(() {
+      _activeIndex =
+          (_activeIndex - 1 + _filteredItems.length) % _filteredItems.length;
+    });
+  }
+
+  /// Triggers the action of the currently selected item.
+  void triggerSelected() {
+    // We get the current view model and style to re-compute the data correctly
+    final viewModel = ChatViewModelProvider.of(context);
+    final chatStyle = ChatViewStyle.resolve(viewModel.style);
+    final filteredData = _getFilteredData(chatStyle);
+
+    if (filteredData.isEmpty ||
+        _activeIndex < 0 ||
+        _activeIndex >= filteredData.length) {
+      return;
     }
+
+    final data = filteredData[_activeIndex];
+
+    // Trigger the underlying action and hide the menu
+    data.onPressed();
+    setMenuVisible(false);
+  }
+
+  List<
+    ({
+      String name,
+      IconData icon,
+      VoidCallback onPressed,
+      ActionButtonStyle style,
+      List<String> keywords,
+    })
+  >
+  _getFilteredData(ChatViewStyle chatStyle) {
+    final allItems = [
+      if (_canCamera)
+        (
+          name: chatStyle.cameraButtonStyle!.text!,
+          keywords: ['camera', 'photo', 'take'],
+          icon: chatStyle.cameraButtonStyle!.icon!,
+          onPressed: () => _onCamera(),
+          style: chatStyle.cameraButtonStyle!,
+        ),
+      (
+        name: chatStyle.galleryButtonStyle!.text!,
+        keywords: ['gallery', 'image', 'photo', 'attach'],
+        icon: chatStyle.galleryButtonStyle!.icon!,
+        onPressed: () => _onGallery(),
+        style: chatStyle.galleryButtonStyle!,
+      ),
+      (
+        name: chatStyle.attachFileButtonStyle!.text!,
+        keywords: ['file', 'attach', 'document'],
+        icon: chatStyle.attachFileButtonStyle!.icon!,
+        onPressed: () => _onFile(),
+        style: chatStyle.attachFileButtonStyle!,
+      ),
+      (
+        name: chatStyle.urlButtonStyle!.text!,
+        keywords: ['url', 'link', 'attach', 'web'],
+        icon: Icons.link,
+        onPressed: () => _onUrl(),
+        style: chatStyle.urlButtonStyle!,
+      ),
+    ];
+
+    return _filterQuery == null || _filterQuery!.isEmpty
+        ? allItems
+        : allItems.where((item) {
+            final query = _filterQuery!.toLowerCase();
+            return item.name.toLowerCase().contains(query) ||
+                item.keywords.any((k) => k.contains(query));
+          }).toList();
   }
 
   @override
   Widget build(BuildContext context) => ChatViewModelClient(
     builder: (context, viewModel, child) {
       final chatStyle = ChatViewStyle.resolve(viewModel.style);
-      final menuItems = [
-        if (_canCamera)
-          MenuItemButton(
-            leadingIcon: Icon(
-              chatStyle.cameraButtonStyle!.icon!,
-              color: chatStyle.cameraButtonStyle!.iconColor,
-            ),
-            onPressed: () => _onCamera(),
-            child: Text(
-              chatStyle.cameraButtonStyle!.text!,
-              style: chatStyle.cameraButtonStyle!.textStyle,
-            ),
-          ),
-        MenuItemButton(
-          leadingIcon: Icon(
-            chatStyle.galleryButtonStyle!.icon!,
-            color: chatStyle.galleryButtonStyle!.iconColor,
-          ),
-          onPressed: () => _onGallery(),
-          child: Text(
-            chatStyle.galleryButtonStyle!.text!,
-            style: chatStyle.galleryButtonStyle!.textStyle,
-          ),
-        ),
-        MenuItemButton(
-          leadingIcon: Icon(
-            chatStyle.attachFileButtonStyle!.icon!,
-            color: chatStyle.attachFileButtonStyle!.iconColor,
-          ),
-          onPressed: () => _onFile(),
-          child: Text(
-            chatStyle.attachFileButtonStyle!.text!,
-            style: chatStyle.attachFileButtonStyle!.textStyle,
-          ),
-        ),
-        MenuItemButton(
-          leadingIcon: Icon(
-            Icons.link,
-            color: chatStyle.urlButtonStyle!.iconColor,
-          ),
-          onPressed: () => _onUrl(),
-          child: Text(
-            chatStyle.urlButtonStyle!.text!,
-            style: chatStyle.urlButtonStyle!.textStyle,
-          ),
-        ),
-      ];
+      final filteredData = _getFilteredData(chatStyle);
+
+      _filteredItems = List.generate(filteredData.length, (index) {
+        final data = filteredData[index];
+        final isActive = index == activeIndex;
+
+        return MenuItemButton(
+          leadingIcon: Icon(data.icon, color: data.style.iconColor),
+          onPressed: () {
+            data.onPressed();
+            setMenuVisible(false);
+          },
+          style: isActive
+              ? ButtonStyle(
+                  backgroundColor: WidgetStateProperty.all(
+                    (data.style.iconColor ??
+                            Theme.of(context).colorScheme.onSurface)
+                        .withValues(alpha: 0.12),
+                  ),
+                )
+              : null,
+          child: Text(data.style.text!, style: data.style.textStyle),
+        );
+      });
 
       return MenuAnchor(
         controller: _menuController,
@@ -168,14 +263,14 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
         // is fixed: https://github.com/flutter/flutter/issues/142921
         alignmentOffset: _menuAnchorAlignmentOffsetHackForMobile(
           chatStyle,
-          menuItems.length,
+          _filteredItems.length,
         ),
         consumeOutsideTap: true,
         builder: (_, controller, _) => ActionButton(
           onPressed: controller.isOpen ? controller.close : controller.open,
           style: chatStyle.addButtonStyle!,
         ),
-        menuChildren: menuItems,
+        menuChildren: _filteredItems,
       );
     },
   );

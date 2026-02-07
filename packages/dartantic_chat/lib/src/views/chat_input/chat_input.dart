@@ -242,7 +242,7 @@ class _ChatInputState extends State<ChatInput> {
                       onAttachments: widget.onAttachments,
                       key: _attachmentActionBarKey,
                       offset: _menuOffset,
-                      onSelection: _clearCommandText,
+                      onSelection: _clearCommandTextWithSnapshot,
                       onMenuChanged: _onAttachmentMenuChanged,
                     ),
                   ),
@@ -408,37 +408,12 @@ class _ChatInputState extends State<ChatInput> {
           (text[lastSlashIndex - 1] == ' ' || text[lastSlashIndex - 1] == '\n');
 
       if (isStartOfInput || isAfterWhitespace) {
-        // Check if there's whitespace between the slash and the cursor
         final textAfterSlash = text.substring(lastSlashIndex + 1, cursorPos);
         if (textAfterSlash.contains(' ') || textAfterSlash.contains('\n')) {
           _attachmentActionBarKey.currentState?.setMenuVisible(false);
           _menuOffset = null;
         } else {
-          // Extract query and update filter
-          // Check preconditions before calling _calculateMenuOffset
-          final textFieldContext = _textFieldKey.currentContext;
-          final actionBarContext = _attachmentActionBarKey.currentContext;
-
-          if (textFieldContext != null && actionBarContext != null) {
-            final textFieldRenderBox =
-                textFieldContext.findRenderObject() as RenderBox?;
-            final actionBarRenderBox =
-                actionBarContext.findRenderObject() as RenderBox?;
-
-            if (textFieldRenderBox != null && actionBarRenderBox != null) {
-              _calculateMenuOffset(
-                TextSelection.collapsed(offset: lastSlashIndex + 1),
-              );
-            } else {
-              _menuOffset = null;
-            }
-          } else {
-            _menuOffset = null;
-          }
-          _attachmentActionBarKey.currentState?.setMenuVisible(
-            true,
-            filter: textAfterSlash,
-          );
+          _attemptToShowMenuWithOffset(lastSlashIndex, textAfterSlash);
         }
       } else {
         _attachmentActionBarKey.currentState?.setMenuVisible(false);
@@ -447,6 +422,46 @@ class _ChatInputState extends State<ChatInput> {
     } else {
       _attachmentActionBarKey.currentState?.setMenuVisible(false);
       _menuOffset = null;
+    }
+  }
+
+  void _attemptToShowMenuWithOffset(int lastSlashIndex, String textAfterSlash) {
+    // Check preconditions before calling _calculateMenuOffset
+    final textFieldContext = _textFieldKey.currentContext;
+    final actionBarContext = _attachmentActionBarKey.currentContext;
+
+    if (textFieldContext != null && actionBarContext != null) {
+      final textFieldRenderBox =
+          textFieldContext.findRenderObject() as RenderBox?;
+      final actionBarRenderBox =
+          actionBarContext.findRenderObject() as RenderBox?;
+
+      if (textFieldRenderBox != null && actionBarRenderBox != null) {
+        // Success case: calculate offset and show menu
+        _calculateMenuOffset(
+          TextSelection.collapsed(offset: lastSlashIndex + 1),
+        );
+        _attachmentActionBarKey.currentState?.setMenuVisible(
+          true,
+          filter: textAfterSlash,
+        );
+      } else {
+        // Render objects not available: defer with post-frame callback
+        _menuOffset = null;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _attemptToShowMenuWithOffset(lastSlashIndex, textAfterSlash);
+          }
+        });
+      }
+    } else {
+      // Contexts not available: defer with post-frame callback
+      _menuOffset = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _attemptToShowMenuWithOffset(lastSlashIndex, textAfterSlash);
+        }
+      });
     }
   }
 
@@ -507,7 +522,32 @@ class _ChatInputState extends State<ChatInput> {
     textPainter.dispose();
   }
 
-  void _clearCommandText() {
+  void _clearCommandText({int? cursorPos, int? lastSlashIndex}) {
+    final text = _textController.text;
+    final selection = _textController.selection;
+
+    // Use provided snapshot values or compute from current state
+    final currentCursorPos = cursorPos ?? selection.baseOffset;
+    final currentLastSlashIndex =
+        lastSlashIndex ??
+        (selection.isValid
+            ? text.substring(0, currentCursorPos).lastIndexOf('/')
+            : -1);
+
+    if (!selection.isValid || currentCursorPos == 0) return;
+
+    if (currentLastSlashIndex != -1) {
+      final newText =
+          text.substring(0, currentLastSlashIndex) +
+          text.substring(currentCursorPos);
+      _textController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: currentLastSlashIndex),
+      );
+    }
+  }
+
+  void _clearCommandTextWithSnapshot() {
     final text = _textController.text;
     final selection = _textController.selection;
 
@@ -516,13 +556,6 @@ class _ChatInputState extends State<ChatInput> {
     final cursorPos = selection.baseOffset;
     final lastSlashIndex = text.substring(0, cursorPos).lastIndexOf('/');
 
-    if (lastSlashIndex != -1) {
-      final newText =
-          text.substring(0, lastSlashIndex) + text.substring(cursorPos);
-      _textController.value = TextEditingValue(
-        text: newText,
-        selection: TextSelection.collapsed(offset: lastSlashIndex),
-      );
-    }
+    _clearCommandText(cursorPos: cursorPos, lastSlashIndex: lastSlashIndex);
   }
 }

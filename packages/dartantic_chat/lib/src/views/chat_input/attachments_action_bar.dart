@@ -199,15 +199,11 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
     final chatStyle = ChatViewStyle.resolve(viewModel.style);
     final filteredData = _getFilteredData(chatStyle, viewModel.commands);
 
-    if (filteredData.isEmpty ||
-        _activeIndex < 0 ||
-        _activeIndex >= filteredData.length) {
-      return;
-    }
+    if (filteredData.isEmpty) return;
 
-    final data = filteredData[_activeIndex];
+    final safeIndex = _activeIndex.clamp(0, filteredData.length - 1);
+    final data = filteredData[safeIndex];
 
-    // Trigger the underlying action and hide the menu
     data.onPressed();
     widget.onSelection?.call();
     setMenuVisible(false);
@@ -313,15 +309,11 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
         ),
         consumeOutsideTap: true,
         onClose: () {
-          // Clear filter query when menu closes via outside tap
-          if (_filterQuery != null) {
-            setState(() {
-              _filterQuery = null;
-              _activeIndex = 0;
-            });
-            // Notify parent of menu state change
-            widget.onMenuChanged?.call(false);
-          }
+          setState(() {
+            _filterQuery = null;
+            _activeIndex = 0;
+          });
+          widget.onMenuChanged?.call(false);
         },
         builder: (_, controller, _) => ActionButton(
           onPressed: controller.isOpen ? controller.close : controller.open,

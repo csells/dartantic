@@ -161,6 +161,12 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
   }
 
   /// Sets the filter query for the command menu.
+  ///
+  /// Note: This method only sets the filter query but does not automatically
+  /// open the menu. The menu should be opened separately via [setMenuVisible]
+  /// when appropriate. This design allows for scenarios where the filter
+  /// needs to be updated before the menu is displayed (e.g., during typing
+  /// before the menu trigger conditions are met).
   void setFilter(String? query) {
     if (_filterQuery == query) return;
     setState(() {
@@ -306,6 +312,17 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
           _filteredItems.length,
         ),
         consumeOutsideTap: true,
+        onClose: () {
+          // Clear filter query when menu closes via outside tap
+          if (_filterQuery != null) {
+            setState(() {
+              _filterQuery = null;
+              _activeIndex = 0;
+            });
+            // Notify parent of menu state change
+            widget.onMenuChanged?.call(false);
+          }
+        },
         builder: (_, controller, _) => ActionButton(
           onPressed: controller.isOpen ? controller.close : controller.open,
           style: chatStyle.addButtonStyle!,

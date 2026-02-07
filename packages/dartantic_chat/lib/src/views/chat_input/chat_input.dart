@@ -15,6 +15,7 @@ import '../../dialogs/adaptive_snack_bar/adaptive_snack_bar.dart';
 import '../../styles/styles.dart';
 import 'attachments_action_bar.dart';
 import 'attachments_view.dart';
+import 'chat_input_constants.dart';
 import 'input_button.dart';
 import 'input_state.dart';
 import 'text_or_audio_input.dart';
@@ -459,11 +460,6 @@ class _ChatInputState extends State<ChatInput> {
     if (textFieldRenderBox == null || actionBarRenderBox == null) return;
 
     final textStyle = _inputStyle?.textStyle ?? const TextStyle(fontSize: 14.0);
-    // The width available for text inside TextOrAudioInput is its width minus padding.
-    // TextOrAudioInput has 16px horizontal padding.
-    const horizontalPadding = 32.0;
-    // ChatTextField also has internal padding of 12.0 horizontal.
-    const internalPadding = 24.0;
 
     final textPainter =
         TextPainter(
@@ -477,8 +473,8 @@ class _ChatInputState extends State<ChatInput> {
         )..layout(
           maxWidth:
               textFieldRenderBox.size.width -
-              horizontalPadding -
-              internalPadding,
+              ChatInputConstants.textOrAudioInputHorizontalPadding -
+              ChatInputConstants.chatTextFieldHorizontalPadding,
         );
 
     final caretOffset = textPainter.getOffsetForCaret(
@@ -488,10 +484,15 @@ class _ChatInputState extends State<ChatInput> {
 
     // Adjust for the padding/alignment within TextOrAudioInput
     final adjustedCaretOffset = Offset(
-      caretOffset.dx + 16.0 + 12.0, // Left padding + internal padding
+      caretOffset.dx +
+          ChatInputConstants.textOrAudioInputLeftPadding +
+          ChatInputConstants.chatTextFieldPadding,
       caretOffset.dy +
-          (widget.onCancelEdit != null ? 24.0 : 8.0) +
-          8.0, // Top padding + internal padding
+          ChatInputConstants.textOrAudioInputBaseTopPadding +
+          ChatInputConstants.chatTextFieldVerticalPadding +
+          (widget.onCancelEdit != null
+              ? ChatInputConstants.textOrAudioInputEditModeAdditionalPadding
+              : 0.0),
     );
 
     final globalCaretPos = textFieldRenderBox.localToGlobal(

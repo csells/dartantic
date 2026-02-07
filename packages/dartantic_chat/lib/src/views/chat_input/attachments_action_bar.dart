@@ -16,9 +16,29 @@ import 'package:image_picker/image_picker.dart';
 import '../../chat_view_model/chat_view_model_client.dart';
 import '../../chat_view_model/chat_view_model_provider.dart';
 import '../../dialogs/adaptive_snack_bar/adaptive_snack_bar.dart';
+import '../../models/chat_command.dart';
 import '../../platform_helper/platform_helper.dart';
 import '../../styles/styles.dart';
 import '../action_button.dart';
+
+/// A menu item in the command menu.
+///
+/// This record defines the structure for items displayed in the attachment
+/// and command menu, which can be triggered via the UI or slash commands.
+///
+/// Fields:
+/// * [name]: The display name of the command.
+/// * [icon]: The icon to display next to the command name.
+/// * [onPressed]: The callback to execute when the command is selected.
+/// * [style]: The visual style of the command button.
+/// * [keywords]: A list of keywords used for filtering this command.
+typedef CommandMenuItem = ({
+  String name,
+  IconData icon,
+  VoidCallback onPressed,
+  ActionButtonStyle style,
+  List<String> keywords,
+});
 
 /// A widget that provides an action bar for attaching files or images.
 @immutable
@@ -33,6 +53,7 @@ class AttachmentActionBar extends StatefulWidget {
   const AttachmentActionBar({
     required this.onAttachments,
     this.offset,
+    this.onSelection,
     super.key,
   });
 
@@ -64,6 +85,9 @@ class AttachmentActionBar extends StatefulWidget {
   /// This can be used to adjust where the menu appears relative to the
   /// attachment button. If null, default positioning is used.
   final Offset? offset;
+
+  /// Callback function called when an item is selected from the menu.
+  final VoidCallback? onSelection;
 
   @override
   AttachmentActionBarState createState() => AttachmentActionBarState();
@@ -156,7 +180,7 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
     // We get the current view model and style to re-compute the data correctly
     final viewModel = ChatViewModelProvider.of(context);
     final chatStyle = ChatViewStyle.resolve(viewModel.style);
-    final filteredData = _getFilteredData(chatStyle);
+    final filteredData = _getFilteredData(chatStyle, viewModel.commands);
 
     if (filteredData.isEmpty ||
         _activeIndex < 0 ||
@@ -168,20 +192,15 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
 
     // Trigger the underlying action and hide the menu
     data.onPressed();
+    widget.onSelection?.call();
     setMenuVisible(false);
   }
 
-  List<
-    ({
-      String name,
-      IconData icon,
-      VoidCallback onPressed,
-      ActionButtonStyle style,
-      List<String> keywords,
-    })
-  >
-  _getFilteredData(ChatViewStyle chatStyle) {
-    final allItems = [
+  List<CommandMenuItem> _getFilteredData(
+    ChatViewStyle chatStyle,
+    List<ChatCommand> commands,
+  ) {
+    final allItems = <CommandMenuItem>[
       if (_canCamera)
         (
           name: chatStyle.cameraButtonStyle!.text!,
@@ -211,6 +230,15 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
         onPressed: () => _onUrl(),
         style: chatStyle.urlButtonStyle!,
       ),
+      ...commands.map(
+        (c) => (
+          name: c.name,
+          keywords: c.keywords,
+          icon: c.icon,
+          onPressed: c.onPressed,
+          style: c.style ?? const ActionButtonStyle(),
+        ),
+      ),
     ];
 
     return _filterQuery == null || _filterQuery!.isEmpty
@@ -226,7 +254,7 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
   Widget build(BuildContext context) => ChatViewModelClient(
     builder: (context, viewModel, child) {
       final chatStyle = ChatViewStyle.resolve(viewModel.style);
-      final filteredData = _getFilteredData(chatStyle);
+      final filteredData = _getFilteredData(chatStyle, viewModel.commands);
 
       _filteredItems = List.generate(filteredData.length, (index) {
         final data = filteredData[index];
@@ -236,6 +264,7 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
           leadingIcon: Icon(data.icon, color: data.style.iconColor),
           onPressed: () {
             data.onPressed();
+            widget.onSelection?.call();
             setMenuVisible(false);
           },
           style: isActive
@@ -247,7 +276,7 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
                   ),
                 )
               : null,
-          child: Text(data.style.text!, style: data.style.textStyle),
+          child: Text(data.name, style: data.style.textStyle),
         );
       });
 

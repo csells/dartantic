@@ -19,6 +19,7 @@ void main() {
       viewModel = ChatViewModel(
         provider: EchoProvider(),
         style: const ChatViewStyle(),
+        commands: const [],
         suggestions: const [],
         welcomeMessage: null,
         responseBuilder: null,

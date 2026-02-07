@@ -27,6 +27,7 @@ export 'package:dartantic_interface/dartantic_interface.dart'
         ToolPartKind;
 
 export 'src/llm_exception.dart';
+export 'src/models/chat_command.dart';
 export 'src/providers/providers.dart';
 export 'src/styles/styles.dart';
 export 'src/views/agent_chat_view/agent_chat_view.dart';

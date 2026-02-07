@@ -49,6 +49,17 @@ The menu follows your text caret horizontally!
         'What is the weather like?',
         'How do I use slash commands?',
       ],
+      commands: [
+        ChatCommand(
+          name: 'Help',
+          icon: Icons.help_outline,
+          keywords: ['help', 'support', 'guide'],
+          onPressed: () {
+            // In a real app, this could open a dialog or navigate to a help page
+            debugPrint('Help command triggered!');
+          },
+        ),
+      ],
     ),
   );
 }

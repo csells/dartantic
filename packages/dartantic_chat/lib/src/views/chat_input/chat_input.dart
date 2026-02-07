@@ -534,7 +534,9 @@ class _ChatInputState extends State<ChatInput> {
             ? text.substring(0, currentCursorPos).lastIndexOf('/')
             : -1);
 
-    if (!selection.isValid || currentCursorPos == 0) return;
+    // Base validity on snapshot values when provided, otherwise on selection
+    final isValid = cursorPos != null || selection.isValid;
+    if (!isValid || currentCursorPos == 0) return;
 
     if (currentLastSlashIndex != -1) {
       final newText =

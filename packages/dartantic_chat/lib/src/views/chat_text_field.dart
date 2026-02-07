@@ -50,6 +50,7 @@ class ChatTextField extends StatefulWidget {
     required this.hintText,
     required this.hintStyle,
     required this.hintPadding,
+    this.allowSubmit = true,
     super.key,
   });
 
@@ -88,6 +89,9 @@ class ChatTextField extends StatefulWidget {
 
   /// Called when attachments are pasted into the text field.
   final void Function(Iterable<Part> attachments)? onAttachments;
+
+  /// Whether Enter key triggers submission via CallbackShortcuts.
+  final bool allowSubmit;
 
   @override
   State<ChatTextField> createState() => _ChatTextFieldState();
@@ -243,19 +247,22 @@ class _ChatTextFieldState extends State<ChatTextField> {
   }
 
   @override
-  Widget build(BuildContext context) => CallbackShortcuts(
-    bindings: {
-      const SingleActivator(LogicalKeyboardKey.enter): () =>
-          widget.onSubmitted(widget.controller.text),
-      if (UniversalPlatform.isMacOS)
-        const SingleActivator(LogicalKeyboardKey.keyV, meta: true):
-            _handlePaste,
-      if (UniversalPlatform.isWindows || UniversalPlatform.isLinux)
-        const SingleActivator(LogicalKeyboardKey.keyV, control: true):
-            _handlePaste,
-    },
-    child: _buildAdaptiveTextField(context),
-  );
+  Widget build(BuildContext context) {
+    return CallbackShortcuts(
+      bindings: {
+        if (widget.allowSubmit)
+          const SingleActivator(LogicalKeyboardKey.enter): () =>
+              widget.onSubmitted(widget.controller.text),
+        if (UniversalPlatform.isMacOS)
+          const SingleActivator(LogicalKeyboardKey.keyV, meta: true):
+              _handlePaste,
+        if (UniversalPlatform.isWindows || UniversalPlatform.isLinux)
+          const SingleActivator(LogicalKeyboardKey.keyV, control: true):
+              _handlePaste,
+      },
+      child: _buildAdaptiveTextField(context),
+    );
+  }
 
   Widget _buildAdaptiveTextField(BuildContext context) {
     return isCupertinoApp(context)

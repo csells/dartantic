@@ -4,6 +4,7 @@
 
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:waveform_recorder/waveform_recorder.dart';
@@ -202,6 +203,7 @@ class _ChatInputState extends State<ChatInput> {
   void initState() {
     super.initState();
     _textController.addListener(_onTextChanged);
+    _focusNode.onKeyEvent = (node, event) => _handleCommandKeyEvent(event);
   }
 
   @override
@@ -255,6 +257,9 @@ class _ChatInputState extends State<ChatInput> {
                     voiceNoteRecorderStyle: _chatStyle!.voiceNoteRecorderStyle!,
                     onAttachments: widget.onAttachments,
                     key: _textFieldKey,
+                    allowSubmit:
+                        !(_attachmentActionBarKey.currentState?.isMenuOpen ??
+                            false),
                   ),
                 ),
                 Padding(
@@ -315,7 +320,53 @@ class _ChatInputState extends State<ChatInput> {
     await _waveController.stopRecording();
   }
 
-  Future<void> onRecordingStopped() async {
+  KeyEventResult _handleCommandKeyEvent(KeyEvent event) {
+    final isDownOrRepeat = event is KeyDownEvent || event is KeyRepeatEvent;
+
+    final attachmentState = _attachmentActionBarKey.currentState;
+    if (attachmentState == null || !attachmentState.isMenuOpen) {
+      return KeyEventResult.ignored;
+    }
+
+    final logicalKey = event.logicalKey;
+    final physicalKey = event.physicalKey;
+
+    final isDown =
+        logicalKey == LogicalKeyboardKey.arrowDown ||
+        physicalKey == PhysicalKeyboardKey.arrowDown;
+    final isUp =
+        logicalKey == LogicalKeyboardKey.arrowUp ||
+        physicalKey == PhysicalKeyboardKey.arrowUp;
+    final isEnter =
+        logicalKey == LogicalKeyboardKey.enter ||
+        logicalKey == LogicalKeyboardKey.numpadEnter ||
+        physicalKey == PhysicalKeyboardKey.enter ||
+        physicalKey == PhysicalKeyboardKey.numpadEnter;
+
+    // Handle navigation keys (only on Down/Repeat)
+    if (isDownOrRepeat) {
+      if (isDown) {
+        attachmentState.selectNext();
+        return KeyEventResult.handled;
+      } else if (isUp) {
+        attachmentState.selectPrevious();
+        return KeyEventResult.handled;
+      } else if (isEnter) {
+        attachmentState.triggerSelected();
+        return KeyEventResult.handled;
+      }
+    } else {
+      // For Up events, we still want to "handle" Enter so it doesn't leak
+      // to the TextField or other listeners.
+      if (isEnter) {
+        return KeyEventResult.handled;
+      }
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  void onRecordingStopped() async {
     final file = _waveController.file;
 
     if (file == null) {
@@ -338,17 +389,37 @@ class _ChatInputState extends State<ChatInput> {
     }
 
     final cursorPos = selection.baseOffset;
-    final charBeforeCursor = text[cursorPos - 1];
 
-    if (charBeforeCursor == '/') {
-      final isStartOfInput = cursorPos == 1;
+    // Find the last '/' before the cursor
+    final lastSlashIndex = text.substring(0, cursorPos).lastIndexOf('/');
+
+    if (lastSlashIndex != -1) {
+      final isStartOfInput = lastSlashIndex == 0;
       final isAfterWhitespace =
-          cursorPos >= 2 &&
-          (text[cursorPos - 2] == ' ' || text[cursorPos - 2] == '\n');
+          lastSlashIndex >= 1 &&
+          (text[lastSlashIndex - 1] == ' ' || text[lastSlashIndex - 1] == '\n');
 
       if (isStartOfInput || isAfterWhitespace) {
-        _calculateMenuOffset(selection);
-        _attachmentActionBarKey.currentState?.setMenuVisible(true);
+        // Check if there's whitespace between the slash and the cursor
+        final textAfterSlash = text.substring(lastSlashIndex + 1, cursorPos);
+        if (textAfterSlash.contains(' ') || textAfterSlash.contains('\n')) {
+          _attachmentActionBarKey.currentState?.setMenuVisible(false);
+          _menuOffset = null;
+        } else {
+          // Extract query and update filter
+          try {
+            _calculateMenuOffset(
+              TextSelection.collapsed(offset: lastSlashIndex + 1),
+            );
+          } catch (e) {
+            // Fallback to null offset if calculation fails
+            _menuOffset = null;
+          }
+          _attachmentActionBarKey.currentState?.setMenuVisible(
+            true,
+            filter: textAfterSlash,
+          );
+        }
       } else {
         _attachmentActionBarKey.currentState?.setMenuVisible(false);
         _menuOffset = null;

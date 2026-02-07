@@ -240,6 +240,7 @@ class _ChatInputState extends State<ChatInput> {
                       onAttachments: widget.onAttachments,
                       key: _attachmentActionBarKey,
                       offset: _menuOffset,
+                      onSelection: _clearCommandText,
                     ),
                   ),
                 Expanded(
@@ -485,5 +486,24 @@ class _ChatInputState extends State<ChatInput> {
     });
 
     textPainter.dispose();
+  }
+
+  void _clearCommandText() {
+    final text = _textController.text;
+    final selection = _textController.selection;
+
+    if (!selection.isValid || selection.baseOffset == 0) return;
+
+    final cursorPos = selection.baseOffset;
+    final lastSlashIndex = text.substring(0, cursorPos).lastIndexOf('/');
+
+    if (lastSlashIndex != -1) {
+      final newText =
+          text.substring(0, lastSlashIndex) + text.substring(cursorPos);
+      _textController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: lastSlashIndex),
+      );
+    }
   }
 }

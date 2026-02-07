@@ -16,6 +16,7 @@ import '../../chat_view_model/chat_view_model_provider.dart';
 import '../../dialogs/adaptive_dialog.dart';
 import '../../dialogs/adaptive_snack_bar/adaptive_snack_bar.dart';
 import '../../llm_exception.dart';
+import '../../models/chat_command.dart';
 import '../../platform_helper/platform_helper.dart' as ph;
 import '../../providers/interface/chat_history_provider.dart';
 import '../../styles/chat_view_style.dart';
@@ -84,6 +85,7 @@ class AgentChatView extends StatefulWidget {
     ChatViewStyle? style,
     ResponseBuilder? responseBuilder,
     ChatStreamGenerator? messageSender,
+    List<ChatCommand> commands = const [],
     List<String> suggestions = const [],
     String? welcomeMessage,
     this.onCancelCallback,
@@ -99,6 +101,7 @@ class AgentChatView extends StatefulWidget {
          responseBuilder: responseBuilder,
          messageSender: messageSender,
          style: style,
+         commands: commands,
          suggestions: suggestions,
          welcomeMessage: welcomeMessage,
          enableAttachments: enableAttachments,

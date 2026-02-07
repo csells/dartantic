@@ -22,8 +22,9 @@ void main() {
       final viewModel = ChatViewModel(
         provider: provider ?? EchoProvider(),
         style: const ChatViewStyle(),
+        commands: const [],
         suggestions: const [],
-        welcomeMessage: null,
+        welcomeMessage: 'Welcome',
         responseBuilder: null,
         messageSender: null,
         enableAttachments: enableAttachments,
@@ -46,6 +47,7 @@ void main() {
     final viewModel = ChatViewModel(
       provider: EchoProvider(),
       style: const ChatViewStyle(),
+      commands: const [],
       suggestions: const [],
       welcomeMessage: null,
       responseBuilder: null,

@@ -159,6 +159,7 @@ class _ChatInputState extends State<ChatInput> {
   ChatViewModel? _viewModel;
   ChatInputStyle? _inputStyle;
   ChatViewStyle? _chatStyle;
+  bool _isAttachmentMenuOpen = false;
 
   @override
   void didChangeDependencies() {
@@ -241,6 +242,7 @@ class _ChatInputState extends State<ChatInput> {
                       key: _attachmentActionBarKey,
                       offset: _menuOffset,
                       onSelection: _clearCommandText,
+                      onMenuChanged: _onAttachmentMenuChanged,
                     ),
                   ),
                 Expanded(
@@ -258,9 +260,7 @@ class _ChatInputState extends State<ChatInput> {
                     voiceNoteRecorderStyle: _chatStyle!.voiceNoteRecorderStyle!,
                     onAttachments: widget.onAttachments,
                     key: _textFieldKey,
-                    allowSubmit:
-                        !(_attachmentActionBarKey.currentState?.isMenuOpen ??
-                            false),
+                    allowSubmit: !_isAttachmentMenuOpen,
                   ),
                 ),
                 Padding(
@@ -292,6 +292,12 @@ class _ChatInputState extends State<ChatInput> {
           : InputState.disabled;
     }
     return InputState.canSubmitPrompt;
+  }
+
+  void _onAttachmentMenuChanged(bool isOpen) {
+    setState(() {
+      _isAttachmentMenuOpen = isOpen;
+    });
   }
 
   void onSubmitPrompt() {
@@ -367,7 +373,7 @@ class _ChatInputState extends State<ChatInput> {
     return KeyEventResult.ignored;
   }
 
-  void onRecordingStopped() async {
+  void onRecordingStopped() {
     final file = _waveController.file;
 
     if (file == null) {
@@ -408,12 +414,24 @@ class _ChatInputState extends State<ChatInput> {
           _menuOffset = null;
         } else {
           // Extract query and update filter
-          try {
-            _calculateMenuOffset(
-              TextSelection.collapsed(offset: lastSlashIndex + 1),
-            );
-          } catch (e) {
-            // Fallback to null offset if calculation fails
+          // Check preconditions before calling _calculateMenuOffset
+          final textFieldContext = _textFieldKey.currentContext;
+          final actionBarContext = _attachmentActionBarKey.currentContext;
+
+          if (textFieldContext != null && actionBarContext != null) {
+            final textFieldRenderBox =
+                textFieldContext.findRenderObject() as RenderBox?;
+            final actionBarRenderBox =
+                actionBarContext.findRenderObject() as RenderBox?;
+
+            if (textFieldRenderBox != null && actionBarRenderBox != null) {
+              _calculateMenuOffset(
+                TextSelection.collapsed(offset: lastSlashIndex + 1),
+              );
+            } else {
+              _menuOffset = null;
+            }
+          } else {
             _menuOffset = null;
           }
           _attachmentActionBarKey.currentState?.setMenuVisible(

@@ -54,6 +54,7 @@ class AttachmentActionBar extends StatefulWidget {
     required this.onAttachments,
     this.offset,
     this.onSelection,
+    this.onMenuChanged,
     super.key,
   });
 
@@ -88,6 +89,9 @@ class AttachmentActionBar extends StatefulWidget {
 
   /// Callback function called when an item is selected from the menu.
   final VoidCallback? onSelection;
+
+  /// Callback function called when the menu open state changes.
+  final ValueChanged<bool>? onMenuChanged;
 
   @override
   AttachmentActionBarState createState() => AttachmentActionBarState();
@@ -132,6 +136,7 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
   /// Controls the visibility of the attachment menu.
   /// [setMenuVisible] method.
   void setMenuVisible(bool visible, {String? filter}) {
+    final wasOpen = isMenuOpen;
     setState(() {
       if (_filterQuery != filter) {
         _filterQuery = filter;
@@ -147,6 +152,12 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
         _filterQuery = null;
       }
     });
+
+    // Notify parent of menu state change
+    final isOpen = isMenuOpen;
+    if (wasOpen != isOpen && widget.onMenuChanged != null) {
+      widget.onMenuChanged!(isOpen);
+    }
   }
 
   /// Sets the filter query for the command menu.

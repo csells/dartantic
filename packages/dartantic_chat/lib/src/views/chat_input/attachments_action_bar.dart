@@ -249,7 +249,8 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
           keywords: c.keywords,
           icon: c.icon,
           onPressed: c.onPressed,
-          style: c.style ?? const ActionButtonStyle(),
+          style:
+              c.style ?? ActionButtonStyle.defaultStyle(ActionButtonType.url),
         ),
       ),
     ];

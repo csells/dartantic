@@ -425,7 +425,13 @@ class _ChatInputState extends State<ChatInput> {
     }
   }
 
-  void _attemptToShowMenuWithOffset(int lastSlashIndex, String textAfterSlash) {
+  static const int _maxMenuRetries = 3;
+
+  void _attemptToShowMenuWithOffset(
+    int lastSlashIndex,
+    String textAfterSlash, {
+    int retryCount = 0,
+  }) {
     // Check preconditions before calling _calculateMenuOffset
     final textFieldContext = _textFieldKey.currentContext;
     final actionBarContext = _attachmentActionBarKey.currentContext;
@@ -445,23 +451,39 @@ class _ChatInputState extends State<ChatInput> {
           true,
           filter: textAfterSlash,
         );
-      } else {
+      } else if (retryCount < _maxMenuRetries) {
         // Render objects not available: defer with post-frame callback
         _menuOffset = null;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            _attemptToShowMenuWithOffset(lastSlashIndex, textAfterSlash);
+            _attemptToShowMenuWithOffset(
+              lastSlashIndex,
+              textAfterSlash,
+              retryCount: retryCount + 1,
+            );
           }
         });
+      } else {
+        // Max retries reached: give up and hide menu
+        _menuOffset = null;
+        _attachmentActionBarKey.currentState?.setMenuVisible(false);
       }
-    } else {
+    } else if (retryCount < _maxMenuRetries) {
       // Contexts not available: defer with post-frame callback
       _menuOffset = null;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          _attemptToShowMenuWithOffset(lastSlashIndex, textAfterSlash);
+          _attemptToShowMenuWithOffset(
+            lastSlashIndex,
+            textAfterSlash,
+            retryCount: retryCount + 1,
+          );
         }
       });
+    } else {
+      // Max retries reached: give up and hide menu
+      _menuOffset = null;
+      _attachmentActionBarKey.currentState?.setMenuVisible(false);
     }
   }
 

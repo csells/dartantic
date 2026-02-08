@@ -5,6 +5,7 @@
 import 'package:dartantic_chat/src/chat_view_model/chat_view_model_provider.dart';
 import 'package:dartantic_chat/src/providers/providers.dart';
 import 'package:dartantic_chat/src/views/chat_input/attachments_action_bar.dart';
+import 'package:dartantic_chat/src/views/chat_input/command_menu_controller.dart';
 import 'package:dartantic_chat/src/chat_view_model/chat_view_model.dart';
 import 'package:dartantic_chat/src/views/action_button.dart';
 import 'package:dartantic_chat/src/styles/chat_view_style.dart';
@@ -37,14 +38,15 @@ void main() {
       );
     }
 
-    testWidgets('uses widget.offset correctly in menu placement', (
-      tester,
-    ) async {
+    testWidgets('uses menuOffset correctly in menu placement', (tester) async {
       const providedOffset = Offset(10, 20);
 
       await tester.pumpWidget(
         wrap(
-          AttachmentActionBar(onAttachments: (_) {}, offset: providedOffset),
+          AttachmentActionBar(
+            onAttachments: (_) {},
+            menuOffset: providedOffset,
+          ),
         ),
       );
 
@@ -66,35 +68,35 @@ void main() {
       );
     });
 
-    testWidgets('setMenuVisible toggles the menu with an attached GlobalKey', (
-      tester,
-    ) async {
-      final key = GlobalKey<AttachmentActionBarState>();
+    testWidgets('controller toggles the menu open and closed', (tester) async {
+      final controller = CommandMenuController();
       await tester.pumpWidget(
-        wrap(AttachmentActionBar(key: key, onAttachments: (_) {})),
+        wrap(
+          AttachmentActionBar(
+            onAttachments: (_) {},
+            commandMenuController: controller,
+          ),
+        ),
       );
 
       // Menu should be closed initially
       expect(find.byType(MenuItemButton), findsNothing);
 
-      // Open menu
-      AttachmentActionBar actionBar = tester.widget(
-        find.byType(AttachmentActionBar),
-      );
-      actionBar.setMenuVisible(true);
+      // Open menu via controller
+      controller.open();
       await tester.pump();
-      await tester.pump(
-        const Duration(milliseconds: 100),
-      ); // Minimal pump for visibility
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byType(MenuItemButton), findsWidgets);
 
-      // Close menu
-      actionBar.setMenuVisible(false);
+      // Close menu via controller
+      controller.close();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byType(MenuItemButton), findsNothing);
+
+      controller.dispose();
     });
 
     testWidgets(
@@ -104,13 +106,12 @@ void main() {
           wrap(AttachmentActionBar(onAttachments: (_) {})),
         );
 
-        // Simulate mobile
-        final state = tester.state<AttachmentActionBarState>(
+        // Simulate mobile via the testIsMobile setter (triggers setState)
+        final state = tester.state<State<AttachmentActionBar>>(
           find.byType(AttachmentActionBar),
         );
-        state.testIsMobile = true;
-        // ignore: invalid_use_of_protected_member
-        tester.element(find.byType(AttachmentActionBar)).markNeedsBuild();
+        // ignore: avoid_dynamic_calls
+        (state as dynamic).testIsMobile = true;
         await tester.pump();
 
         // Open menu to count items

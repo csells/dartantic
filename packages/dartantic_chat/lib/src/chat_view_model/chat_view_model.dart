@@ -48,7 +48,6 @@ class ChatViewModel {
   ///
   /// Defines visual properties like colors, decorations, and layout parameters
   /// for the chat interface. If null, default styling will be applied.
-  /// The style for the chat view.
   final ChatViewStyle? style;
 
   /// The list of custom commands to display in the chat interface.

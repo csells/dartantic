@@ -11,11 +11,15 @@ class ChatInputConstants {
   ChatInputConstants._();
 
   // TextOrAudioInput padding values (from EdgeInsets.only in build method)
-  /// Horizontal padding in TextOrAudioInput: 16.0 left + 16.0 right
-  static const double textOrAudioInputHorizontalPadding = 32.0;
-
   /// Left padding in TextOrAudioInput for caret offset calculation
   static const double textOrAudioInputLeftPadding = 16.0;
+
+  /// Right padding in TextOrAudioInput
+  static const double textOrAudioInputRightPadding = 16.0;
+
+  /// Horizontal padding in TextOrAudioInput (left + right)
+  static const double textOrAudioInputHorizontalPadding =
+      textOrAudioInputLeftPadding + textOrAudioInputRightPadding;
 
   /// Base top padding in TextOrAudioInput
   static const double textOrAudioInputBaseTopPadding = 8.0;
@@ -24,8 +28,8 @@ class ChatInputConstants {
   static const double textOrAudioInputEditModeAdditionalPadding = 16.0;
 
   // ChatTextField padding values (from hintPadding parameter)
-  /// Horizontal padding in ChatTextField: 12.0 * 2 (from EdgeInsets.symmetric)
-  static const double chatTextFieldHorizontalPadding = 24.0;
+  /// Horizontal padding in ChatTextField (from EdgeInsets.symmetric)
+  static const double chatTextFieldHorizontalPadding = chatTextFieldPadding * 2;
 
   /// Horizontal padding in ChatTextField for caret offset calculation
   static const double chatTextFieldPadding = 12.0;

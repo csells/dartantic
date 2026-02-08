@@ -5,6 +5,7 @@
 import 'package:dartantic_chat/src/chat_view_model/chat_view_model_provider.dart';
 import 'package:dartantic_chat/src/providers/providers.dart';
 import 'package:dartantic_chat/src/views/chat_input/attachments_action_bar.dart';
+import 'package:dartantic_chat/src/views/chat_input/chat_input_constants.dart';
 import 'package:dartantic_chat/src/views/chat_input/command_menu_controller.dart';
 import 'package:dartantic_chat/src/chat_view_model/chat_view_model.dart';
 import 'package:dartantic_chat/src/views/action_button.dart';
@@ -57,8 +58,8 @@ void main() {
       // Dynamically count items
       final menuItemsCount = find.byType(MenuItemButton).evaluate().length;
 
-      const itemHeight = 56.0;
-      const menuPadding = 16.0;
+      const itemHeight = ChatInputConstants.menuItemHeight;
+      const menuPadding = ChatInputConstants.menuPadding;
       final estimatedHeight = (menuItemsCount * itemHeight) + menuPadding;
 
       final menuAnchor = tester.widget<MenuAnchor>(find.byType(MenuAnchor));
@@ -121,8 +122,8 @@ void main() {
         // Dynamically count items
         final menuItemsCount = find.byType(MenuItemButton).evaluate().length;
 
-        const itemHeight = 56.0;
-        const menuPadding = 16.0;
+        const itemHeight = ChatInputConstants.menuItemHeight;
+        const menuPadding = ChatInputConstants.menuPadding;
         final estimatedHeight = (menuItemsCount * itemHeight) + menuPadding;
 
         final menuAnchor = tester.widget<MenuAnchor>(find.byType(MenuAnchor));

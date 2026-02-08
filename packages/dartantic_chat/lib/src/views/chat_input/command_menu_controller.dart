@@ -2,9 +2,28 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
-import 'attachments_action_bar.dart';
+import '../../styles/action_button_style.dart';
+
+/// A menu item in the command menu.
+///
+/// This record defines the structure for items displayed in the attachment
+/// and command menu, which can be triggered via the UI or slash commands.
+///
+/// Fields:
+/// * [name]: The display name of the command.
+/// * [icon]: The icon to display next to the command name.
+/// * [onPressed]: The callback to execute when the command is selected.
+/// * [style]: The visual style of the command button.
+/// * [keywords]: A list of keywords used for filtering this command.
+typedef CommandMenuItem = ({
+  String name,
+  IconData icon,
+  VoidCallback onPressed,
+  ActionButtonStyle style,
+  List<String> keywords,
+});
 
 /// Controls the state of the command menu (slash-command popup).
 ///

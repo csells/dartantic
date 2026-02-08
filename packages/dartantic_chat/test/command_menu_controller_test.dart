@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 import 'package:dartantic_chat/src/styles/action_button_style.dart';
-import 'package:dartantic_chat/src/views/chat_input/attachments_action_bar.dart';
 import 'package:dartantic_chat/src/views/chat_input/command_menu_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';

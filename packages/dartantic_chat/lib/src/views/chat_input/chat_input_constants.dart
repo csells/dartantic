@@ -36,4 +36,15 @@ class ChatInputConstants {
 
   /// Vertical padding in ChatTextField (from EdgeInsets.symmetric)
   static const double chatTextFieldVerticalPadding = 8.0;
+
+  /// Bottom padding in TextOrAudioInput
+  static const double textOrAudioInputBottomPadding = 8.0;
+
+  // Menu layout values (from MenuAnchor item sizing)
+
+  /// Height of a single menu item including internal padding.
+  static const double menuItemHeight = 56.0;
+
+  /// Vertical padding applied to the overall menu container.
+  static const double menuPadding = 16.0;
 }

@@ -16,29 +16,11 @@ import 'package:image_picker/image_picker.dart';
 import '../../chat_view_model/chat_view_model_client.dart';
 import '../../dialogs/adaptive_snack_bar/adaptive_snack_bar.dart';
 import '../../models/chat_command.dart';
+import 'chat_input_constants.dart';
 import '../../platform_helper/platform_helper.dart';
 import '../../styles/styles.dart';
 import '../action_button.dart';
 import 'command_menu_controller.dart';
-
-/// A menu item in the command menu.
-///
-/// This record defines the structure for items displayed in the attachment
-/// and command menu, which can be triggered via the UI or slash commands.
-///
-/// Fields:
-/// * [name]: The display name of the command.
-/// * [icon]: The icon to display next to the command name.
-/// * [onPressed]: The callback to execute when the command is selected.
-/// * [style]: The visual style of the command button.
-/// * [keywords]: A list of keywords used for filtering this command.
-typedef CommandMenuItem = ({
-  String name,
-  IconData icon,
-  VoidCallback onPressed,
-  ActionButtonStyle style,
-  List<String> keywords,
-});
 
 /// A widget that provides an action bar for attaching files or images.
 ///
@@ -250,10 +232,8 @@ class _AttachmentActionBarState extends State<AttachmentActionBar> {
     ChatViewStyle chatStyle,
     int menuItems,
   ) {
-    // From MenuAnchor source: minimum height is 48.0 + some padding for
-    // safety
-    final double itemHeight = 48.0 + 8.0;
-    final double menuPadding = 16.0;
+    const itemHeight = ChatInputConstants.menuItemHeight;
+    const menuPadding = ChatInputConstants.menuPadding;
 
     // Calculate menu height based on actual number of items
     final double estimatedMenuHeight = (menuItems * itemHeight) + menuPadding;

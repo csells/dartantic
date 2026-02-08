@@ -431,6 +431,11 @@ class _ChatInputState extends State<ChatInput> {
   void _retryOrGiveUp(int slashIndex, String filterText, int retryCount) {
     _menuOffset = null;
     if (retryCount >= _maxMenuRetries) {
+      assert(
+        false,
+        'Command menu: render boxes unavailable after $_maxMenuRetries '
+        'post-frame retries. Menu will not open.',
+      );
       _commandMenuController.close();
       return;
     }

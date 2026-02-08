@@ -18,42 +18,17 @@ void main() {
       bool enableAttachments = true,
       bool enableVoiceNotes = true,
     }) {
-      final viewModel = ChatViewModel(
-        provider: provider ?? EchoProvider(),
-        style: const ChatViewStyle(),
-        commands: const [],
-        suggestions: const [],
-        welcomeMessage: 'Welcome',
-        responseBuilder: null,
-        messageSender: null,
-        enableAttachments: enableAttachments,
-        enableVoiceNotes: enableVoiceNotes,
-      );
+      final effectiveProvider = provider ?? EchoProvider();
       return MaterialApp(
         home: Scaffold(
-          body: ChatViewModelProvider(
-            viewModel: viewModel,
-            child: AgentChatView(
-              provider: provider ?? EchoProvider(),
-              enableAttachments: enableAttachments,
-              enableVoiceNotes: enableVoiceNotes,
-            ),
+          body: AgentChatView(
+            provider: effectiveProvider,
+            enableAttachments: enableAttachments,
+            enableVoiceNotes: enableVoiceNotes,
           ),
         ),
       );
     }
-
-    final viewModel = ChatViewModel(
-      provider: EchoProvider(),
-      style: const ChatViewStyle(),
-      commands: const [],
-      suggestions: const [],
-      welcomeMessage: null,
-      responseBuilder: null,
-      messageSender: null,
-      enableAttachments: true,
-      enableVoiceNotes: true,
-    );
 
     group('Text Input', () {
       testWidgets('accepts text input', (tester) async {
@@ -340,6 +315,18 @@ void main() {
     });
 
     group('Post-frame Callback Safety', () {
+      final viewModel = ChatViewModel(
+        provider: EchoProvider(),
+        style: const ChatViewStyle(),
+        commands: const [],
+        suggestions: const [],
+        welcomeMessage: null,
+        responseBuilder: null,
+        messageSender: null,
+        enableAttachments: true,
+        enableVoiceNotes: true,
+      );
+
       testWidgets('post-frame callbacks do not crash when unmounted', (
         tester,
       ) async {

@@ -507,11 +507,11 @@ class _ChatInputState extends State<ChatInput> {
     );
     final localCaretPos = actionBarRenderBox.globalToLocal(globalCaretPos);
 
+    textPainter.dispose();
+
     setState(() {
       _menuOffset = localCaretPos;
     });
-
-    textPainter.dispose();
   }
 
   void _clearCommandText() {

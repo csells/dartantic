@@ -184,8 +184,8 @@ class _AttachmentActionBarState extends State<AttachmentActionBar> {
         return MenuItemButton(
           leadingIcon: Icon(data.icon, color: data.style.iconColor),
           onPressed: () {
-            data.onPressed();
             widget.onSelection?.call();
+            data.onPressed();
             controller?.close();
           },
           style: isActive

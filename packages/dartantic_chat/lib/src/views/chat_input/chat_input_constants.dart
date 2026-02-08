@@ -28,11 +28,11 @@ class ChatInputConstants {
   static const double textOrAudioInputEditModeAdditionalPadding = 16.0;
 
   // ChatTextField padding values (from hintPadding parameter)
-  /// Horizontal padding in ChatTextField (from EdgeInsets.symmetric)
-  static const double chatTextFieldHorizontalPadding = chatTextFieldPadding * 2;
-
   /// Horizontal padding in ChatTextField for caret offset calculation
   static const double chatTextFieldPadding = 12.0;
+
+  /// Horizontal padding in ChatTextField (from EdgeInsets.symmetric)
+  static const double chatTextFieldHorizontalPadding = chatTextFieldPadding * 2;
 
   /// Vertical padding in ChatTextField (from EdgeInsets.symmetric)
   static const double chatTextFieldVerticalPadding = 8.0;

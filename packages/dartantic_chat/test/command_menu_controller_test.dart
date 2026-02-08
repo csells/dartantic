@@ -213,5 +213,17 @@ void main() {
       expect(controller.filteredItems.length, 1);
       expect(controller.filteredItems.first.name, 'Attach Image');
     });
+
+    test('filtering matches keywords case-insensitively', () {
+      controller.updateMenuItems([
+        _item('Attach Image', keywords: ['Gallery', 'Photo']),
+        _item('Attach File', keywords: ['File', 'Document']),
+      ]);
+
+      controller.updateFilter('gallery');
+
+      expect(controller.filteredItems.length, 1);
+      expect(controller.filteredItems.first.name, 'Attach Image');
+    });
   });
 }

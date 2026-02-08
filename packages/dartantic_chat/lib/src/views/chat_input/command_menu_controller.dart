@@ -85,7 +85,7 @@ class CommandMenuController extends ChangeNotifier {
   /// The build that calls this method already reads the updated state
   /// immediately afterward.
   void updateMenuItems(List<CommandMenuItem> allItems) {
-    _allItems = allItems;
+    _allItems = List.unmodifiable(allItems);
     _recomputeFilteredItems();
   }
 
@@ -106,16 +106,17 @@ class CommandMenuController extends ChangeNotifier {
 
   /// Triggers the action of the currently selected item.
   ///
-  /// Calls the selected item's `onPressed`, then invokes [onSelection]
-  /// if provided, then closes the menu.
+  /// Invokes [onSelection] first (to clear slash-command text while the
+  /// cursor position is still valid), then calls the item's `onPressed`,
+  /// then closes the menu.
   void triggerSelected({VoidCallback? onSelection}) {
     if (_filteredItems.isEmpty) return;
 
     final safeIndex = _activeIndex.clamp(0, _filteredItems.length - 1);
     final item = _filteredItems[safeIndex];
 
-    item.onPressed();
     onSelection?.call();
+    item.onPressed();
     close();
   }
 
@@ -129,7 +130,7 @@ class CommandMenuController extends ChangeNotifier {
     _filteredItems = List.unmodifiable(
       _allItems.where((item) {
         return item.name.toLowerCase().contains(query) ||
-            item.keywords.any((k) => k.contains(query));
+            item.keywords.any((k) => k.toLowerCase().contains(query));
       }),
     );
   }

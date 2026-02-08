@@ -16,8 +16,10 @@ import '../../styles/styles.dart';
 import 'attachments_action_bar.dart';
 import 'attachments_view.dart';
 import 'chat_input_constants.dart';
+import 'command_menu_controller.dart';
 import 'input_button.dart';
 import 'input_state.dart';
+import 'slash_command_parser.dart';
 import 'text_or_audio_input.dart';
 
 /// A widget that provides a chat input interface with support for text input,
@@ -153,14 +155,14 @@ class _ChatInputState extends State<ChatInput> {
 
   final _textController = TextEditingController();
   final _waveController = WaveformRecorderController();
-  final _attachmentActionBarKey = GlobalKey<AttachmentActionBarState>();
+  final _commandMenuController = CommandMenuController();
+  final _actionBarKey = GlobalKey();
   final _textFieldKey = GlobalKey();
 
   Offset? _menuOffset;
   ChatViewModel? _viewModel;
   ChatInputStyle? _inputStyle;
   ChatViewStyle? _chatStyle;
-  bool _isAttachmentMenuOpen = false;
 
   @override
   void didChangeDependencies() {
@@ -213,6 +215,7 @@ class _ChatInputState extends State<ChatInput> {
     _textController.removeListener(_onTextChanged);
     _textController.dispose();
     _waveController.dispose();
+    _commandMenuController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
@@ -231,7 +234,10 @@ class _ChatInputState extends State<ChatInput> {
         ValueListenableBuilder(
           valueListenable: _textController,
           builder: (context, value, child) => ListenableBuilder(
-            listenable: _waveController,
+            listenable: Listenable.merge([
+              _waveController,
+              _commandMenuController,
+            ]),
             builder: (context, child) => Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -239,11 +245,11 @@ class _ChatInputState extends State<ChatInput> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 14),
                     child: AttachmentActionBar(
+                      key: _actionBarKey,
                       onAttachments: widget.onAttachments,
-                      key: _attachmentActionBarKey,
-                      offset: _menuOffset,
-                      onSelection: _clearCommandTextWithSnapshot,
-                      onMenuChanged: _onAttachmentMenuChanged,
+                      commandMenuController: _commandMenuController,
+                      menuOffset: _menuOffset,
+                      onSelection: _clearCommandText,
                     ),
                   ),
                 Expanded(
@@ -261,7 +267,7 @@ class _ChatInputState extends State<ChatInput> {
                     voiceNoteRecorderStyle: _chatStyle!.voiceNoteRecorderStyle!,
                     onAttachments: widget.onAttachments,
                     key: _textFieldKey,
-                    allowSubmit: !_isAttachmentMenuOpen,
+                    allowSubmit: !_commandMenuController.isOpen,
                   ),
                 ),
                 Padding(
@@ -295,12 +301,6 @@ class _ChatInputState extends State<ChatInput> {
     return InputState.canSubmitPrompt;
   }
 
-  void _onAttachmentMenuChanged(bool isOpen) {
-    setState(() {
-      _isAttachmentMenuOpen = isOpen;
-    });
-  }
-
   void onSubmitPrompt() {
     assert(_inputState == InputState.canSubmitPrompt);
 
@@ -329,13 +329,9 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   KeyEventResult _handleCommandKeyEvent(KeyEvent event) {
+    if (!_commandMenuController.isOpen) return KeyEventResult.ignored;
+
     final isDownOrRepeat = event is KeyDownEvent || event is KeyRepeatEvent;
-
-    final attachmentState = _attachmentActionBarKey.currentState;
-    if (attachmentState == null || !attachmentState.isMenuOpen) {
-      return KeyEventResult.ignored;
-    }
-
     final logicalKey = event.logicalKey;
     final physicalKey = event.physicalKey;
 
@@ -354,13 +350,13 @@ class _ChatInputState extends State<ChatInput> {
     // Handle navigation keys (only on Down/Repeat)
     if (isDownOrRepeat) {
       if (isDown) {
-        attachmentState.selectNext();
+        _commandMenuController.selectNext();
         return KeyEventResult.handled;
       } else if (isUp) {
-        attachmentState.selectPrevious();
+        _commandMenuController.selectPrevious();
         return KeyEventResult.handled;
       } else if (isEnter) {
-        attachmentState.triggerSelected();
+        _commandMenuController.triggerSelected(onSelection: _clearCommandText);
         return KeyEventResult.handled;
       }
     } else {
@@ -386,116 +382,85 @@ class _ChatInputState extends State<ChatInput> {
     widget.onTranslateStt(file, List.from(widget.attachments));
   }
 
-  void _onTextChanged() {
-    final text = _textController.text;
-    final selection = _textController.selection;
+  // -- Slash command handling --
 
-    if (!selection.isValid || selection.baseOffset == 0) {
-      _attachmentActionBarKey.currentState?.setMenuVisible(false);
-      _menuOffset = null;
+  void _hideCommandMenu() {
+    _commandMenuController.close();
+    _menuOffset = null;
+  }
+
+  void _onTextChanged() {
+    final result = SlashCommandParser.parse(
+      _textController.text,
+      _textController.selection,
+    );
+
+    if (!result.isActive) {
+      _hideCommandMenu();
       return;
     }
 
-    final cursorPos = selection.baseOffset;
-
-    // Find the last '/' before the cursor
-    final lastSlashIndex = text.substring(0, cursorPos).lastIndexOf('/');
-
-    if (lastSlashIndex != -1) {
-      final isStartOfInput = lastSlashIndex == 0;
-      final isAfterWhitespace =
-          lastSlashIndex >= 1 &&
-          (text[lastSlashIndex - 1] == ' ' || text[lastSlashIndex - 1] == '\n');
-
-      if (isStartOfInput || isAfterWhitespace) {
-        final textAfterSlash = text.substring(lastSlashIndex + 1, cursorPos);
-        if (textAfterSlash.contains(' ') || textAfterSlash.contains('\n')) {
-          _attachmentActionBarKey.currentState?.setMenuVisible(false);
-          _menuOffset = null;
-        } else {
-          _attemptToShowMenuWithOffset(lastSlashIndex, textAfterSlash);
-        }
-      } else {
-        _attachmentActionBarKey.currentState?.setMenuVisible(false);
-        _menuOffset = null;
-      }
-    } else {
-      _attachmentActionBarKey.currentState?.setMenuVisible(false);
-      _menuOffset = null;
-    }
+    _attemptToShowMenuWithOffset(result.slashIndex, result.filterText);
   }
 
   static const int _maxMenuRetries = 3;
 
   void _attemptToShowMenuWithOffset(
-    int lastSlashIndex,
-    String textAfterSlash, {
+    int slashIndex,
+    String filterText, {
     int retryCount = 0,
   }) {
-    // Check preconditions before calling _calculateMenuOffset
-    final textFieldContext = _textFieldKey.currentContext;
-    final actionBarContext = _attachmentActionBarKey.currentContext;
+    final textFieldBox =
+        _textFieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final actionBarBox =
+        _actionBarKey.currentContext?.findRenderObject() as RenderBox?;
 
-    if (textFieldContext != null && actionBarContext != null) {
-      final textFieldRenderBox =
-          textFieldContext.findRenderObject() as RenderBox?;
-      final actionBarRenderBox =
-          actionBarContext.findRenderObject() as RenderBox?;
-
-      if (textFieldRenderBox != null && actionBarRenderBox != null) {
-        // Success case: calculate offset and show menu
-        _calculateMenuOffset(
-          TextSelection.collapsed(offset: lastSlashIndex + 1),
-        );
-        _attachmentActionBarKey.currentState?.setMenuVisible(
-          true,
-          filter: textAfterSlash,
-        );
-      } else if (retryCount < _maxMenuRetries) {
-        // Render objects not available: defer with post-frame callback
-        _menuOffset = null;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _attemptToShowMenuWithOffset(
-              lastSlashIndex,
-              textAfterSlash,
-              retryCount: retryCount + 1,
-            );
-          }
-        });
-      } else {
-        // Max retries reached: give up and hide menu
-        _menuOffset = null;
-        _attachmentActionBarKey.currentState?.setMenuVisible(false);
-      }
-    } else if (retryCount < _maxMenuRetries) {
-      // Contexts not available: defer with post-frame callback
-      _menuOffset = null;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _attemptToShowMenuWithOffset(
-            lastSlashIndex,
-            textAfterSlash,
-            retryCount: retryCount + 1,
-          );
-        }
-      });
-    } else {
-      // Max retries reached: give up and hide menu
-      _menuOffset = null;
-      _attachmentActionBarKey.currentState?.setMenuVisible(false);
+    if (textFieldBox != null && actionBarBox != null) {
+      _calculateMenuOffset(
+        TextSelection.collapsed(offset: slashIndex + 1),
+        textFieldBox,
+        actionBarBox,
+      );
+      _commandMenuController.open(filterQuery: filterText);
+      return;
     }
+
+    _retryOrGiveUp(slashIndex, filterText, retryCount);
   }
 
-  void _calculateMenuOffset(TextSelection selection) {
-    final textFieldRenderBox =
-        _textFieldKey.currentContext?.findRenderObject() as RenderBox?;
-    final actionBarRenderBox =
-        _attachmentActionBarKey.currentContext?.findRenderObject()
-            as RenderBox?;
+  void _retryOrGiveUp(int slashIndex, String filterText, int retryCount) {
+    _menuOffset = null;
+    if (retryCount >= _maxMenuRetries) {
+      _commandMenuController.close();
+      return;
+    }
 
-    if (textFieldRenderBox == null || actionBarRenderBox == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
 
+      // Re-validate against current text to detect stale captured values
+      final currentResult = SlashCommandParser.parse(
+        _textController.text,
+        _textController.selection,
+      );
+      if (!currentResult.isActive || currentResult.slashIndex != slashIndex) {
+        _hideCommandMenu();
+        return;
+      }
+
+      _attemptToShowMenuWithOffset(
+        slashIndex,
+        currentResult.filterText,
+        retryCount: retryCount + 1,
+      );
+    });
+  }
+
+  void _calculateMenuOffset(
+    TextSelection selection,
+    RenderBox textFieldRenderBox,
+    RenderBox actionBarRenderBox,
+  ) {
     final textStyle = _inputStyle?.textStyle ?? const TextStyle(fontSize: 14.0);
 
     final textPainter =
@@ -544,42 +509,20 @@ class _ChatInputState extends State<ChatInput> {
     textPainter.dispose();
   }
 
-  void _clearCommandText({int? cursorPos, int? lastSlashIndex}) {
-    final text = _textController.text;
-    final selection = _textController.selection;
-
-    // Use provided snapshot values or compute from current state
-    final currentCursorPos = cursorPos ?? selection.baseOffset;
-    final currentLastSlashIndex =
-        lastSlashIndex ??
-        (selection.isValid
-            ? text.substring(0, currentCursorPos).lastIndexOf('/')
-            : -1);
-
-    // Base validity on snapshot values when provided, otherwise on selection
-    final isValid = cursorPos != null || selection.isValid;
-    if (!isValid || currentCursorPos == 0) return;
-
-    if (currentLastSlashIndex != -1) {
-      final newText =
-          text.substring(0, currentLastSlashIndex) +
-          text.substring(currentCursorPos);
-      _textController.value = TextEditingValue(
-        text: newText,
-        selection: TextSelection.collapsed(offset: currentLastSlashIndex),
-      );
-    }
-  }
-
-  void _clearCommandTextWithSnapshot() {
+  void _clearCommandText() {
     final text = _textController.text;
     final selection = _textController.selection;
 
     if (!selection.isValid || selection.baseOffset == 0) return;
 
     final cursorPos = selection.baseOffset;
-    final lastSlashIndex = text.substring(0, cursorPos).lastIndexOf('/');
+    final slashIndex = text.substring(0, cursorPos).lastIndexOf('/');
+    if (slashIndex == -1) return;
 
-    _clearCommandText(cursorPos: cursorPos, lastSlashIndex: lastSlashIndex);
+    _textController.value = SlashCommandParser.clearCommandText(
+      text,
+      cursorPos,
+      slashIndex,
+    );
   }
 }

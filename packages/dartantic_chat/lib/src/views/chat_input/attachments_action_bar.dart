@@ -14,12 +14,12 @@ import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../chat_view_model/chat_view_model_client.dart';
-import '../../chat_view_model/chat_view_model_provider.dart';
 import '../../dialogs/adaptive_snack_bar/adaptive_snack_bar.dart';
 import '../../models/chat_command.dart';
 import '../../platform_helper/platform_helper.dart';
 import '../../styles/styles.dart';
 import '../action_button.dart';
+import 'command_menu_controller.dart';
 
 /// A menu item in the command menu.
 ///
@@ -41,179 +41,105 @@ typedef CommandMenuItem = ({
 });
 
 /// A widget that provides an action bar for attaching files or images.
+///
+/// When a [commandMenuController] is provided, the menu items are driven
+/// by the controller's state (open/close, filter, active index). Without
+/// a controller, the bar operates as a simple attachment menu.
 @immutable
 class AttachmentActionBar extends StatefulWidget {
   /// Creates an [AttachmentActionBar].
   ///
   /// The [onAttachments] parameter is required and is called when attachments
-  /// are selected. The [offset] parameter can be used to adjust the position
-  /// of the menu that appears when the attachment button is pressed.
-  ///
-  /// The [key] parameter is forwarded to the superclass.
+  /// are selected.
   const AttachmentActionBar({
     required this.onAttachments,
-    this.offset,
+    this.commandMenuController,
+    this.menuOffset,
     this.onSelection,
-    this.onMenuChanged,
     super.key,
   });
-
-  /// Controls the visibility of the attachments menu.
-  ///
-  /// When [visible] is true, the menu will be shown if it's not already visible.
-  /// When false, the menu will be hidden if it's currently visible.
-  void setMenuVisible(bool visible, {String? filter}) {
-    assert(
-      key is GlobalKey<AttachmentActionBarState>,
-      'AttachmentActionBar.setMenuVisible was called, but the widget handle is incorrectly configured. '
-      'A GlobalKey<AttachmentActionBarState> must be provided to the AttachmentActionBar constructor '
-      'to enable external menu control. Current key: $key',
-    );
-
-    final stateKey = key;
-    if (stateKey is GlobalKey<AttachmentActionBarState>) {
-      stateKey.currentState?.setMenuVisible(visible, filter: filter);
-    }
-  }
 
   /// Callback function that is called when attachments are selected.
   ///
   /// The selected [Part]s are passed as an argument to this function.
   final Function(Iterable<Part> attachments) onAttachments;
 
-  /// The offset used to position the attachment menu.
+  /// Optional controller for command menu state.
   ///
-  /// This can be used to adjust where the menu appears relative to the
-  /// attachment button. If null, default positioning is used.
-  final Offset? offset;
+  /// When provided, the menu visibility, filtering, and active index are
+  /// driven by this controller rather than internal state.
+  final CommandMenuController? commandMenuController;
+
+  /// The offset used to position the menu relative to the action bar.
+  ///
+  /// This is typically computed from the caret position when a slash
+  /// command triggers the menu. If null, default positioning is used.
+  final Offset? menuOffset;
 
   /// Callback function called when an item is selected from the menu.
   final VoidCallback? onSelection;
 
-  /// Callback function called when the menu open state changes.
-  final ValueChanged<bool>? onMenuChanged;
-
   @override
-  AttachmentActionBarState createState() => AttachmentActionBarState();
+  State<AttachmentActionBar> createState() => _AttachmentActionBarState();
 }
 
-/// The state for the [AttachmentActionBar] widget.
-///
-/// This class manages the state and behavior of the attachment action bar,
-/// including handling user interactions with the attachment menu and managing
-/// the attachment selection process.
-class AttachmentActionBarState extends State<AttachmentActionBar> {
+class _AttachmentActionBarState extends State<AttachmentActionBar> {
   late final bool _canCamera;
   final _menuController = MenuController();
 
-  /// Internal flag used for testing mobile behavior.
-  @visibleForTesting
-  bool? testIsMobile;
+  bool? _testIsMobile;
 
-  bool get _isMobile => testIsMobile ?? isMobile;
+  /// Sets the test-only mobile override and triggers a rebuild.
+  @visibleForTesting
+  set testIsMobile(bool? value) {
+    setState(() => _testIsMobile = value);
+  }
+
+  bool get _isMobile => _testIsMobile ?? isMobile;
+
+  CommandMenuController? get _commandController => widget.commandMenuController;
 
   @override
   void initState() {
     super.initState();
     _canCamera = canTakePhoto();
+    _commandController?.addListener(_onControllerChanged);
   }
 
-  String? _filterQuery;
-  int _activeIndex = 0;
-  List<MenuItemButton> _filteredItems = [];
-
-  /// Controls the visibility of the attachment menu.
-  ///
-  /// If [visible] is true, opens the menu if it's not already open.
-  /// If [visible] is false, closes the menu if it's currently open.
-  /// Whether the attachment menu is currently open.
-  bool get isMenuOpen => _menuController.isOpen || _filterQuery != null;
-
-  /// The currently active index in the filtered menu.
-  @visibleForTesting
-  int get activeIndex => _activeIndex;
-
-  /// Controls the visibility of the attachment menu.
-  /// [setMenuVisible] method.
-  void setMenuVisible(bool visible, {String? filter}) {
-    final wasOpen = isMenuOpen;
-    setState(() {
-      if (_filterQuery != filter) {
-        _filterQuery = filter;
-        _activeIndex = 0;
-      }
-      if (visible) {
-        if (!_menuController.isOpen) {
-          _activeIndex = 0;
-          _menuController.open();
-        }
-      } else {
-        _menuController.close();
-        _filterQuery = null;
-      }
-    });
-
-    // Notify parent of menu state change
-    final isOpen = isMenuOpen;
-    if (wasOpen != isOpen && widget.onMenuChanged != null) {
-      widget.onMenuChanged!(isOpen);
+  @override
+  void didUpdateWidget(AttachmentActionBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.commandMenuController != widget.commandMenuController) {
+      oldWidget.commandMenuController?.removeListener(_onControllerChanged);
+      widget.commandMenuController?.addListener(_onControllerChanged);
     }
   }
 
-  /// Sets the filter query for the command menu.
-  ///
-  /// Note: This method only sets the filter query but does not automatically
-  /// open the menu. The menu should be opened separately via [setMenuVisible]
-  /// when appropriate. This design allows for scenarios where the filter
-  /// needs to be updated before the menu is displayed (e.g., during typing
-  /// before the menu trigger conditions are met).
-  void setFilter(String? query) {
-    if (_filterQuery == query) return;
-    setState(() {
-      _filterQuery = query;
-      _activeIndex = 0;
-    });
+  @override
+  void dispose() {
+    _commandController?.removeListener(_onControllerChanged);
+    super.dispose();
   }
 
-  /// Selects the next item in the filtered list.
-  void selectNext() {
-    if (_filteredItems.isEmpty) return;
-    setState(() {
-      _activeIndex = (_activeIndex + 1) % _filteredItems.length;
-    });
+  void _onControllerChanged() {
+    final controller = _commandController;
+    if (controller == null) return;
+
+    if (controller.isOpen && !_menuController.isOpen) {
+      _menuController.open();
+    } else if (!controller.isOpen && _menuController.isOpen) {
+      _menuController.close();
+    }
+
+    // Trigger a rebuild so the menu children and alignment offset update
+    setState(() {});
   }
 
-  /// Selects the previous item in the filtered list.
-  void selectPrevious() {
-    if (_filteredItems.isEmpty) return;
-    setState(() {
-      _activeIndex =
-          (_activeIndex - 1 + _filteredItems.length) % _filteredItems.length;
-    });
-  }
-
-  /// Triggers the action of the currently selected item.
-  void triggerSelected() {
-    // We get the current view model and style to re-compute the data correctly
-    final viewModel = ChatViewModelProvider.of(context);
-    final chatStyle = ChatViewStyle.resolve(viewModel.style);
-    final filteredData = _getFilteredData(chatStyle, viewModel.commands);
-
-    if (filteredData.isEmpty) return;
-
-    final safeIndex = _activeIndex.clamp(0, filteredData.length - 1);
-    final data = filteredData[safeIndex];
-
-    data.onPressed();
-    widget.onSelection?.call();
-    setMenuVisible(false);
-  }
-
-  List<CommandMenuItem> _getFilteredData(
+  List<CommandMenuItem> _buildAllItems(
     ChatViewStyle chatStyle,
     List<ChatCommand> commands,
   ) {
-    final allItems = <CommandMenuItem>[
+    return <CommandMenuItem>[
       if (_canCamera)
         (
           name: chatStyle.cameraButtonStyle!.text!,
@@ -254,32 +180,31 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
         ),
       ),
     ];
-
-    return _filterQuery == null || _filterQuery!.isEmpty
-        ? allItems
-        : allItems.where((item) {
-            final query = _filterQuery!.toLowerCase();
-            return item.name.toLowerCase().contains(query) ||
-                item.keywords.any((k) => k.contains(query));
-          }).toList();
   }
 
   @override
   Widget build(BuildContext context) => ChatViewModelClient(
     builder: (context, viewModel, child) {
       final chatStyle = ChatViewStyle.resolve(viewModel.style);
-      final filteredData = _getFilteredData(chatStyle, viewModel.commands);
+      final allItems = _buildAllItems(chatStyle, viewModel.commands);
 
-      _filteredItems = List.generate(filteredData.length, (index) {
-        final data = filteredData[index];
-        final isActive = index == activeIndex;
+      // Push items to the controller so it can compute filtering
+      _commandController?.updateMenuItems(allItems);
+
+      final controller = _commandController;
+      final items = controller?.filteredItems ?? allItems;
+      final activeIdx = controller?.activeIndex ?? -1;
+
+      final menuChildren = List.generate(items.length, (index) {
+        final data = items[index];
+        final isActive = index == activeIdx;
 
         return MenuItemButton(
           leadingIcon: Icon(data.icon, color: data.style.iconColor),
           onPressed: () {
             data.onPressed();
             widget.onSelection?.call();
-            setMenuVisible(false);
+            controller?.close();
           },
           style: isActive
               ? ButtonStyle(
@@ -306,21 +231,17 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
         // is fixed: https://github.com/flutter/flutter/issues/142921
         alignmentOffset: _menuAnchorAlignmentOffsetHackForMobile(
           chatStyle,
-          _filteredItems.length,
+          menuChildren.length,
         ),
         consumeOutsideTap: true,
         onClose: () {
-          setState(() {
-            _filterQuery = null;
-            _activeIndex = 0;
-          });
-          widget.onMenuChanged?.call(false);
+          controller?.close();
         },
-        builder: (_, controller, _) => ActionButton(
-          onPressed: controller.isOpen ? controller.close : controller.open,
+        builder: (_, menuCtrl, _) => ActionButton(
+          onPressed: menuCtrl.isOpen ? menuCtrl.close : menuCtrl.open,
           style: chatStyle.addButtonStyle!,
         ),
-        menuChildren: _filteredItems,
+        menuChildren: menuChildren,
       );
     },
   );
@@ -337,12 +258,11 @@ class AttachmentActionBarState extends State<AttachmentActionBar> {
     // Calculate menu height based on actual number of items
     final double estimatedMenuHeight = (menuItems * itemHeight) + menuPadding;
 
-    if (widget.offset != null) {
-      // If an offset is provided (e.g. from slash command), we use it.
-      // On mobile, we still need to ensure it doesn't get covered by the keyboard
-      // if it's too low, but for now we'll trust the offset and adjust height
-      // to make it appear above the calculated point.
-      return Offset(widget.offset!.dx, widget.offset!.dy - estimatedMenuHeight);
+    if (widget.menuOffset != null) {
+      return Offset(
+        widget.menuOffset!.dx,
+        widget.menuOffset!.dy - estimatedMenuHeight,
+      );
     }
 
     // Limit the potential damage on this hack to mobile platforms

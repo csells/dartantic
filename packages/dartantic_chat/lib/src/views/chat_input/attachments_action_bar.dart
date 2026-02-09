@@ -234,15 +234,19 @@ class _AttachmentActionBarState extends State<AttachmentActionBar> {
     final double estimatedMenuHeight = (menuItems * itemHeight) + menuPadding;
 
     if (widget.menuOffset != null) {
+      if (!_isMobile) {
+        return widget.menuOffset;
+      }
       return Offset(
         widget.menuOffset!.dx,
-        widget.menuOffset!.dy - estimatedMenuHeight,
+        widget.menuOffset!.dy - (estimatedMenuHeight * 0.3),
       );
     }
 
     // Limit the potential damage on this hack to mobile platforms
     if (!_isMobile) return null;
 
+    // Only on mobile without specific offset: apply full height offset
     return Offset(0, -estimatedMenuHeight);
   }
 

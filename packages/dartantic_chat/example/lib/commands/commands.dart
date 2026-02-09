@@ -53,7 +53,6 @@ The menu follows your text caret horizontally!
         ChatCommand(
           name: 'Help',
           icon: Icons.help_outline,
-          keywords: ['help', 'support', 'guide'],
           onPressed: () {
             // In a real app, this could open a dialog or navigate to a help page
             debugPrint('Help command triggered!');

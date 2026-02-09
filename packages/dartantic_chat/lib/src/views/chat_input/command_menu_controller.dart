@@ -22,7 +22,6 @@ typedef CommandMenuItem = ({
   IconData icon,
   VoidCallback onPressed,
   ActionButtonStyle style,
-  List<String> keywords,
 });
 
 /// Controls the state of the command menu (slash-command popup).
@@ -128,10 +127,7 @@ class CommandMenuController extends ChangeNotifier {
 
     final query = _filterQuery.toLowerCase();
     _filteredItems = List.unmodifiable(
-      _allItems.where((item) {
-        return item.name.toLowerCase().contains(query) ||
-            item.keywords.any((k) => k.toLowerCase().contains(query));
-      }),
+      _allItems.where((item) => item.name.toLowerCase().contains(query)),
     );
   }
 }

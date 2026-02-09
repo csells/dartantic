@@ -12,7 +12,6 @@ CommandMenuItem _item(String name, {List<String> keywords = const []}) => (
   icon: const IconData(0),
   onPressed: () {},
   style: const ActionButtonStyle(),
-  keywords: keywords,
 );
 
 void main() {
@@ -157,7 +156,6 @@ void main() {
           icon: const IconData(0),
           onPressed: () => itemPressed = true,
           style: const ActionButtonStyle(),
-          keywords: const [],
         ),
       ]);
 
@@ -181,7 +179,6 @@ void main() {
           icon: const IconData(0),
           onPressed: () => pressedName = 'Only',
           style: const ActionButtonStyle(),
-          keywords: const [],
         ),
       ]);
 

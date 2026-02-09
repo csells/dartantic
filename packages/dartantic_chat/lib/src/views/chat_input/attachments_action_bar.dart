@@ -16,10 +16,10 @@ import 'package:image_picker/image_picker.dart';
 import '../../chat_view_model/chat_view_model_client.dart';
 import '../../dialogs/adaptive_snack_bar/adaptive_snack_bar.dart';
 import '../../models/chat_command.dart';
-import 'chat_input_constants.dart';
 import '../../platform_helper/platform_helper.dart';
 import '../../styles/styles.dart';
 import '../action_button.dart';
+import 'chat_input_constants.dart';
 import 'command_menu_controller.dart';
 
 /// A widget that provides an action bar for attaching files or images.
@@ -125,28 +125,24 @@ class _AttachmentActionBarState extends State<AttachmentActionBar> {
       if (_canCamera)
         (
           name: chatStyle.cameraButtonStyle!.text!,
-          keywords: ['camera', 'photo', 'take'],
           icon: chatStyle.cameraButtonStyle!.icon!,
           onPressed: () => _onCamera(),
           style: chatStyle.cameraButtonStyle!,
         ),
       (
         name: chatStyle.galleryButtonStyle!.text!,
-        keywords: ['gallery', 'image', 'photo', 'attach'],
         icon: chatStyle.galleryButtonStyle!.icon!,
         onPressed: () => _onGallery(),
         style: chatStyle.galleryButtonStyle!,
       ),
       (
         name: chatStyle.attachFileButtonStyle!.text!,
-        keywords: ['file', 'attach', 'document'],
         icon: chatStyle.attachFileButtonStyle!.icon!,
         onPressed: () => _onFile(),
         style: chatStyle.attachFileButtonStyle!,
       ),
       (
         name: chatStyle.urlButtonStyle!.text!,
-        keywords: ['url', 'link', 'attach', 'web'],
         icon: Icons.link,
         onPressed: () => _onUrl(),
         style: chatStyle.urlButtonStyle!,
@@ -154,7 +150,6 @@ class _AttachmentActionBarState extends State<AttachmentActionBar> {
       ...commands.map(
         (c) => (
           name: c.name,
-          keywords: c.keywords,
           icon: c.icon,
           onPressed: c.onPressed,
           style:

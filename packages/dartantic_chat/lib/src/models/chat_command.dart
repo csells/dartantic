@@ -13,7 +13,6 @@ class ChatCommand {
     required this.name,
     required this.icon,
     required this.onPressed,
-    this.keywords = const [],
     this.style,
   });
 
@@ -25,9 +24,6 @@ class ChatCommand {
 
   /// The callback to execute when the command is selected.
   final VoidCallback onPressed;
-
-  /// A list of keywords that can be used to filter for this command.
-  final List<String> keywords;
 
   /// Optional style for the command button.
   final ActionButtonStyle? style;

@@ -336,9 +336,9 @@ To add your own tools, edit `lib/tools.dart`:
 final myTool = Tool(
   name: 'my-tool',
   description: 'Description of what the tool does',
-  inputSchema: JsonSchema.object({
-    'param1': JsonSchema.string(description: 'First parameter'),
-    'param2': JsonSchema.integer(description: 'Optional param'),
+  inputSchema: S.object(properties: {
+    'param1': S.string(description: 'First parameter'),
+    'param2': S.integer(description: 'Optional param'),
   }, required: ['param1']),
   onCall: (args) async {
     final param1 = args['param1'] as String;

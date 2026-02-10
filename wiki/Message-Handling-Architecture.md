@@ -393,8 +393,8 @@ Each mapper transforms the Agent's message structure to match provider requireme
 ChatMessage(
   role: ChatMessageRole.user,
   parts: [
-    ToolPart.result(id: "1", name: "tool1", result: "..."),
-    ToolPart.result(id: "2", name: "tool2", result: "..."),
+    ToolPart.result(callId: "1", toolName: "tool1", result: "..."),
+    ToolPart.result(callId: "2", toolName: "tool2", result: "..."),
   ]
 )
 
@@ -412,8 +412,8 @@ ChatMessage(
 ChatMessage(
   role: ChatMessageRole.user,
   parts: [
-    ToolPart.result(id: "1", name: "tool1", result: "..."),
-    ToolPart.result(id: "2", name: "tool2", result: "..."),
+    ToolPart.result(callId: "1", toolName: "tool1", result: "..."),
+    ToolPart.result(callId: "2", toolName: "tool2", result: "..."),
   ]
 )
 
@@ -476,11 +476,11 @@ final toolCalls = consolidatedMessage.parts
 if (toolCalls.isNotEmpty) {
   // Delegate to ToolExecutor
   final results = await state.executor.executeBatch(toolCalls, state.toolMap);
-  
+
   // Convert to ToolPart.result
   final toolResultParts = results.map((result) => ToolPart.result(
-    id: result.toolCall.id,
-    name: result.toolCall.name,
+    callId: result.toolCall.callId,
+    toolName: result.toolCall.toolName,
     result: result.isSuccess ? result.result : json.encode({'error': result.error}),
   )).toList();
 
@@ -510,7 +510,7 @@ if (toolResults.length > 1) {
     final content = ToolResultHelpers.serialize(toolResult.result);
     expandedMessages.add(
       ChatCompletionMessage.tool(
-        toolCallId: toolResult.id,
+        toolCallId: toolResult.callId,
         content: content,
       ),
     );
@@ -519,7 +519,7 @@ if (toolResults.length > 1) {
   // Single tool result
   expandedMessages.add(
     ChatCompletionMessage.tool(
-      toolCallId: toolResults.first.id,
+      toolCallId: toolResults.first.callId,
       content: ToolResultHelpers.serialize(toolResults.first.result),
     ),
   );

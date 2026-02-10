@@ -172,8 +172,8 @@ void main() {}
           parts: [
             TextPart('Calling tool...'),
             ToolPart.call(
-              id: 'call_123',
-              name: 'get_weather',
+              callId: 'call_123',
+              toolName: 'get_weather',
               arguments: {'city': 'London', 'units': 'celsius'},
             ),
           ],
@@ -184,9 +184,9 @@ void main() {}
 
         expect(restored.hasToolCalls, isTrue);
         final toolCall = restored.toolCalls.first;
-        expect(toolCall.id, equals('call_123'));
-        expect(toolCall.name, equals('get_weather'));
-        expect(toolCall.arguments?['city'], equals('London'));
+        expect(toolCall.callId, equals('call_123'));
+        expect(toolCall.toolName, equals('get_weather'));
+        expect(toolCall.arguments!['city'], equals('London'));
       });
 
       test('serializes and deserializes tool result', () {
@@ -194,8 +194,8 @@ void main() {}
           role: ChatMessageRole.user,
           parts: [
             ToolPart.result(
-              id: 'call_123',
-              name: 'get_weather',
+              callId: 'call_123',
+              toolName: 'get_weather',
               result: {'temperature': 20, 'condition': 'sunny'},
             ),
           ],
@@ -206,9 +206,9 @@ void main() {}
 
         expect(restored.hasToolResults, isTrue);
         final toolResult = restored.toolResults.first;
-        expect(toolResult.id, equals('call_123'));
-        expect(toolResult.name, equals('get_weather'));
-        expect(toolResult.result['temperature'], equals(20));
+        expect(toolResult.callId, equals('call_123'));
+        expect(toolResult.toolName, equals('get_weather'));
+        expect((toolResult.result as Map)['temperature'], equals(20));
       });
     });
 
@@ -256,8 +256,8 @@ void main() {}
             role: ChatMessageRole.model,
             parts: [
               ToolPart.call(
-                id: 'call_1',
-                name: 'get_weather',
+                callId: 'call_1',
+                toolName: 'get_weather',
                 arguments: {'city': 'London'},
               ),
             ],
@@ -266,8 +266,8 @@ void main() {}
             role: ChatMessageRole.user,
             parts: [
               ToolPart.result(
-                id: 'call_1',
-                name: 'get_weather',
+                callId: 'call_1',
+                toolName: 'get_weather',
                 result: {'temp': 15},
               ),
             ],

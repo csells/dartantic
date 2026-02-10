@@ -1,5 +1,0 @@
-default_agent: custom
-agents:
-  custom:
-    model: google
-    system: Always respond with exactly one word.

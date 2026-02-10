@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:cross_file/cross_file.dart';
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:json_schema/json_schema.dart';
 
 void main() async {
   const model = 'gemini';
@@ -184,7 +183,7 @@ Future<void> transcribeAudioJson(String model) async {
   final audioBytes = await File(
     'example/bin/files/welcome-to-dartantic.mp3',
   ).readAsBytes();
-  final schema = JsonSchema.create({
+  final schema = Schema.fromMap({
     'type': 'object',
     'properties': {
       'transcript': {'type': 'string'},

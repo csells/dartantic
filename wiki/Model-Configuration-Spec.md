@@ -69,7 +69,7 @@ flowchart TD
     B --> C["provider: 'openai'<br/>chat: 'gpt-4'<br/>embeddings: null"]
     
     C --> D[Provider Lookup]
-    D --> E["Providers.get('openai')"]
+    D --> E["Agent.getProvider('openai')"]
     E --> F["defaultModelNames:<br/>chat: 'gpt-4o'<br/>embeddings: 'text-embedding-3-small'"]
     
     F --> G{Model Resolution}
@@ -98,11 +98,10 @@ string omits an explicit `media=` query parameter.
 | OpenAI Responses | `gpt-4o`                                 | `text-embedding-3-small`    | `gpt-4o`      |
 | Anthropic        | `claude-sonnet-4-0`                      | N/A (no embeddings)         | N/A           |
 | Google           | `gemini-2.0-flash`                       | `models/text-embedding-004` | N/A           |
-| Mistral          | `mistral-7b-instruct`                    | `mistral-embed`             | N/A           |
-| Cohere           | `command-r-plus`                         | `embed-v4.0`                | N/A           |
-| Ollama           | `llama3.2`                               | N/A (no embeddings)         | N/A           |
-| OpenRouter       | `google/gemini-2.0-flash`                | N/A (chat only)             | N/A           |
-| Together         | `meta-llama/Llama-3.2-3B-Instruct-Turbo` | N/A (chat only)             | N/A           |
+| Mistral          | `mistral-small-latest`                   | `mistral-embed`             | N/A           |
+| Cohere           | `command-r-08-2024`                      | `embed-v4.0`                | N/A           |
+| Ollama           | `qwen2.5:7b-instruct`                    | N/A (no embeddings)         | N/A           |
+| OpenRouter       | `google/gemini-2.5-flash`                | N/A (chat only)             | N/A           |
 
 ### Provider Configuration
 
@@ -180,7 +179,7 @@ final agent = Agent('openai?chat=gpt-4o&embeddings=text-embedding-3-large');
 
 ### Direct Provider Usage
 ```dart
-final provider = Providers.openai;
+final provider = Agent.getProvider('openai');
 final chatModel = provider.createChatModel(name: 'gpt-4o');
 final embeddingsModel = provider.createEmbeddingsModel();  // Uses default
 ```

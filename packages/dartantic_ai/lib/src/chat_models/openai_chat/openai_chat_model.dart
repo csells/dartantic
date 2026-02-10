@@ -1,6 +1,5 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 import 'package:openai_dart/openai_dart.dart';
 
@@ -62,7 +61,7 @@ class OpenAIChatModel extends ChatModel<OpenAIChatOptions> {
   Stream<ChatResult<ChatMessage>> sendStream(
     List<ChatMessage> messages, {
     OpenAIChatOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     _logger.info(
       'Starting OpenAI chat stream with ${messages.length} messages '
@@ -85,7 +84,7 @@ class OpenAIChatModel extends ChatModel<OpenAIChatOptions> {
     final accumulatedTextBuffer = StringBuffer();
     var chunkCount = 0;
     var lastResult = ChatResult<ChatMessage>(
-      output: const ChatMessage(role: ChatMessageRole.model, parts: []),
+      output: ChatMessage(role: ChatMessageRole.model, parts: const []),
       finishReason: FinishReason.unspecified,
       metadata: const {},
       usage: null,
@@ -175,9 +174,9 @@ class OpenAIChatModel extends ChatModel<OpenAIChatOptions> {
       } else {
         // Yield final result with empty output to provide usage without
         // duplicating text
-        const emptyMessage = ChatMessage(
+        final emptyMessage = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [],
+          parts: const [],
         );
         yield ChatResult<ChatMessage>(
           id: lastResult.id,

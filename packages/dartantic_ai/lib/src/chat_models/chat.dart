@@ -1,5 +1,4 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 
 import '../agent/agent.dart';
 
@@ -35,7 +34,7 @@ class Chat {
   Future<ChatResult<String>> send(
     String prompt, {
     List<Part> attachments = const [],
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async {
     final result = await agent.send(
       prompt,
@@ -55,7 +54,7 @@ class Chat {
   /// desired type.
   Future<ChatResult<TOutput>> sendFor<TOutput extends Object>(
     String prompt, {
-    required JsonSchema outputSchema,
+    required Schema outputSchema,
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     List<Part> attachments = const [],
   }) async {
@@ -78,7 +77,7 @@ class Chat {
   Stream<ChatResult<String>> sendStream(
     String prompt, {
     List<Part> attachments = const [],
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) => agent
       .sendStream(
         prompt,

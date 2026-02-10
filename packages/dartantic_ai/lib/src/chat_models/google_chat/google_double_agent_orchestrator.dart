@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 
 import '../../agent/orchestrators/default_streaming_orchestrator.dart';
@@ -57,7 +56,7 @@ class GoogleDoubleAgentOrchestrator extends DefaultStreamingOrchestrator {
   Future<void> beforeModelStream(
     StreamingState state,
     ChatModel<ChatModelOptions> model, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async {
     final phase = _isPhase1 ? 'phase 1 (tools)' : 'phase 2 (typed output)';
     _logger.fine(
@@ -70,7 +69,7 @@ class GoogleDoubleAgentOrchestrator extends DefaultStreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     if (_isPhase1) {
       // Phase 1: Run with tools, no outputSchema

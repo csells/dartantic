@@ -3,7 +3,6 @@ import 'package:google_cloud_ai_generativelanguage_v1beta/generativelanguage.dar
     as gl;
 import 'package:google_cloud_protobuf/protobuf.dart' as pb;
 import 'package:http/http.dart' as http;
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 
@@ -59,7 +58,7 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
   Stream<ChatResult<ChatMessage>> sendStream(
     List<ChatMessage> messages, {
     GoogleChatModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) {
     final request = _buildRequest(
       messages,
@@ -83,7 +82,7 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
   gl.GenerateContentRequest _buildRequest(
     List<ChatMessage> messages, {
     GoogleChatModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) {
     final normalizedModel = normalizeGoogleModelName(name);
     final safetySettings =
@@ -93,9 +92,12 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
     final serverSideTools =
         options?.serverSideTools ?? defaultOptions.serverSideTools ?? const {};
 
-    final enableCodeExecution = serverSideTools.contains(
-      GoogleServerSideTool.codeExecution,
-    );
+    // Google doesn't support server-side tools + outputSchema simultaneously.
+    // When outputSchema is provided, exclude server-side tools (double agent
+    // phase 2). This matches the behavior for user-defined tools below.
+    final enableCodeExecution =
+        outputSchema == null &&
+        serverSideTools.contains(GoogleServerSideTool.codeExecution);
 
     final generationConfig = _buildGenerationConfig(
       options: options,
@@ -130,9 +132,9 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
       tools:
           toolsToSend.toToolList(
             enableCodeExecution: enableCodeExecution,
-            enableGoogleSearch: serverSideTools.contains(
-              GoogleServerSideTool.googleSearch,
-            ),
+            enableGoogleSearch:
+                outputSchema == null &&
+                serverSideTools.contains(GoogleServerSideTool.googleSearch),
           ) ??
           const [],
     );
@@ -166,7 +168,7 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
 
   gl.GenerationConfig _buildGenerationConfig({
     GoogleChatModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) {
     final stopSequences =
         options?.stopSequences ??
@@ -219,11 +221,11 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
   /// support. This uses the new responseJsonSchema API which accepts standard
   /// JSON Schema directly, eliminating the need for custom schema conversion.
   pb.Value? _resolveResponseJsonSchema({
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
     Map<String, dynamic>? responseSchema,
   }) {
     if (outputSchema != null) {
-      final schemaMap = Map<String, dynamic>.from(outputSchema.schemaMap ?? {});
+      final schemaMap = Map<String, dynamic>.from(outputSchema.value);
       return ProtobufValueHelpers.valueFromJson(schemaMap);
     }
     if (responseSchema != null) {

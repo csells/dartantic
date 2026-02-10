@@ -67,7 +67,7 @@ class EchoChatModel extends ChatModel<ChatModelOptions> {
   Stream<ChatResult<ChatMessage>> sendStream(
     List<ChatMessage> messages, {
     ChatModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) {
     // Echo back the last user message
     return Stream.fromIterable([

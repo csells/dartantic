@@ -11,7 +11,7 @@
 // ignore_for_file: avoid_dynamic_calls
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:json_schema/json_schema.dart';
+
 import 'package:test/test.dart';
 
 import 'test_tools.dart';
@@ -424,7 +424,7 @@ void main() {
         final providers = ['openai', 'google', 'anthropic'];
         final history = <ChatMessage>[];
 
-        final citySchema = JsonSchema.create({
+        final citySchema = Schema.fromMap({
           'type': 'object',
           'properties': {
             'city': {'type': 'string'},
@@ -467,7 +467,7 @@ void main() {
           final providers = ['anthropic', 'openai'];
           final history = <ChatMessage>[];
 
-          final recipeSchema = JsonSchema.create({
+          final recipeSchema = Schema.fromMap({
             'type': 'object',
             'properties': {
               'name': {'type': 'string'},
@@ -533,7 +533,7 @@ void main() {
         final history = <ChatMessage>[];
         final tools = <Tool>[temperatureTool, currentDateTimeTool];
 
-        final weatherReportSchema = JsonSchema.create({
+        final weatherReportSchema = Schema.fromMap({
           'type': 'object',
           'properties': {
             'location': {'type': 'string'},
@@ -572,7 +572,7 @@ void main() {
         final providers = ['google', 'anthropic', 'openai'];
         final history = <ChatMessage>[];
 
-        final companySchema = JsonSchema.create({
+        final companySchema = Schema.fromMap({
           'type': 'object',
           'properties': {
             'name': {'type': 'string'},

@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 import 'package:mime/mime.dart';
@@ -39,7 +38,7 @@ class OpenAIResponsesMediaGenerationModel
     List<ChatMessage> history = const [],
     List<Part> attachments = const [],
     OpenAIResponsesMediaGenerationModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     if (outputSchema != null) {
       throw UnsupportedError(
@@ -265,7 +264,7 @@ class OpenAIResponsesMediaGenerationModel
         final bytes = base64Decode(base64);
         final inferredMime =
             lookupMimeType('image.bin', headerBytes: bytes) ?? 'image/png';
-        final extension = Part.extensionFromMimeType(inferredMime);
+        final extension = PartHelpers.extensionFromMimeType(inferredMime);
         final name = tracker.buildPartialName(index, emission, extension);
         assets.add(DataPart(bytes, mimeType: inferredMime, name: name));
       }

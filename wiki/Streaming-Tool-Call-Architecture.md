@@ -114,10 +114,9 @@ for features like session persistence.
 | OpenRouter | ✅        | ✅    | ✅       | OpenAI-compatible|
 | Anthropic  | ✅        | ✅    | ✅       | Event-based      |
 | Google     | ✅        | ✅    | ❌       | Complete chunks  |
-| Ollama     | ✅        | ✅    | ❌       | Complete chunks  |
-| Mistral    | ✅        | ❌    | N/A      | Text only        |
+| Ollama     | ✅        | ⚠️    | ❌       | Complete chunks (limited reliability) |
+| Mistral    | ✅        | ✅    | ✅       | OpenAI-compatible |
 | Cohere     | ✅        | ⚠️    | ⚠️       | API bug (non-unique IDs) |
-| Together   | ✅        | ✅    | ✅       | OpenAI-compatible|
 
 ## Streaming Patterns
 
@@ -137,7 +136,7 @@ Structured event sequence with state tracking across events.
 The orchestration layer coordinates streaming workflows through the `StreamingOrchestrator` interface.
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   });
   
   /// Finalize the orchestrator after streaming completes
@@ -151,7 +150,7 @@ The Agent selects the appropriate orchestrator based on request characteristics:
 
 ```dart
 StreamingOrchestrator _selectOrchestrator({
-  JsonSchema? outputSchema,
+  Schema? outputSchema,
   List<Tool>? tools,
 }) {
   // Select TypedOutputStreamingOrchestrator for structured output
@@ -370,8 +369,8 @@ For providers without tool IDs (Google, Ollama):
 // In mapper
 final toolId = Uuid().v4();
 return ToolPart.call(
-  id: toolId,
-  name: functionCall.name,
+  callId: toolId,
+  toolName: functionCall.name,
   arguments: functionCall.args,
 );
 ```
@@ -419,13 +418,13 @@ Tool execution errors are included in the consolidated tool result message:
 
 ```dart
 catch (error, stackTrace) {
-  _logger.warning('Tool ${toolPart.name} execution failed: $error');
-  
+  _logger.warning('Tool ${toolPart.toolName} execution failed: $error');
+
   // Add error result part to collection
   toolResultParts.add(
     ToolPart.result(
-      id: toolPart.id,
-      name: toolPart.name,
+      callId: toolPart.callId,
+      toolName: toolPart.toolName,
       result: json.encode({'error': error.toString()}),
     ),
   );
@@ -589,7 +588,7 @@ class CustomStreamingOrchestrator implements StreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     // Custom streaming workflow
   }

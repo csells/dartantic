@@ -2,7 +2,6 @@ import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:google_cloud_ai_generativelanguage_v1beta/generativelanguage.dart'
     as gl;
 import 'package:http/http.dart' as http;
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 
 import '../agent/orchestrators/default_streaming_orchestrator.dart';
@@ -61,13 +60,17 @@ class GoogleProvider
 
   @override
   (StreamingOrchestrator, List<Tool>?) getChatOrchestratorAndTools({
-    required JsonSchema? outputSchema,
+    required Schema? outputSchema,
     required List<Tool>? tools,
+    bool hasServerSideTools = false,
   }) {
-    final hasTools = tools != null && tools.isNotEmpty;
+    final hasUserTools = tools != null && tools.isNotEmpty;
 
-    if (outputSchema != null && hasTools) {
-      // Double agent: tools + typed output (requires stateful orchestrator)
+    if (outputSchema != null && (hasUserTools || hasServerSideTools)) {
+      // Double agent: tools + typed output (requires stateful orchestrator).
+      // This applies to both user-defined tools AND server-side tools (Google
+      // Search, Code Execution) since Gemini doesn't support tools +
+      // outputSchema in a single request.
       return (GoogleDoubleAgentOrchestrator(), tools);
     }
 

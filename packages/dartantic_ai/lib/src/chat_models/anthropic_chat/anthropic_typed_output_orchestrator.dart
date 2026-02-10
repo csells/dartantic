@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 
 import '../../agent/orchestrators/default_streaming_orchestrator.dart';
@@ -36,7 +35,7 @@ class AnthropicTypedOutputOrchestrator extends DefaultStreamingOrchestrator {
   Future<void> beforeModelStream(
     StreamingState state,
     ChatModel<ChatModelOptions> model, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async {
     _logger.fine(
       'Anthropic typed output orchestrator starting '
@@ -49,7 +48,7 @@ class AnthropicTypedOutputOrchestrator extends DefaultStreamingOrchestrator {
     ChatMessage consolidatedMessage,
     StreamingState state,
     ChatModel<ChatModelOptions> model, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     final emptyHandler = handleEmptyMessage(consolidatedMessage, state);
     if (emptyHandler != null) {
@@ -127,7 +126,7 @@ class AnthropicTypedOutputOrchestrator extends DefaultStreamingOrchestrator {
     ToolExecutionResult? returnResult;
 
     for (final result in executionResults) {
-      if (result.toolPart.name ==
+      if (result.toolPart.toolName ==
               AnthropicProvider.kAnthropicReturnResultTool &&
           result.isSuccess) {
         returnResult = result;
@@ -162,11 +161,14 @@ class AnthropicTypedOutputOrchestrator extends DefaultStreamingOrchestrator {
     }
 
     if (returnResult != null) {
-      final jsonOutput = returnResult.resultPart.result ?? '';
+      final rawResult = returnResult.resultPart.result;
+      final jsonOutput = rawResult is String
+          ? rawResult
+          : rawResult?.toString() ?? '';
       final mergedMetadata = <String, dynamic>{
         ...state.suppressedToolCallMetadata,
-        'toolId': returnResult.toolPart.id,
-        'toolName': returnResult.toolPart.name,
+        'toolId': returnResult.toolPart.callId,
+        'toolName': returnResult.toolPart.toolName,
         if (state.suppressedTextParts.isNotEmpty)
           'suppressedText': state.suppressedTextParts.map((p) => p.text).join(),
       };
@@ -202,7 +204,7 @@ class AnthropicTypedOutputOrchestrator extends DefaultStreamingOrchestrator {
   ToolPart? _findReturnResultCall(ChatMessage message) {
     for (final part in message.parts.whereType<ToolPart>()) {
       if (part.kind == ToolPartKind.call &&
-          part.name == AnthropicProvider.kAnthropicReturnResultTool) {
+          part.toolName == AnthropicProvider.kAnthropicReturnResultTool) {
         return part;
       }
     }

@@ -57,8 +57,8 @@ void _dumpPartialImages(Map<String, dynamic> metadata) {
     final base64 = partial as String;
     final index = event['partial_image_index'] as int? ?? 0;
     final bytes = base64Decode(base64);
-    final mimeType = Part.mimeType('', headerBytes: bytes);
-    final extension = Part.extensionFromMimeType(mimeType)!;
+    final mimeType = PartHelpers.mimeType('', headerBytes: bytes);
+    final extension = PartHelpers.extensionFromMimeType(mimeType)!;
     final part = DataPart(
       bytes,
       mimeType: mimeType,

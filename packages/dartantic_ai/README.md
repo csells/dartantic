@@ -34,7 +34,6 @@ with generative AI easier and more fun!
 
 ```dart
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:json_schema/json_schema.dart' show JsonSchema;
 
 void main() async {
   // Create an agent with your preferred provider
@@ -44,22 +43,21 @@ void main() async {
 
   // Generate text
   final result = await agent.send(
-    'Explain quantum computing in simple terms', 
+    'Explain quantum computing in simple terms',
     history: [ChatMessage.system('You are a helpful assistant.')],
   );
   print(result.output);
 
-  // Use typed outputs
+  // Use typed outputs with json_schema_builder
   final location = await agent.sendFor<TownAndCountry>(
     'The windy city in the US',
-    outputSchema: JsonSchema.create({
-      'type': 'object',
-      'properties': {
-        'town': {'type': 'string'},
-        'country': {'type': 'string'},
+    outputSchema: S.object(
+      properties: {
+        'town': S.string(),
+        'country': S.string(),
       },
-      'required': ['town', 'country'],
-    }),
+      required: ['town', 'country'],
+    ),
     outputFromJson: TownAndCountry.fromJson,
   );
   print('${location.output.town}, ${location.output.country}');

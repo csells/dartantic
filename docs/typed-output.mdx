@@ -14,7 +14,7 @@ object shape.
 ```dart
 final result = await agent.send(
   'The windy city in the US of A',
-  outputSchema: JsonSchema.create({
+  outputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'city': {'type': 'string'},
@@ -34,7 +34,7 @@ knows how to parse the LLM's response to a `Map<String, dynamic>`.
 ```dart
 final result = await agent.sendFor<Map<String, dynamic>>(
   'Name 3 colors that make you happy',
-  outputSchema: JsonSchema.create({
+  outputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'colors': {
@@ -65,7 +65,7 @@ class Weather {
 
 final result = await agent.sendFor<Weather>(
   'How hot is it in the Big Apple right now?',
-  outputSchema: JsonSchema.create({
+  outputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'city': {'type': 'string'},

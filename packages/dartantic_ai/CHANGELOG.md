@@ -1,3 +1,131 @@
+## 3.1.0
+
+### Fixed: Google Server-Side Tools with Structured Output
+
+Fixed issue [#96](https://github.com/csells/dartantic/issues/96) where combining
+Google server-side tools (Google Search, Code Execution) with typed output would
+fail with "Tool use with a response mime type: 'application/json' is
+unsupported".
+
+Server-side tools now work with typed output using the same two-phase
+`GoogleDoubleAgentOrchestrator` approach as user-defined tools:
+- **Phase 1**: Execute server-side tools (no outputSchema)
+- **Phase 2**: Get structured JSON output (no tools)
+
+```dart
+// Now works! Previously failed with API error
+final agent = Agent(
+  'google',
+  chatModelOptions: const GoogleChatModelOptions(
+    serverSideTools: {GoogleServerSideTool.googleSearch},
+  ),
+);
+
+final result = await agent.sendFor<MyOutput>(
+  'Search for current weather and return as JSON',
+  outputSchema: MyOutput.schema,
+  outputFromJson: MyOutput.fromJson,
+);
+```
+
+The fix automatically detects server-side tools and selects the appropriate
+orchestrator, with no code changes required for existing applications.
+
+## 3.0.0
+
+### Streaming Thinking via `chunk.thinking`
+
+Added a dedicated `thinking` field to `ChatResult<String>` for streaming
+thinking content. This provides symmetric access to thinking during streaming,
+matching how `chunk.output` provides streaming text:
+
+```dart
+await for (final chunk in agent.sendStream(prompt)) {
+  if (chunk.thinking != null) {
+    stdout.write(chunk.thinking);  // Real-time thinking display
+  }
+  stdout.write(chunk.output);  // Real-time text display
+  history.addAll(chunk.messages);  // Consolidated messages
+}
+```
+
+This is an additive change - the final consolidated message still contains
+`ThinkingPart` for history storage.
+
+### Breaking Change: Migrated to genai_primitives Types
+
+The core message types have been migrated from custom implementations to the
+standardized `genai_primitives` package. This provides better interoperability
+with other GenAI tooling in the Dart ecosystem.
+
+Types now re-exported from `genai_primitives`:
+
+- `ChatMessage`, `ChatMessageRole`
+- `Part` (alias for `StandardPart`), `TextPart`, `DataPart`, `LinkPart`,
+  `ThinkingPart`
+- `ToolPart`, `ToolPartKind`
+- `ToolDefinition`
+
+Note: `Part` is a typedef alias for `StandardPart` from genai_primitives 0.2.0.
+See dartantic_interface CHANGELOG for details on custom Part implementations.
+
+### Breaking Change: Migrated to json_schema_builder for Schemas
+
+The `Schema` type is now provided by the `json_schema_builder` package instead
+of a custom implementation. This provides a more robust JSON Schema builder with
+better validation.
+
+```dart
+// NEW: Use S.object() for empty schemas, S.* for building schemas
+import 'package:dartantic_ai/dartantic_ai.dart';
+
+final tool = Tool(
+  name: 'my_tool',
+  description: 'Does something',
+  inputSchema: S.object(properties: {
+    'name': S.string(description: 'The name'),
+  }),
+  onCall: (args) => 'Hello ${args['name']}',
+);
+```
+
+### Thinking API
+
+Extended thinking (chain-of-thought reasoning) is accessed via
+`ChatResult.thinking` for both streaming and non-streaming:
+
+```dart
+final agent = Agent('anthropic', enableThinking: true);
+
+// Non-streaming
+final result = await agent.send('Solve this puzzle...');
+print(result.thinking);
+
+// Streaming
+await for (final chunk in agent.sendStream('Solve this puzzle...')) {
+  if (chunk.thinking != null) stdout.write(chunk.thinking);  // Real-time
+}
+```
+
+Thinking is also stored as `ThinkingPart` in message parts for conversation
+history.
+
+### Provider Changes
+
+- **Mistral Default Model**: Changed default from `mistral-small-latest` to
+  `mistral-medium-latest` for more reliable tool calling. The small model was
+  truncating string arguments in certain scenarios.
+
+### Fixes
+
+- **Anthropic Thinking Metadata**: The thinking signature is still stored in
+  metadata while the thinking text is only stored in `ThinkingPart`.
+
+- **ThinkingPart Filtering**: Each provider's message mapper now correctly
+  handles `ThinkingPart` - Anthropic converts it to thinking blocks for the API,
+  while other providers filter it out during mapping since they don't need
+  thinking content sent back.
+
 ## 2.2.3
 
 - moved Agent method input params to take Iterable instead of List per
@@ -55,7 +183,8 @@
   - Enables image editing use cases: colorization, style transfer, inpainting
   - Added e2e tests for image editing with attachments for Google, OpenAI, and
     Anthropic providers
-  - Updated all media generation examples to include image editing demonstrations
+  - Updated all media generation examples to include image editing
+    demonstrations
   - Refactored Google Part mapping to use shared `mapPartsToGoogle()` helper
 - Refactored provider `listModels()` implementations to use SDK methods instead
   of raw HTTP:
@@ -68,10 +197,12 @@
 ## 2.0.3
 
 - Updated Anthropic SDK compatibility for `anthropic_sdk_dart` 0.3.1:
-  - `ImageBlockSource` now uses sealed class API with `base64ImageSource()` factory
+  - `ImageBlockSource` now uses sealed class API with `base64ImageSource()`
+    factory
   - Added support for new block types: `DocumentBlock`, `RedactedThinkingBlock`,
     `ServerToolUseBlock`, `WebSearchToolResultBlock`, `MCPToolUseBlock`
-  - Added support for new delta types: `SignatureBlockDelta`, `CitationsBlockDelta`
+  - Added support for new delta types: `SignatureBlockDelta`,
+    `CitationsBlockDelta`
   - Added `pauseTurn` and `refusal` stop reasons
 - Updated Mistral SDK compatibility for `mistralai_dart` 0.1.1:
   - Fixed ambiguous imports for `JsonSchema` and `Tool`
@@ -123,6 +254,7 @@ final provider2 = OpenAIProvider();
 
 Removed the following intrinsic providers from dartantic to the
 `openai_compat.dart` example:
+
 - `google-openai`
 - `together`
 - `ollama-openai`
@@ -214,6 +346,7 @@ final agent = Agent(
 ```
 
 Available modes:
+
 - `auto` (default): Model decides when to call functions
 - `any`: Model always calls a function
 - `none`: Model never calls functions
@@ -295,6 +428,7 @@ You can see how they all work in the new set of server-side tooling examples.
 ## 1.2.0
 
 Another big release!
+
 - Migrated Google provider from deprecated `google_generative_ai` to generated
   `google_cloud_ai_generativelanguage_v1beta` package. This is an internal
   implementation change with no API surface changes for users. However, it does
@@ -316,7 +450,7 @@ Another big release!
   in `dart:io`, disabling web support. dartantic_ai fully supports the web and
   if it ever says it doesn't, that's a bug.
 - Used the updated `openai_core` package to refactor `OpenAIResponsesChatModel`
-  to eliminate workaround for retrieving container file names. 
+  to eliminate workaround for retrieving container file names.
 - Updated the default Anthropic model to `claude-sonnet-4-0`, although of course
   you can use whichever model you want.
 - Fixed the `homepage` tag in the `pubspec.yaml`.
@@ -326,6 +460,7 @@ Another big release!
 ## 1.1.0
 
 This is a big release!
+
 - Added the OpenAI Responses provider built on `openai_core`, including session
   persistence (aka prompt caching), intrinsic server-side tools, and thinking
   metadata streams. Thanks to @jezell for his most excellent `openai_core`
@@ -380,12 +515,12 @@ This is a big release!
 
 ## 1.0.5
 
--  Fixed #47: Dartantic is checking for wrong environment variable. I was being
-   aggressive about constructing providers before they were used and checking
-   API keys before they were needed, which was causing this issue. For example,
-   if you wanted to use `Agent('google')` and didn't have the MISTRAL_API_KEY
-   set (why would you?), string lookup creates all of the providers, which
-   caused all of them to check for their API key and -- BOOM.
+- Fixed #47: Dartantic is checking for wrong environment variable. I was being
+  aggressive about constructing providers before they were used and checking API
+  keys before they were needed, which was causing this issue. For example, if
+  you wanted to use `Agent('google')` and didn't have the MISTRAL_API_KEY set
+  (why would you?), string lookup creates all of the providers, which caused all
+  of them to check for their API key and -- BOOM.
 
 ## 1.0.4
 
@@ -589,7 +724,7 @@ final part = await DataPart.file(File('bio.txt'));
 import 'package:cross_file/cross_file.dart';
 
 final file = XFile.fromData(
-  await File('bio.txt').readAsBytes(), 
+  await File('bio.txt').readAsBytes(),
   path: 'bio.txt',
 );
 final part = await DataPart.fromFile(file);
@@ -881,7 +1016,7 @@ Agent.loggingOptions = const LoggingOptions(level: LogLevel.ALL);
   "providerName/model", e.g. "openai" or "googleai/gemini-2.0-flash"
 - move types specified by `Map<String, dynamic>` to a `JsonSchema` object; added
   `toMap()` extension method to `JsonSchema` and `toSchema` to `Map<String,
-  dynamic>` to make going back and forth more convenient.
+dynamic>` to make going back and forth more convenient.
 - move the provider argument to `Agent.provider` as the most flexible case, but
   also the less common one. `Agent()` will contine to take a model string.
 

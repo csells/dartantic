@@ -95,9 +95,13 @@ void main() {
       test('assigns IDs to tool calls without them', () {
         final parts = [
           const TextPart('Hello'),
-          const ToolPart.call(id: '', name: 'tool1', arguments: {}),
-          const ToolPart.call(id: 'existing_id', name: 'tool2', arguments: {}),
-          const ToolPart.call(id: '', name: 'tool3', arguments: {}),
+          const ToolPart.call(callId: '', toolName: 'tool1', arguments: {}),
+          const ToolPart.call(
+            callId: 'existing_id',
+            toolName: 'tool2',
+            arguments: {},
+          ),
+          const ToolPart.call(callId: '', toolName: 'tool3', arguments: {}),
         ];
 
         final updated = ToolIdHelpers.assignToolCallIds(
@@ -107,14 +111,14 @@ void main() {
 
         expect(updated[0], isA<TextPart>());
         // Should assign non-empty IDs to empty ones
-        expect((updated[1] as ToolPart).id, isNotEmpty);
+        expect((updated[1] as ToolPart).callId, isNotEmpty);
         // Keep existing
-        expect((updated[2] as ToolPart).id, equals('existing_id'));
-        expect((updated[3] as ToolPart).id, isNotEmpty);
+        expect((updated[2] as ToolPart).callId, equals('existing_id'));
+        expect((updated[3] as ToolPart).callId, isNotEmpty);
         // Assigned IDs should be unique
         expect(
-          (updated[1] as ToolPart).id,
-          isNot(equals((updated[3] as ToolPart).id)),
+          (updated[1] as ToolPart).callId,
+          isNot(equals((updated[3] as ToolPart).callId)),
         );
       });
     });
@@ -177,11 +181,11 @@ void main() {
 
     group('Message extensions', () {
       test('validates tool IDs in messages', () {
-        const messageWithEmptyIds = ChatMessage(
+        final messageWithEmptyIds = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [
-            ToolPart.call(id: '', name: 'tool1', arguments: {}),
-            ToolPart.call(id: 'valid_id', name: 'tool2', arguments: {}),
+          parts: const [
+            ToolPart.call(callId: '', toolName: 'tool1', arguments: {}),
+            ToolPart.call(callId: 'valid_id', toolName: 'tool2', arguments: {}),
           ],
         );
 
@@ -192,12 +196,16 @@ void main() {
       });
 
       test('ensures tool call IDs', () {
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [
+          parts: const [
             TextPart('Response'),
-            ToolPart.call(id: '', name: 'weather', arguments: {}),
-            ToolPart.call(id: 'existing_id', name: 'calculator', arguments: {}),
+            ToolPart.call(callId: '', toolName: 'weather', arguments: {}),
+            ToolPart.call(
+              callId: 'existing_id',
+              toolName: 'calculator',
+              arguments: {},
+            ),
           ],
         );
 
@@ -205,27 +213,35 @@ void main() {
 
         expect(updated.parts[0], isA<TextPart>());
         // Should generate a non-empty ID for the tool without one
-        expect((updated.parts[1] as ToolPart).id, isNotEmpty);
+        expect((updated.parts[1] as ToolPart).callId, isNotEmpty);
         // Should preserve existing ID
-        expect((updated.parts[2] as ToolPart).id, equals('existing_id'));
+        expect((updated.parts[2] as ToolPart).callId, equals('existing_id'));
       });
     });
 
     group('Conversation validation', () {
       test('validates tool ID consistency across conversation', () {
         final messages = [
-          const ChatMessage(
+          ChatMessage(
             role: ChatMessageRole.model,
-            parts: [
-              ToolPart.call(id: 'call_1', name: 'tool1', arguments: {}),
-              ToolPart.call(id: 'call_2', name: 'tool2', arguments: {}),
+            parts: const [
+              ToolPart.call(callId: 'call_1', toolName: 'tool1', arguments: {}),
+              ToolPart.call(callId: 'call_2', toolName: 'tool2', arguments: {}),
             ],
           ),
-          const ChatMessage(
+          ChatMessage(
             role: ChatMessageRole.user,
-            parts: [
-              ToolPart.result(id: 'call_1', name: 'tool1', result: 'result1'),
-              ToolPart.result(id: 'call_3', name: 'unknown', result: 'result3'),
+            parts: const [
+              ToolPart.result(
+                callId: 'call_1',
+                toolName: 'tool1',
+                result: 'result1',
+              ),
+              ToolPart.result(
+                callId: 'call_3',
+                toolName: 'unknown',
+                result: 'result3',
+              ),
             ],
           ),
         ];
@@ -276,7 +292,7 @@ void main() {
           );
 
           // Verify all tool calls have unique IDs
-          final callIds = toolCalls.map((tc) => tc.id).toList();
+          final callIds = toolCalls.map((tc) => tc.callId).toList();
           expect(
             callIds.toSet().length,
             equals(callIds.length),
@@ -286,10 +302,10 @@ void main() {
           // Verify no empty IDs
           for (final call in toolCalls) {
             expect(
-              call.id,
+              call.callId,
               isNotEmpty,
               reason:
-                  'Provider ${provider.name} tool call "${call.name}" '
+                  'Provider ${provider.name} tool call "${call.toolName}" '
                   'should have non-empty ID',
             );
           }
@@ -298,15 +314,15 @@ void main() {
           final callIdSet = callIds.toSet();
           for (final result in toolResults) {
             expect(
-              result.id,
+              result.callId,
               isNotEmpty,
               reason: 'Provider ${provider.name} tool result should have ID',
             );
             expect(
-              callIdSet.contains(result.id),
+              callIdSet.contains(result.callId),
               isTrue,
               reason:
-                  'Provider ${provider.name} tool result ID "${result.id}" '
+                  'Provider ${provider.name} tool result ID "${result.callId}" '
                   'should match a tool call',
             );
           }
@@ -341,7 +357,7 @@ void main() {
           );
 
           // Only check uniqueness if we got multiple calls
-          final ids = toolCalls.map((tc) => tc.id).toList();
+          final ids = toolCalls.map((tc) => tc.callId).toList();
 
           if (ids.length > 1) {
             // Some providers may not generate unique IDs for each call This is

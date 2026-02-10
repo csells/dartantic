@@ -3,6 +3,7 @@ import 'package:google_cloud_ai_generativelanguage_v1beta/generativelanguage.dar
     as gl;
 import 'package:logging/logging.dart';
 
+import '../../shared/google_thinking_metadata.dart';
 import '../helpers/message_part_helpers.dart';
 import '../helpers/protobuf_value_helpers.dart';
 import '../helpers/tool_id_helpers.dart';
@@ -18,8 +19,7 @@ final Logger _logger = Logger('dartantic.chat.mappers.google');
 /// Maps Dartantic Parts to Google gl.Parts (public helper for reuse).
 ///
 /// The [messageMetadata] parameter should contain thought signatures when
-/// available, keyed as `'_google_thought_signatures'` with a map of
-/// tool call ID → signature.
+/// available, stored via [GoogleThinkingMetadata].
 List<gl.Part> mapPartsToGoogle(
   Iterable<Part> parts, {
   bool includeToolCalls = false,
@@ -27,9 +27,9 @@ List<gl.Part> mapPartsToGoogle(
   Map<String, dynamic> messageMetadata = const {},
 }) {
   final mappedParts = <gl.Part>[];
-  final thoughtSignatures =
-      messageMetadata['_google_thought_signatures'] as Map<String, dynamic>? ??
-      const {};
+  final thoughtSignatures = GoogleThinkingMetadata.getSignatures(
+    messageMetadata,
+  );
 
   for (final part in parts) {
     switch (part) {
@@ -56,7 +56,9 @@ List<gl.Part> mapPartsToGoogle(
         } else if (includeToolResults && kind == ToolPartKind.result) {
           mappedParts.add(_mapToolResultPart(part, thoughtSignatures));
         }
-      default:
+      case ThinkingPart():
+        // Google maintains reasoning context via thought signatures, not
+        // thinking text - signatures alone preserve continuity across turns
         break;
     }
   }
@@ -69,10 +71,10 @@ gl.Part _mapToolCallPart(
   Map<String, dynamic> thoughtSignatures,
 ) {
   final arguments = part.arguments ?? const <String, dynamic>{};
-  final callId = part.id.isNotEmpty
-      ? part.id
+  final callId = part.callId.isNotEmpty
+      ? part.callId
       : ToolIdHelpers.generateToolCallId(
-          toolName: part.name,
+          toolName: part.toolName,
           providerHint: 'google',
           arguments: arguments,
         );
@@ -80,10 +82,14 @@ gl.Part _mapToolCallPart(
   return gl.Part(
     functionCall: gl.FunctionCall(
       id: callId,
-      name: part.name,
+      name: part.toolName,
       args: ProtobufValueHelpers.structFromJson(arguments),
     ),
-    thoughtSignature: thoughtSignatures[callId],
+    // Attach signature to preserve reasoning context across tool calls
+    thoughtSignature: GoogleThinkingMetadata.getSignatureBytes(
+      thoughtSignatures,
+      callId,
+    ),
   );
 }
 
@@ -92,15 +98,19 @@ gl.Part _mapToolResultPart(
   Map<String, dynamic> thoughtSignatures,
 ) {
   final responseMap = ToolResultHelpers.ensureMap(part.result);
-  _logger.fine('Creating function response for tool: ${part.name}');
+  _logger.fine('Creating function response for tool: ${part.toolName}');
 
   return gl.Part(
     functionResponse: gl.FunctionResponse(
-      id: part.id,
-      name: part.name,
+      id: part.callId,
+      name: part.toolName,
       response: ProtobufValueHelpers.structFromJson(responseMap),
     ),
-    thoughtSignature: thoughtSignatures[part.id],
+    // Attach signature to preserve reasoning context across tool results
+    thoughtSignature: GoogleThinkingMetadata.getSignatureBytes(
+      thoughtSignatures,
+      part.callId,
+    ),
   );
 }
 
@@ -110,6 +120,9 @@ extension MessageListMapper on List<ChatMessage> {
   ///
   /// Groups consecutive tool result messages into a single `Content` so we can
   /// attach all [gl.FunctionResponse] parts in one payload.
+  ///
+  /// ThinkingPart is skipped since Google uses thought signatures (not text)
+  /// to maintain reasoning continuity across conversation turns.
   List<gl.Content> toContentList() {
     final nonSystemMessages = where(
       (message) => message.role != ChatMessageRole.system,
@@ -233,7 +246,6 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
     final parts = <Part>[];
     final executableCodeParts = <gl.ExecutableCode>[];
     final executionResults = <gl.CodeExecutionResult>[];
-    final thinkingBuffer = StringBuffer();
     // Collect thought signatures keyed by tool call ID for Gemini 3+ models
     final thoughtSignatures = <String, dynamic>{};
 
@@ -249,9 +261,11 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
       final text = part.text;
       if (text != null && text.isNotEmpty) {
         if (isThought) {
-          // Accumulate thinking content, don't add to regular parts
-          thinkingBuffer.write(text);
-          _logger.fine('Accumulated thinking text: ${text.length} chars');
+          // Add thinking content as ThinkingPart
+          parts.add(ThinkingPart(text));
+          _logger.fine(
+            'Added thinking text as ThinkingPart: ${text.length} chars',
+          );
         } else {
           parts.add(TextPart(text));
         }
@@ -281,13 +295,18 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
                 arguments: args,
               );
         parts.add(
-          ToolPart.call(id: callId, name: functionCall.name, arguments: args),
+          ToolPart.call(
+            callId: callId,
+            toolName: functionCall.name,
+            arguments: args,
+          ),
         );
-        // Store thought signature in message metadata keyed by tool call ID
-        final sig = part.thoughtSignature;
-        if (sig.isNotEmpty) {
-          thoughtSignatures[callId] = sig;
-        }
+        // Store signature to preserve reasoning context for subsequent turns
+        GoogleThinkingMetadata.setSignatureBytes(
+          thoughtSignatures,
+          callId,
+          part.thoughtSignature,
+        );
       }
 
       final functionResponse = part.functionResponse;
@@ -304,16 +323,17 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
               );
         parts.add(
           ToolPart.result(
-            id: responseId,
-            name: functionResponse.name,
+            callId: responseId,
+            toolName: functionResponse.name,
             result: responseMap,
           ),
         );
-        // Store thought signature for function responses too
-        final sig = part.thoughtSignature;
-        if (sig.isNotEmpty) {
-          thoughtSignatures[responseId] = sig;
-        }
+        // Store signature to preserve reasoning context for subsequent turns
+        GoogleThinkingMetadata.setSignatureBytes(
+          thoughtSignatures,
+          responseId,
+          part.thoughtSignature,
+        );
       }
 
       final executableCode = part.executableCode;
@@ -327,11 +347,10 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
       }
     }
 
-    // Build message metadata including thought signatures if present
-    final messageMetadata = <String, dynamic>{
-      if (thoughtSignatures.isNotEmpty)
-        '_google_thought_signatures': thoughtSignatures,
-    };
+    // Build message metadata with thought signatures for multi-turn continuity
+    final messageMetadata = GoogleThinkingMetadata.buildMetadata(
+      signatures: thoughtSignatures,
+    );
 
     final message = ChatMessage(
       role: ChatMessageRole.model,
@@ -390,18 +409,9 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
       (_, value) => value == null || (value is List && value.isEmpty),
     );
 
-    // Add thinking as first-class field
-    final thinking = thinkingBuffer.isNotEmpty
-        ? thinkingBuffer.toString()
-        : null;
-    if (thinking != null) {
-      _logger.fine('Added thinking: ${thinking.length} chars');
-    }
-
     return ChatResult<ChatMessage>(
       output: message,
       messages: [message],
-      thinking: thinking,
       finishReason: _mapFinishReason(candidate.finishReason),
       metadata: metadata,
       usage: usageMetadata != null
@@ -500,13 +510,9 @@ extension ChatToolListMapper on List<Tool>? {
                   name: tool.name,
                   description: tool.description,
                   // Use native JSON Schema support via parametersJsonSchema
-                  parametersJsonSchema: tool.inputSchema.schemaMap != null
-                      ? ProtobufValueHelpers.valueFromJson(
-                          Map<String, dynamic>.from(
-                            tool.inputSchema.schemaMap!,
-                          ),
-                        )
-                      : null,
+                  parametersJsonSchema: ProtobufValueHelpers.valueFromJson(
+                    Map<String, dynamic>.from(tool.inputSchema.value),
+                  ),
                 ),
               )
               .toList(growable: false)

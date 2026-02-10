@@ -2,7 +2,6 @@
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:example/example.dart';
-import 'package:json_schema/json_schema.dart';
 
 /// An example of how to add and use a custom provider.
 void main() async {
@@ -53,7 +52,7 @@ class EchoChatModel extends ChatModel<ChatModelOptions> {
   Stream<ChatResult<ChatMessage>> sendStream(
     List<ChatMessage> messages, {
     ChatModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) {
     assert(messages.isNotEmpty);
     assert(messages.last.role == ChatMessageRole.user);

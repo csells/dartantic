@@ -1,1 +1,0 @@
-JavaScript runs in browsers.

@@ -1,5 +1,4 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 
@@ -33,7 +32,7 @@ class AnthropicMediaGenerationModel
     List<ChatMessage> history = const [],
     List<Part> attachments = const [],
     AnthropicMediaGenerationModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     if (outputSchema != null) {
       throw UnsupportedError(

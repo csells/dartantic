@@ -1,8 +1,7 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
-import 'package:mistralai_dart/mistralai_dart.dart' hide JsonSchema, Tool;
+import 'package:mistralai_dart/mistralai_dart.dart' hide Tool;
 
 import 'mistral_chat_options.dart';
 import 'mistral_message_mappers.dart';
@@ -43,7 +42,7 @@ class MistralChatModel extends ChatModel<MistralChatModelOptions> {
   Stream<ChatResult<ChatMessage>> sendStream(
     List<ChatMessage> messages, {
     MistralChatModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) {
     _logger.info(
       'Starting Mistral chat stream with ${messages.length} messages for '

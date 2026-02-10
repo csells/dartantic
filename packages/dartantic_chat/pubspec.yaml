@@ -2,7 +2,7 @@ name: dartantic_chat
 description: >-
   AI chat widget for Flutter apps targeting mobile, desktop, and web supporting
   text, image, and voice input.
-version: 0.3.0
+version: 0.2.0
 repository: https://github.com/csells/dartantic/tree/main/packages/dartantic_chat
 resolution: workspace
 

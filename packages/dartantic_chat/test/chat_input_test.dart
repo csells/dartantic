@@ -297,8 +297,8 @@ void main() {
           await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
           await tester.pump();
 
-          // Filter to URL manually by typing 'url'
-          await tester.enterText(textFieldFinder, '/url');
+          // Filter to Attach Link by typing 'link' (matches the name)
+          await tester.enterText(textFieldFinder, '/link');
           await tester.pumpAndSettle();
 
           expect(find.text('Attach Link'), findsOneWidget);

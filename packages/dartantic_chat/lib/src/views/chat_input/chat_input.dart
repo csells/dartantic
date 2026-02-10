@@ -181,12 +181,13 @@ class _ChatInputState extends State<ChatInput> {
       // 2. Receiving transcribed text from speech-to-text (preserves existing
       //    attachments)
       // 3. Selecting a suggestion from the chat interface
-      _textController.text = widget.initialMessage!.text;
+      final message = widget.initialMessage!;
+      _textController.text = message.text;
       // Extract non-text parts as attachments
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           widget.onReplaceAttachments(
-            widget.initialMessage!.parts.whereType<DataPart>().toList(),
+            message.parts.whereType<DataPart>().toList(),
           );
         }
       });
@@ -223,14 +224,15 @@ class _ChatInputState extends State<ChatInput> {
   @override
   Widget build(BuildContext context) => Container(
     color: _inputStyle!.backgroundColor,
-    padding: const EdgeInsets.all(16),
+    padding: const EdgeInsets.all(ChatInputConstants.containerPadding),
     child: Column(
       children: [
         AttachmentsView(
           attachments: widget.attachments,
           onRemove: widget.onRemoveAttachment,
         ),
-        if (widget.attachments.isNotEmpty) const SizedBox(height: 6),
+        if (widget.attachments.isNotEmpty)
+          const SizedBox(height: ChatInputConstants.attachmentsSpacing),
         ValueListenableBuilder(
           valueListenable: _textController,
           builder: (context, value, child) => ListenableBuilder(
@@ -243,7 +245,9 @@ class _ChatInputState extends State<ChatInput> {
               children: [
                 if (_viewModel!.enableAttachments)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.only(
+                      bottom: ChatInputConstants.actionButtonBottomPadding,
+                    ),
                     child: AttachmentActionBar(
                       key: _actionBarKey,
                       onAttachments: widget.onAttachments,
@@ -271,7 +275,9 @@ class _ChatInputState extends State<ChatInput> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.only(
+                    bottom: ChatInputConstants.actionButtonBottomPadding,
+                  ),
                   child: InputButton(
                     inputState: _inputState,
                     chatStyle: _chatStyle!,

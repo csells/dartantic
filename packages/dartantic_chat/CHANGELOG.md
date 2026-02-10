@@ -1,3 +1,7 @@
+## 0.3.0
+
+* Thanks for @DeTuksa for another great chat feature: custom commands!
+
 ## 0.2.0
 
 * Thanks for @DeTuksa for another great chat feature: drag 'n' drop!

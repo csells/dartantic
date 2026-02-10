@@ -81,8 +81,7 @@ class TextOrAudioInput extends StatelessWidget {
           right: ChatInputConstants.textOrAudioInputRightPadding,
           top: _onCancelEdit != null
               ? ChatInputConstants.textOrAudioInputBaseTopPadding +
-                    ChatInputConstants
-                        .textOrAudioInputEditModeAdditionalPadding
+                    ChatInputConstants.textOrAudioInputEditModeAdditionalPadding
               : ChatInputConstants.textOrAudioInputBaseTopPadding,
           bottom: ChatInputConstants.textOrAudioInputBottomPadding,
         ),
@@ -119,8 +118,7 @@ class TextOrAudioInput extends StatelessWidget {
                     hintStyle: _inputStyle.hintStyle!,
                     hintPadding: const EdgeInsets.symmetric(
                       horizontal: ChatInputConstants.chatTextFieldPadding,
-                      vertical:
-                          ChatInputConstants.chatTextFieldVerticalPadding,
+                      vertical: ChatInputConstants.chatTextFieldVerticalPadding,
                     ),
                     allowSubmit: _allowSubmit,
                     onAttachments: _onAttachments,

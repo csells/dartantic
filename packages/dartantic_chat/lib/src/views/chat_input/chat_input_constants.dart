@@ -47,4 +47,15 @@ class ChatInputConstants {
 
   /// Vertical padding applied to the overall menu container.
   static const double menuPadding = 16.0;
+
+  // ChatInput container layout values
+
+  /// Padding around the entire ChatInput container.
+  static const double containerPadding = 16.0;
+
+  /// Vertical spacing between the attachments view and the input row.
+  static const double attachmentsSpacing = 6.0;
+
+  /// Bottom padding for action buttons (attachment bar, submit button).
+  static const double actionButtonBottomPadding = 14.0;
 }

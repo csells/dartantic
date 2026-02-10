@@ -16,7 +16,6 @@ import '../../styles/action_button_style.dart';
 /// * [icon]: The icon to display next to the command name.
 /// * [onPressed]: The callback to execute when the command is selected.
 /// * [style]: The visual style of the command button.
-/// * [keywords]: A list of keywords used for filtering this command.
 typedef CommandMenuItem = ({
   String name,
   IconData icon,
@@ -86,6 +85,9 @@ class CommandMenuController extends ChangeNotifier {
   void updateMenuItems(List<CommandMenuItem> allItems) {
     _allItems = List.unmodifiable(allItems);
     _recomputeFilteredItems();
+    _activeIndex = _filteredItems.isEmpty
+        ? 0
+        : _activeIndex.clamp(0, _filteredItems.length - 1);
   }
 
   /// Moves the active selection to the next item (wraps around).

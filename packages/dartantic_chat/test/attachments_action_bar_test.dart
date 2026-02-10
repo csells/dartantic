@@ -55,18 +55,9 @@ void main() {
       await tester.tap(find.byType(ActionButton));
       await tester.pump();
 
-      // Dynamically count items
-      final menuItemsCount = find.byType(MenuItemButton).evaluate().length;
-
-      const itemHeight = ChatInputConstants.menuItemHeight;
-      const menuPadding = ChatInputConstants.menuPadding;
-      final estimatedHeight = (menuItemsCount * itemHeight) + menuPadding;
-
+      // On non-mobile (test environment), menuOffset is passed through as-is
       final menuAnchor = tester.widget<MenuAnchor>(find.byType(MenuAnchor));
-      expect(
-        menuAnchor.alignmentOffset,
-        equals(Offset(10, 20 - estimatedHeight)),
-      );
+      expect(menuAnchor.alignmentOffset, equals(providedOffset));
     });
 
     testWidgets('controller toggles the menu open and closed', (tester) async {

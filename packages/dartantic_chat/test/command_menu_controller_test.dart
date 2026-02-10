@@ -7,7 +7,7 @@ import 'package:dartantic_chat/src/views/chat_input/command_menu_controller.dart
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-CommandMenuItem _item(String name, {List<String> keywords = const []}) => (
+CommandMenuItem _item(String name) => (
   name: name,
   icon: const IconData(0),
   onPressed: () {},
@@ -44,10 +44,7 @@ void main() {
     });
 
     test('open with filterQuery filters items', () {
-      controller.updateMenuItems([
-        _item('Camera', keywords: ['camera']),
-        _item('File', keywords: ['file']),
-      ]);
+      controller.updateMenuItems([_item('Camera'), _item('File')]);
 
       controller.open(filterQuery: 'cam');
 
@@ -77,9 +74,9 @@ void main() {
 
     test('updateFilter recomputes filtered items', () {
       controller.updateMenuItems([
-        _item('Camera', keywords: ['camera']),
-        _item('File', keywords: ['file']),
-        _item('URL', keywords: ['url']),
+        _item('Camera'),
+        _item('File'),
+        _item('URL'),
       ]);
 
       controller.updateFilter('fi');
@@ -102,10 +99,7 @@ void main() {
     test('updateMenuItems recomputes with current filter', () {
       controller.open(filterQuery: 'url');
 
-      controller.updateMenuItems([
-        _item('Camera', keywords: ['camera']),
-        _item('URL', keywords: ['url']),
-      ]);
+      controller.updateMenuItems([_item('Camera'), _item('URL')]);
 
       expect(controller.filteredItems.length, 1);
       expect(controller.filteredItems.first.name, 'URL');
@@ -190,6 +184,16 @@ void main() {
       expect(pressedName, 'Only');
     });
 
+    test('updateMenuItems clamps activeIndex when items shrink', () {
+      controller.updateMenuItems([_item('A'), _item('B'), _item('C')]);
+      controller.selectNext(); // index = 1
+      controller.selectNext(); // index = 2
+      expect(controller.activeIndex, 2);
+
+      controller.updateMenuItems([_item('B')]);
+      expect(controller.activeIndex, 0);
+    });
+
     test('filtering matches by name case-insensitively', () {
       controller.updateMenuItems([_item('Attach File'), _item('Attach Image')]);
 
@@ -197,30 +201,6 @@ void main() {
 
       expect(controller.filteredItems.length, 1);
       expect(controller.filteredItems.first.name, 'Attach File');
-    });
-
-    test('filtering matches by keywords', () {
-      controller.updateMenuItems([
-        _item('Attach Image', keywords: ['gallery', 'photo']),
-        _item('Attach File', keywords: ['file', 'document']),
-      ]);
-
-      controller.updateFilter('gallery');
-
-      expect(controller.filteredItems.length, 1);
-      expect(controller.filteredItems.first.name, 'Attach Image');
-    });
-
-    test('filtering matches keywords case-insensitively', () {
-      controller.updateMenuItems([
-        _item('Attach Image', keywords: ['Gallery', 'Photo']),
-        _item('Attach File', keywords: ['File', 'Document']),
-      ]);
-
-      controller.updateFilter('gallery');
-
-      expect(controller.filteredItems.length, 1);
-      expect(controller.filteredItems.first.name, 'Attach Image');
     });
   });
 }

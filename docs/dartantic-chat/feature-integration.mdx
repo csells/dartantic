@@ -33,6 +33,60 @@ AgentChatView(
 )
 ```
 
+## Custom Commands
+
+Add slash commands that users can trigger by typing `/` in the chat input. Pass a
+list of `ChatCommand` objects to `AgentChatView`:
+
+```dart
+AgentChatView(
+  provider: DartanticProvider(agent: Agent('gemini')),
+  commands: [
+    ChatCommand(
+      name: 'Help',
+      icon: Icons.help_outline,
+      onPressed: () {
+        // Open a help dialog, navigate to a page, etc.
+      },
+    ),
+    ChatCommand(
+      name: 'Clear',
+      icon: Icons.delete_outline,
+      onPressed: () {
+        provider.history = [];
+      },
+    ),
+    ChatCommand(
+      name: 'Settings',
+      icon: Icons.settings,
+      onPressed: () {
+        Navigator.of(context).pushNamed('/settings');
+      },
+    ),
+  ],
+)
+```
+
+Each `ChatCommand` has:
+
+| Property    | Type               | Description                                    |
+| ----------- | ------------------ | ---------------------------------------------- |
+| `name`      | `String`           | Display name shown in the menu and used for filtering |
+| `icon`      | `IconData`         | Icon displayed next to the command name         |
+| `onPressed` | `VoidCallback`     | Action executed when the command is selected    |
+| `style`     | `ActionButtonStyle?` | Optional visual style override                |
+
+When a user types `/`, the command menu appears with all available commands.
+Typing further filters the list by name (case-insensitive). The user can select a
+command by clicking it, using the arrow keys and pressing Enter, or by typing
+enough to match a single command.
+
+<Note>
+Custom commands appear alongside the built-in attachment commands (Camera, Image
+Gallery, Attach File, Attach Link) in the menu. If you want only your custom
+commands, set `enableAttachments: false`.
+</Note>
+
 ## Disable Attachments and Audio Input
 
 ```dart

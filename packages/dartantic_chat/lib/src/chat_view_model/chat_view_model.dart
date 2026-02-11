@@ -4,6 +4,7 @@
 
 import 'package:flutter/foundation.dart';
 
+import '../models/chat_command.dart';
 import '../providers/interface/chat_history_provider.dart';
 import '../styles/chat_view_style.dart';
 import '../views/response_builder.dart';
@@ -28,6 +29,7 @@ class ChatViewModel {
   const ChatViewModel({
     required this.provider,
     required this.style,
+    required this.commands,
     required this.suggestions,
     required this.welcomeMessage,
     required this.responseBuilder,
@@ -47,6 +49,9 @@ class ChatViewModel {
   /// Defines visual properties like colors, decorations, and layout parameters
   /// for the chat interface. If null, default styling will be applied.
   final ChatViewStyle? style;
+
+  /// The list of custom commands to display in the chat interface.
+  final List<ChatCommand> commands;
 
   /// The list of suggestions to display in the chat interface.
   ///
@@ -93,6 +98,7 @@ class ChatViewModel {
       (other is ChatViewModel &&
           other.provider == provider &&
           other.style == style &&
+          other.commands == commands &&
           other.suggestions == suggestions &&
           other.welcomeMessage == welcomeMessage &&
           other.responseBuilder == responseBuilder &&
@@ -105,6 +111,7 @@ class ChatViewModel {
   int get hashCode => Object.hash(
     provider,
     style,
+    commands,
     suggestions,
     welcomeMessage,
     responseBuilder,

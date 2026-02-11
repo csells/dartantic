@@ -9,6 +9,8 @@ experience. Hosting an instance enables these features automatically:
 * **Multiline text input**: Paste long text or insert new lines
 * **Voice input**: Input prompts using speech
 * **Multimedia input**: Take pictures, send images, attach files and URLs
+* **Slash commands**: Type `/` to open a command menu with filtering and keyboard
+  navigation
 * **Image zoom**: Tap thumbnails to zoom
 * **Copy to clipboard**: Copy message text
 * **Paste from clipboard**: Paste text or images from the clipboard
@@ -63,6 +65,24 @@ access](/dartantic-chat/getting-started#clipboard-access) section for more infor
 
 On desktop, tap the **Edit** button alongside **Copy** for your most recent
 prompt. On mobile, long-tap and select **Edit**.
+
+## Slash Commands
+
+Type `/` at the start of the input or after a space to open the command menu. The
+menu appears anchored to the text caret position and supports:
+
+* **Filtering**: Continue typing after `/` to narrow the list (e.g., `/hel`
+  filters to commands containing "hel")
+* **Keyboard navigation**: Use **Up/Down** arrow keys to move between items and
+  **Enter** to select
+* **Mouse selection**: Click any item to trigger it
+
+The command menu closes automatically when the `/` trigger is removed (e.g., by
+pressing backspace) or when a command is selected. Selecting a command removes
+the slash text from the input and executes the command's action.
+
+See [Feature Integration](/dartantic-chat/feature-integration#custom-commands)
+for how to define your own commands.
 
 ## Material and Cupertino
 

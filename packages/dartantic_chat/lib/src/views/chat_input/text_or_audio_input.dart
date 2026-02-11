@@ -5,6 +5,7 @@ import 'package:dartantic_interface/dartantic_interface.dart';
 import '../../styles/styles.dart';
 import '../../utility.dart';
 import '../chat_text_field.dart';
+import 'chat_input_constants.dart';
 import 'editing_indicator.dart';
 import 'input_state.dart';
 
@@ -40,7 +41,9 @@ class TextOrAudioInput extends StatelessWidget {
     required InputState inputState,
     required ActionButtonStyle cancelButtonStyle,
     required VoiceNoteRecorderStyle voiceNoteRecorderStyle,
-  }) : _cancelButtonStyle = cancelButtonStyle,
+    bool allowSubmit = true,
+  }) : _allowSubmit = allowSubmit,
+       _cancelButtonStyle = cancelButtonStyle,
        _inputState = inputState,
        _autofocus = autofocus,
        _focusNode = focusNode,
@@ -65,6 +68,7 @@ class TextOrAudioInput extends StatelessWidget {
   final InputState _inputState;
   final ActionButtonStyle _cancelButtonStyle;
   final VoiceNoteRecorderStyle _voiceNoteRecorderStyle;
+  final bool _allowSubmit;
   static const _minInputHeight = 48.0;
   static const _maxInputHeight = 144.0;
 
@@ -73,10 +77,14 @@ class TextOrAudioInput extends StatelessWidget {
     children: [
       Padding(
         padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: _onCancelEdit != null ? 24 : 8,
-          bottom: 8,
+          left: ChatInputConstants.textOrAudioInputLeftPadding,
+          right: ChatInputConstants.textOrAudioInputRightPadding,
+          top: _onCancelEdit != null
+              ? ChatInputConstants.textOrAudioInputBaseTopPadding +
+                    ChatInputConstants
+                        .textOrAudioInputEditModeAdditionalPadding
+              : ChatInputConstants.textOrAudioInputBaseTopPadding,
+          bottom: ChatInputConstants.textOrAudioInputBottomPadding,
         ),
         child: DecoratedBox(
           decoration: _inputStyle.decoration!,
@@ -110,9 +118,11 @@ class TextOrAudioInput extends StatelessWidget {
                     hintText: _inputStyle.hintText!,
                     hintStyle: _inputStyle.hintStyle!,
                     hintPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+                      horizontal: ChatInputConstants.chatTextFieldPadding,
+                      vertical:
+                          ChatInputConstants.chatTextFieldVerticalPadding,
                     ),
+                    allowSubmit: _allowSubmit,
                     onAttachments: _onAttachments,
                   ),
           ),

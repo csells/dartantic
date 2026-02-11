@@ -4,6 +4,7 @@
 
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:waveform_recorder/waveform_recorder.dart';
@@ -14,8 +15,11 @@ import '../../dialogs/adaptive_snack_bar/adaptive_snack_bar.dart';
 import '../../styles/styles.dart';
 import 'attachments_action_bar.dart';
 import 'attachments_view.dart';
+import 'chat_input_constants.dart';
+import 'command_menu_controller.dart';
 import 'input_button.dart';
 import 'input_state.dart';
+import 'slash_command_parser.dart';
 import 'text_or_audio_input.dart';
 
 /// A widget that provides a chat input interface with support for text input,
@@ -151,7 +155,11 @@ class _ChatInputState extends State<ChatInput> {
 
   final _textController = TextEditingController();
   final _waveController = WaveformRecorderController();
+  final _commandMenuController = CommandMenuController();
+  final _actionBarKey = GlobalKey();
+  final _textFieldKey = GlobalKey();
 
+  Offset? _menuOffset;
   ChatViewModel? _viewModel;
   ChatInputStyle? _inputStyle;
   ChatViewStyle? _chatStyle;
@@ -173,24 +181,42 @@ class _ChatInputState extends State<ChatInput> {
       // 2. Receiving transcribed text from speech-to-text (preserves existing
       //    attachments)
       // 3. Selecting a suggestion from the chat interface
-      _textController.text = widget.initialMessage!.text;
+      final message = widget.initialMessage!;
+      _textController.text = message.text;
       // Extract non-text parts as attachments
-      widget.onReplaceAttachments(
-        widget.initialMessage!.parts.whereType<DataPart>().toList(),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          widget.onReplaceAttachments(
+            message.parts.whereType<DataPart>().toList(),
+          );
+        }
+      });
     } else if (oldWidget.initialMessage != null) {
       // Clear both text and attachments when initialMessage becomes null
       // This happens when the user cancels an edit operation, ensuring
       // the input field returns to a clean state
       _textController.clear();
-      widget.onClearAttachments();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          widget.onClearAttachments();
+        }
+      });
     }
   }
 
   @override
+  void initState() {
+    super.initState();
+    _textController.addListener(_onTextChanged);
+    _focusNode.onKeyEvent = (node, event) => _handleCommandKeyEvent(event);
+  }
+
+  @override
   void dispose() {
+    _textController.removeListener(_onTextChanged);
     _textController.dispose();
     _waveController.dispose();
+    _commandMenuController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
@@ -198,26 +224,36 @@ class _ChatInputState extends State<ChatInput> {
   @override
   Widget build(BuildContext context) => Container(
     color: _inputStyle!.backgroundColor,
-    padding: const EdgeInsets.all(16),
+    padding: const EdgeInsets.all(ChatInputConstants.containerPadding),
     child: Column(
       children: [
         AttachmentsView(
           attachments: widget.attachments,
           onRemove: widget.onRemoveAttachment,
         ),
-        if (widget.attachments.isNotEmpty) const SizedBox(height: 6),
+        if (widget.attachments.isNotEmpty)
+          const SizedBox(height: ChatInputConstants.attachmentsSpacing),
         ValueListenableBuilder(
           valueListenable: _textController,
           builder: (context, value, child) => ListenableBuilder(
-            listenable: _waveController,
+            listenable: Listenable.merge([
+              _waveController,
+              _commandMenuController,
+            ]),
             builder: (context, child) => Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 if (_viewModel!.enableAttachments)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.only(
+                      bottom: ChatInputConstants.actionButtonBottomPadding,
+                    ),
                     child: AttachmentActionBar(
+                      key: _actionBarKey,
                       onAttachments: widget.onAttachments,
+                      commandMenuController: _commandMenuController,
+                      menuOffset: _menuOffset,
+                      onSelection: _clearCommandText,
                     ),
                   ),
                 Expanded(
@@ -234,10 +270,14 @@ class _ChatInputState extends State<ChatInput> {
                     cancelButtonStyle: _chatStyle!.cancelButtonStyle!,
                     voiceNoteRecorderStyle: _chatStyle!.voiceNoteRecorderStyle!,
                     onAttachments: widget.onAttachments,
+                    key: _textFieldKey,
+                    allowSubmit: !_commandMenuController.isOpen,
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.only(
+                    bottom: ChatInputConstants.actionButtonBottomPadding,
+                  ),
                   child: InputButton(
                     inputState: _inputState,
                     chatStyle: _chatStyle!,
@@ -294,7 +334,49 @@ class _ChatInputState extends State<ChatInput> {
     await _waveController.stopRecording();
   }
 
-  Future<void> onRecordingStopped() async {
+  KeyEventResult _handleCommandKeyEvent(KeyEvent event) {
+    if (!_commandMenuController.isOpen) return KeyEventResult.ignored;
+
+    final isDownOrRepeat = event is KeyDownEvent || event is KeyRepeatEvent;
+    final logicalKey = event.logicalKey;
+    final physicalKey = event.physicalKey;
+
+    final isDown =
+        logicalKey == LogicalKeyboardKey.arrowDown ||
+        physicalKey == PhysicalKeyboardKey.arrowDown;
+    final isUp =
+        logicalKey == LogicalKeyboardKey.arrowUp ||
+        physicalKey == PhysicalKeyboardKey.arrowUp;
+    final isEnter =
+        logicalKey == LogicalKeyboardKey.enter ||
+        logicalKey == LogicalKeyboardKey.numpadEnter ||
+        physicalKey == PhysicalKeyboardKey.enter ||
+        physicalKey == PhysicalKeyboardKey.numpadEnter;
+
+    // Handle navigation keys (only on Down/Repeat)
+    if (isDownOrRepeat) {
+      if (isDown) {
+        _commandMenuController.selectNext();
+        return KeyEventResult.handled;
+      } else if (isUp) {
+        _commandMenuController.selectPrevious();
+        return KeyEventResult.handled;
+      } else if (isEnter) {
+        _commandMenuController.triggerSelected(onSelection: _clearCommandText);
+        return KeyEventResult.handled;
+      }
+    } else {
+      // For Up events, we still want to "handle" Enter so it doesn't leak
+      // to the TextField or other listeners.
+      if (isEnter) {
+        return KeyEventResult.handled;
+      }
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  void onRecordingStopped() {
     final file = _waveController.file;
 
     if (file == null) {
@@ -304,5 +386,154 @@ class _ChatInputState extends State<ChatInput> {
 
     // Pass current attachments to onTranslateStt
     widget.onTranslateStt(file, List.from(widget.attachments));
+  }
+
+  // -- Slash command handling --
+
+  void _hideCommandMenu() {
+    _commandMenuController.close();
+    _menuOffset = null;
+  }
+
+  void _onTextChanged() {
+    final result = SlashCommandParser.parse(
+      _textController.text,
+      _textController.selection,
+    );
+
+    if (!result.isActive) {
+      _hideCommandMenu();
+      return;
+    }
+
+    _attemptToShowMenuWithOffset(result.slashIndex, result.filterText);
+  }
+
+  static const int _maxMenuRetries = 3;
+
+  void _attemptToShowMenuWithOffset(
+    int slashIndex,
+    String filterText, {
+    int retryCount = 0,
+  }) {
+    final textFieldBox =
+        _textFieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final actionBarBox =
+        _actionBarKey.currentContext?.findRenderObject() as RenderBox?;
+
+    if (textFieldBox != null && actionBarBox != null) {
+      _calculateMenuOffset(
+        TextSelection.collapsed(offset: slashIndex + 1),
+        textFieldBox,
+        actionBarBox,
+      );
+      _commandMenuController.open(filterQuery: filterText);
+      return;
+    }
+
+    _retryOrGiveUp(slashIndex, filterText, retryCount);
+  }
+
+  void _retryOrGiveUp(int slashIndex, String filterText, int retryCount) {
+    _menuOffset = null;
+    if (retryCount >= _maxMenuRetries) {
+      assert(
+        false,
+        'Command menu: render boxes unavailable after $_maxMenuRetries '
+        'post-frame retries. Menu will not open.',
+      );
+      _commandMenuController.close();
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      // Re-validate against current text to detect stale captured values
+      final currentResult = SlashCommandParser.parse(
+        _textController.text,
+        _textController.selection,
+      );
+      if (!currentResult.isActive || currentResult.slashIndex != slashIndex) {
+        _hideCommandMenu();
+        return;
+      }
+
+      _attemptToShowMenuWithOffset(
+        slashIndex,
+        currentResult.filterText,
+        retryCount: retryCount + 1,
+      );
+    });
+  }
+
+  void _calculateMenuOffset(
+    TextSelection selection,
+    RenderBox textFieldRenderBox,
+    RenderBox actionBarRenderBox,
+  ) {
+    final textStyle = _inputStyle?.textStyle ?? const TextStyle(fontSize: 14.0);
+
+    final textPainter =
+        TextPainter(
+          text: TextSpan(
+            text: _textController.text.substring(0, selection.baseOffset),
+            style: textStyle,
+          ),
+          textDirection: Directionality.of(context),
+          textAlign: TextAlign.start,
+          maxLines: null,
+        )..layout(
+          maxWidth:
+              textFieldRenderBox.size.width -
+              ChatInputConstants.textOrAudioInputHorizontalPadding -
+              ChatInputConstants.chatTextFieldHorizontalPadding,
+        );
+
+    final caretOffset = textPainter.getOffsetForCaret(
+      TextPosition(offset: selection.baseOffset),
+      Rect.zero,
+    );
+
+    // Adjust for the padding/alignment within TextOrAudioInput
+    final adjustedCaretOffset = Offset(
+      caretOffset.dx +
+          ChatInputConstants.textOrAudioInputLeftPadding +
+          ChatInputConstants.chatTextFieldPadding,
+      caretOffset.dy +
+          ChatInputConstants.textOrAudioInputBaseTopPadding +
+          ChatInputConstants.chatTextFieldVerticalPadding +
+          (widget.onCancelEdit != null
+              ? ChatInputConstants.textOrAudioInputEditModeAdditionalPadding
+              : 0.0),
+    );
+
+    final globalCaretPos = textFieldRenderBox.localToGlobal(
+      adjustedCaretOffset,
+    );
+    final localCaretPos = actionBarRenderBox.globalToLocal(globalCaretPos);
+
+    textPainter.dispose();
+
+    setState(() {
+      _menuOffset = localCaretPos;
+    });
+  }
+
+  void _clearCommandText() {
+    final text = _textController.text;
+    final selection = _textController.selection;
+
+    if (!selection.isValid || selection.baseOffset == 0) return;
+
+    final cursorPos = selection.baseOffset;
+    final slashIndex = text.substring(0, cursorPos).lastIndexOf('/');
+    if (slashIndex == -1) return;
+
+    _textController.value = SlashCommandParser.clearCommandText(
+      text,
+      cursorPos,
+      slashIndex,
+    );
   }
 }

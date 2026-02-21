@@ -62,6 +62,18 @@ void main() async {
   );
   print('${location.output.town}, ${location.output.country}');
 }
+
+class TownAndCountry {
+  final String town;
+  final String country;
+
+  TownAndCountry({required this.town, required this.country});
+
+  factory TownAndCountry.fromJson(Map<String, Object?> json) => TownAndCountry(
+    town: json['town'] as String,
+    country: json['country'] as String,
+  );
+}
 ```
 
 ## Documentation

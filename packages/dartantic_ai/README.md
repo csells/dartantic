@@ -37,7 +37,7 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 
 void main() async {
   // Create an agent with your preferred provider
-  final agent = Agent.forProvider(OpenAIProvider(apiKey: _apiKey));
+  final agent = Agent.forProvider(OpenAIProvider(apiKey: apiKey));
 
   // Generate text
   final result = await agent.send(

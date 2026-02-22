@@ -37,9 +37,7 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 
 void main() async {
   // Create an agent with your preferred provider
-  final agent = Agent(
-    'openai',  // or 'openai-responses', 'google', 'anthropic', etc.
-  );
+  final agent = Agent.forProvider(OpenAIProvider(apiKey: apiKey));
 
   // Generate text
   final result = await agent.send(
@@ -61,6 +59,18 @@ void main() async {
     outputFromJson: TownAndCountry.fromJson,
   );
   print('${location.output.town}, ${location.output.country}');
+}
+
+class TownAndCountry {
+  final String town;
+  final String country;
+
+  TownAndCountry({required this.town, required this.country});
+
+  factory TownAndCountry.fromJson(Map<String, Object?> json) => TownAndCountry(
+    town: json['town'] as String,
+    country: json['country'] as String,
+  );
 }
 ```
 

@@ -37,8 +37,8 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 
 void main() async {
   // Create an agent with your preferred provider
-  final agent = Agent(
-    'openai',  // or 'openai-responses', 'google', 'anthropic', etc.
+  final agent = Agent.forProvider(
+    OpenAIProvider(apiKey: null), // TODO: initialize api key
   );
 
   // Generate text

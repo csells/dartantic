@@ -1,44 +1,37 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:firebase_ai/firebase_ai.dart' as f;
 import 'package:logging/logging.dart';
+import 'package:uuid/uuid.dart';
 
 import 'firebase_ai_safety_options.dart';
 
-/// Logger for Firebase message mapping operations.
 final Logger _logger = Logger('dartantic.chat.mappers.firebase_ai');
 
-/// Extension on [List<Message>] to convert messages to Firebase AI content.
+const _uuid = Uuid();
+
+/// Extension on [List<ChatMessage>] to convert messages to Firebase AI content.
 extension MessageListMapper on List<ChatMessage> {
   /// Converts this list of [ChatMessage]s to a list of [f.Content]s.
   ///
-  /// Groups consecutive tool result messages into a single
-  /// f.Content.functionResponses() as required by Firebase AI's API.
+  /// System messages are filtered out (handled separately via
+  /// `systemInstruction`). Consecutive tool result messages are grouped into a
+  /// single [f.Content.functionResponses] as required by Firebase AI's API.
   List<f.Content> toContentList() {
     final nonSystemMessages = where(
       (message) => message.role != ChatMessageRole.system,
     ).toList();
-    _logger.fine(
-      'Converting ${nonSystemMessages.length} non-system messages to Firebase '
-      'format',
-    );
     final result = <f.Content>[];
 
     for (var i = 0; i < nonSystemMessages.length; i++) {
       final message = nonSystemMessages[i];
 
-      // Check if this is a tool result message
       final hasToolResults = message.parts.whereType<ToolPart>().any(
         (p) => p.result != null,
       );
 
       if (hasToolResults) {
-        // Collect all consecutive tool result messages
         final toolMessages = [message];
         var j = i + 1;
-        _logger.fine(
-          'Found tool result message at index $i, collecting consecutive tool '
-          'messages',
-        );
         while (j < nonSystemMessages.length) {
           final nextMsg = nonSystemMessages[j];
           final nextHasToolResults = nextMsg.parts.whereType<ToolPart>().any(
@@ -52,17 +45,9 @@ extension MessageListMapper on List<ChatMessage> {
           }
         }
 
-        // Create a single f.Content.functionResponses with all tool responses
-        _logger.fine(
-          'Creating function responses for ${toolMessages.length} tool '
-          'messages',
-        );
         result.add(_mapToolResultMessages(toolMessages));
-
-        // Skip the processed messages
         i = j - 1;
       } else {
-        // Handle non-tool messages normally
         result.add(_mapMessage(message));
       }
     }
@@ -83,7 +68,6 @@ extension MessageListMapper on List<ChatMessage> {
 
   f.Content _mapUserMessage(ChatMessage message) {
     final contentParts = <f.Part>[];
-    _logger.fine('Mapping user message with ${message.parts.length} parts');
 
     for (final part in message.parts) {
       switch (part) {
@@ -91,16 +75,16 @@ extension MessageListMapper on List<ChatMessage> {
           contentParts.add(f.TextPart(text));
         case DataPart(:final bytes, :final mimeType):
           contentParts.add(f.InlineDataPart(mimeType, bytes));
-        case LinkPart(:final url):
-          // Note: FilePart API may have changed in v3.3.0 -
-          // using TextPart as fallback
-          contentParts.add(f.TextPart('Link: $url'));
+        case LinkPart(:final url, :final mimeType):
+          contentParts.add(
+            f.FileData(mimeType ?? 'application/octet-stream', url.toString()),
+          );
         case ToolPart():
-          // Tool parts in user messages are handled separately as tool results
           break;
         default:
-          // Handle any other part types we don't recognize
-          _logger.fine('Skipping unrecognized part type: ${part.runtimeType}');
+          _logger.warning(
+            'Skipping unsupported part type: ${part.runtimeType}',
+          );
       }
     }
 
@@ -110,125 +94,106 @@ extension MessageListMapper on List<ChatMessage> {
   f.Content _mapModelMessage(ChatMessage message) {
     final contentParts = <f.Part>[];
 
-    // Add text parts
-    final textParts = message.parts.whereType<TextPart>();
-    _logger.fine('Mapping model message with ${message.parts.length} parts');
-    for (final part in textParts) {
-      if (part.text.isNotEmpty) {
-        contentParts.add(f.TextPart(part.text));
+    for (final part in message.parts) {
+      switch (part) {
+        case TextPart(:final text):
+          if (text.isNotEmpty) {
+            contentParts.add(f.TextPart(text));
+          }
+        case ThinkingPart(:final text):
+          if (text.isNotEmpty) {
+            contentParts.add(f.TextPart(text, isThought: true));
+          }
+        case ToolPart() when part.kind == ToolPartKind.call:
+          contentParts.add(
+            f.FunctionCall(
+              part.toolName,
+              part.arguments ?? {},
+              id: part.callId.isNotEmpty ? part.callId : null,
+            ),
+          );
+        default:
+          break;
       }
     }
-
-    // Add tool calls
-    final toolParts = message.parts.whereType<ToolPart>();
-    var toolCallCount = 0;
-    for (final part in toolParts) {
-      if (part.kind == ToolPartKind.call) {
-        // This is a tool call, not a result
-        contentParts.add(f.FunctionCall(part.toolName, part.arguments ?? {}));
-        toolCallCount++;
-      }
-    }
-    _logger.fine('Added $toolCallCount tool calls to model message');
 
     return f.Content.model(contentParts);
   }
 
   /// Maps multiple tool result messages to a single
-  /// f.Content.functionResponses.
-  /// This is required by Firebase AI's API - all function responses must be
-  /// grouped together
+  /// [f.Content.functionResponses].
+  ///
+  /// Firebase AI requires all function responses to be grouped together.
   f.Content _mapToolResultMessages(List<ChatMessage> messages) {
     final functionResponses = <f.FunctionResponse>[];
-    _logger.fine(
-      'Mapping ${messages.length} tool result messages to Firebase function '
-      'responses',
-    );
 
     for (final message in messages) {
       for (final part in message.parts) {
         if (part is ToolPart && part.kind == ToolPartKind.result) {
-          // Firebase's FunctionResponse requires a Map<String, Object?>
-          // If the result is already a Map, use it directly
-          // Otherwise, wrap it in a Map with a "result" key
           final result = part.result;
           final response = switch (result) {
             final Map<String, Object?> map => map,
             _ => <String, Object?>{'result': result},
           };
 
-          // Extract the original function name from our generated ID
-          final functionName =
-              _extractToolNameFromId(part.callId) ?? part.toolName;
-          _logger.fine('Creating function response for tool: $functionName');
-
-          functionResponses.add(f.FunctionResponse(functionName, response));
+          functionResponses.add(
+            f.FunctionResponse(
+              part.toolName,
+              response,
+              id: part.callId.isNotEmpty ? part.callId : null,
+            ),
+          );
         }
       }
     }
 
     return f.Content.functionResponses(functionResponses);
   }
-
-  /// Extracts the tool name from a generated tool call ID.
-  ///
-  /// IDs are in the format `toolName#hash`, using `#` as separator so that
-  /// tool names containing underscores (e.g. `get_weather`) are preserved.
-  String? _extractToolNameFromId(String? id) {
-    if (id == null) return null;
-    final separatorIndex = id.lastIndexOf('#');
-    if (separatorIndex < 0) return id;
-    return id.substring(0, separatorIndex);
-  }
 }
 
 /// Extension on [f.GenerateContentResponse] to convert to [ChatResult].
 extension GenerateContentResponseMapper on f.GenerateContentResponse {
-  /// Converts this [f.GenerateContentResponse] to a [ChatResult].
+  /// Converts this [f.GenerateContentResponse] to a streaming [ChatResult].
+  ///
+  /// Each streaming chunk sets `messages: const []`. The caller is responsible
+  /// for accumulating parts and producing the final consolidated message.
   ChatResult<ChatMessage> toChatResult(String model) {
     final candidate = candidates.first;
     final parts = <Part>[];
-    _logger.fine('Converting Firebase response to ChatResult: model=$model');
+    String? thinkingDelta;
 
-    // Process all parts from the response
-    _logger.fine(
-      'Processing ${candidate.content.parts.length} parts from Firebase '
-      'response',
-    );
     for (final part in candidate.content.parts) {
       switch (part) {
         case f.TextPart(:final text):
-          if (text.isNotEmpty) {
+          if (text.isEmpty) break;
+          if (part.isThought ?? false) {
+            parts.add(ThinkingPart(text));
+            thinkingDelta = text;
+          } else {
             parts.add(TextPart(text));
           }
         case f.InlineDataPart(:final mimeType, :final bytes):
           parts.add(DataPart(bytes, mimeType: mimeType));
-        case f.FunctionCall(:final name, :final args):
-          _logger.fine('Processing function call: $name');
-          final toolId = _generateToolCallId(toolName: name);
+        case f.FunctionCall(:final name, :final args, :final id):
+          final callId = (id != null && id.isNotEmpty) ? id : _uuid.v4();
           parts.add(
-            ToolPart.call(callId: toolId, toolName: name, arguments: args),
+            ToolPart.call(callId: callId, toolName: name, arguments: args),
           );
         case f.FunctionResponse():
-          // Function responses shouldn't appear in model output
-          break;
+        case f.FileData():
+        case f.ExecutableCodePart():
+        case f.CodeExecutionResultPart():
         case f.UnknownPart():
-          // Skip unknown parts
-          _logger.fine('Skipping unknown part type');
-        default:
-          // Handle any other Firebase part types we don't recognize
-          _logger.fine(
-            'Skipping unrecognized Firebase part type: ${part.runtimeType}',
-          );
+          break;
       }
     }
 
     final message = ChatMessage(role: ChatMessageRole.model, parts: parts);
 
-    // Create initial ChatResult
-    final result = ChatResult<ChatMessage>(
+    return ChatResult<ChatMessage>(
       output: message,
-      messages: [message],
+      messages: const [],
+      thinking: thinkingDelta,
       finishReason: _mapFinishReason(candidate.finishReason),
       metadata: <String, Object?>{
         'model': model,
@@ -251,8 +216,6 @@ extension GenerateContentResponseMapper on f.GenerateContentResponse {
         totalTokens: usageMetadata?.totalTokenCount,
       ),
     );
-
-    return result;
   }
 
   FinishReason _mapFinishReason(f.FinishReason? reason) => switch (reason) {
@@ -265,19 +228,6 @@ extension GenerateContentResponseMapper on f.GenerateContentResponse {
     f.FinishReason.unknown => FinishReason.unspecified,
     null => FinishReason.unspecified,
   };
-
-  static int _toolCallCounter = 0;
-
-  /// Generates a unique ID for a tool call.
-  ///
-  /// Uses `#` as separator so tool names with underscores are preserved
-  /// when extracted via [_extractToolNameFromId].
-  String _generateToolCallId({
-    required String toolName,
-  }) {
-    _toolCallCounter++;
-    return '$toolName#$_toolCallCounter';
-  }
 }
 
 /// Extension on [List<FirebaseAISafetySetting>] to convert to Firebase SDK
@@ -285,34 +235,31 @@ extension GenerateContentResponseMapper on f.GenerateContentResponse {
 extension SafetySettingsMapper on List<FirebaseAISafetySetting> {
   /// Converts this list of [FirebaseAISafetySetting]s to a list of
   /// [f.SafetySetting]s.
-  List<f.SafetySetting> toSafetySettings() {
-    _logger.fine('Converting $length safety settings to Firebase format');
-    return map(
-      (setting) => f.SafetySetting(
-        switch (setting.category) {
-          FirebaseAISafetySettingCategory.harassment =>
-            f.HarmCategory.harassment,
-          FirebaseAISafetySettingCategory.hateSpeech =>
-            f.HarmCategory.hateSpeech,
-          FirebaseAISafetySettingCategory.sexuallyExplicit =>
-            f.HarmCategory.sexuallyExplicit,
-          FirebaseAISafetySettingCategory.dangerousContent =>
-            f.HarmCategory.dangerousContent,
-        },
-        switch (setting.threshold) {
-          FirebaseAISafetySettingThreshold.blockLowAndAbove =>
-            f.HarmBlockThreshold.low,
-          FirebaseAISafetySettingThreshold.blockMediumAndAbove =>
-            f.HarmBlockThreshold.medium,
-          FirebaseAISafetySettingThreshold.blockOnlyHigh =>
-            f.HarmBlockThreshold.high,
-          FirebaseAISafetySettingThreshold.blockNone =>
-            f.HarmBlockThreshold.none,
-        },
-        null,
-      ),
-    ).toList(growable: false);
-  }
+  List<f.SafetySetting> toSafetySettings() => map(
+    (setting) => f.SafetySetting(
+      switch (setting.category) {
+        FirebaseAISafetySettingCategory.harassment =>
+          f.HarmCategory.harassment,
+        FirebaseAISafetySettingCategory.hateSpeech =>
+          f.HarmCategory.hateSpeech,
+        FirebaseAISafetySettingCategory.sexuallyExplicit =>
+          f.HarmCategory.sexuallyExplicit,
+        FirebaseAISafetySettingCategory.dangerousContent =>
+          f.HarmCategory.dangerousContent,
+      },
+      switch (setting.threshold) {
+        FirebaseAISafetySettingThreshold.blockLowAndAbove =>
+          f.HarmBlockThreshold.low,
+        FirebaseAISafetySettingThreshold.blockMediumAndAbove =>
+          f.HarmBlockThreshold.medium,
+        FirebaseAISafetySettingThreshold.blockOnlyHigh =>
+          f.HarmBlockThreshold.high,
+        FirebaseAISafetySettingThreshold.blockNone =>
+          f.HarmBlockThreshold.none,
+      },
+      null,
+    ),
+  ).toList(growable: false);
 }
 
 /// Extension on [List<Tool>?] to convert to Firebase SDK tool list.
@@ -321,20 +268,11 @@ extension ChatToolListMapper on List<Tool>? {
   /// enabling code execution.
   List<f.Tool>? toToolList({required bool enableCodeExecution}) {
     final hasTools = this != null && this!.isNotEmpty;
-    _logger.fine(
-      'Converting tools to Firebase format: hasTools=$hasTools, '
-      'enableCodeExecution=$enableCodeExecution, '
-      'toolCount=${this?.length ?? 0}',
-    );
     if (!hasTools && !enableCodeExecution) {
       return null;
     }
     final functionDeclarations = hasTools
-        ? this!
-              .map(
-                (tool) => _toolToFunctionDeclaration(tool),
-              )
-              .toList(growable: false)
+        ? this!.map(_toolToFunctionDeclaration).toList(growable: false)
         : null;
     final codeExecution = enableCodeExecution ? const f.CodeExecution() : null;
     if ((functionDeclarations == null || functionDeclarations.isEmpty) &&
@@ -378,7 +316,6 @@ extension SchemaMapper on Map<String, dynamic> {
     final jsonSchema = this;
     final type = jsonSchema['type'] as String;
     final description = jsonSchema['description'] as String?;
-    _logger.fine('Converting schema to Firebase format: type=$type');
     final nullable = jsonSchema['nullable'] as bool?;
     final enumValues = (jsonSchema['enum'] as List?)?.cast<String>();
     final format = jsonSchema['format'] as String?;
@@ -418,10 +355,8 @@ extension SchemaMapper on Map<String, dynamic> {
         return f.Schema.boolean(description: description, nullable: nullable);
       case 'array':
         if (items != null) {
-          final itemsSchema = items.toSchema();
-          _logger.fine('Converting array schema with items');
           return f.Schema.array(
-            items: itemsSchema,
+            items: items.toSchema(),
             description: description,
             nullable: nullable,
           );
@@ -434,9 +369,6 @@ extension SchemaMapper on Map<String, dynamic> {
               key,
               Map<String, dynamic>.from(value as Map).toSchema(),
             ),
-          );
-          _logger.fine(
-            'Converting object schema with ${properties.length} properties',
           );
           final allKeys = propertiesSchema.keys.toSet();
           final requiredSet = requiredProperties?.toSet() ?? const <String>{};

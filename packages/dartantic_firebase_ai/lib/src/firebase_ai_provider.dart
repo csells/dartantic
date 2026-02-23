@@ -29,8 +29,6 @@ class FirebaseAIProvider
           FirebaseAIEmbeddingsModelOptions,
           FirebaseAIMediaGenerationModelOptions
         > {
-  static final Logger _logger = Logger('dartantic.chat.providers.firebase_ai');
-
   /// Creates a new Firebase AI provider instance.
   ///
   /// [backend] determines which Firebase AI backend to use:
@@ -39,7 +37,6 @@ class FirebaseAIProvider
   ///
   /// Note: Firebase AI doesn't use traditional API keys. Authentication is
   /// handled through Firebase configuration and App Check.
-  // ignore: sort_constructors_first
   FirebaseAIProvider({
     this.backend = FirebaseAIBackend.googleAI,
     super.headers,
@@ -58,6 +55,8 @@ class FirebaseAIProvider
              ? const ['firebase-google']
              : const ['firebase-vertex'],
        );
+
+  static final Logger _logger = Logger('dartantic.chat.providers.firebase_ai');
 
   /// The backend type this provider instance uses.
   final FirebaseAIBackend backend;
@@ -90,6 +89,7 @@ class FirebaseAIProvider
       tools: tools,
       temperature: temperature,
       backend: backend,
+      enableThinking: enableThinking,
       defaultOptions: FirebaseAIChatModelOptions(
         topP: options?.topP,
         topK: options?.topK,
@@ -101,7 +101,8 @@ class FirebaseAIProvider
         responseSchema: options?.responseSchema,
         safetySettings: options?.safetySettings,
         enableCodeExecution: options?.enableCodeExecution,
-        enableThinking: enableThinking || (options?.enableThinking ?? false),
+        enableThinking: options?.enableThinking,
+        thinkingBudgetTokens: options?.thinkingBudgetTokens,
       ),
     );
   }

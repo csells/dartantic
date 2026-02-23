@@ -21,6 +21,7 @@ class FirebaseAIChatModelOptions extends ChatModelOptions {
     this.safetySettings,
     this.enableCodeExecution,
     this.enableThinking,
+    this.thinkingBudgetTokens,
   });
 
   /// The maximum cumulative probability of tokens to consider when sampling.
@@ -45,7 +46,10 @@ class FirebaseAIChatModelOptions extends ChatModelOptions {
   final String? responseMimeType;
 
   /// Output response schema of the generated candidate text.
-  final Map<String, dynamic>? responseSchema;
+  ///
+  /// Used when [responseMimeType] is `application/json` to constrain the
+  /// model's output to a specific structure.
+  final Schema? responseSchema;
 
   /// Safety settings for blocking unsafe content.
   final List<FirebaseAISafetySetting>? safetySettings;
@@ -55,4 +59,10 @@ class FirebaseAIChatModelOptions extends ChatModelOptions {
 
   /// Enables inclusion of model reasoning/thinking content.
   final bool? enableThinking;
+
+  /// The token budget for thinking/reasoning content.
+  ///
+  /// Set to `-1` for dynamic thinking (model decides). When `null` and
+  /// thinking is enabled, defaults to dynamic thinking.
+  final int? thinkingBudgetTokens;
 }

@@ -5,11 +5,11 @@ import 'package:test/test.dart';
 import 'mock_firebase.dart';
 
 void main() {
-  group('FirebaseAIChatModel', () {
-    setUpAll(() async {
-      await initializeMockFirebase();
-    });
+  setUpAll(() async {
+    await initializeMockFirebase();
+  });
 
+  group('FirebaseAIChatModel', () {
     test('constructs with defaults', () {
       final model = FirebaseAIChatModel(
         name: 'gemini-2.5-flash',
@@ -85,6 +85,117 @@ void main() {
         ),
         throwsArgumentError,
       );
+    });
+
+    test('accepts enableThinking flag', () {
+      final model = FirebaseAIChatModel(
+        name: 'gemini-2.5-flash',
+        backend: FirebaseAIBackend.googleAI,
+        enableThinking: true,
+      );
+
+      expect(model.name, 'gemini-2.5-flash');
+    });
+
+    test('accepts thinking budget via defaultOptions', () {
+      final model = FirebaseAIChatModel(
+        name: 'gemini-2.5-flash',
+        backend: FirebaseAIBackend.googleAI,
+        enableThinking: true,
+        defaultOptions: const FirebaseAIChatModelOptions(
+          thinkingBudgetTokens: 4096,
+        ),
+      );
+
+      expect(model.defaultOptions.thinkingBudgetTokens, 4096);
+    });
+  });
+
+  group('FirebaseAIChatModelOptions', () {
+    test('defaults are all null', () {
+      const options = FirebaseAIChatModelOptions();
+      expect(options.enableThinking, isNull);
+      expect(options.thinkingBudgetTokens, isNull);
+      expect(options.responseSchema, isNull);
+      expect(options.temperature, isNull);
+    });
+
+    test('preserves all thinking-related options', () {
+      const options = FirebaseAIChatModelOptions(
+        enableThinking: true,
+        thinkingBudgetTokens: 8192,
+      );
+      expect(options.enableThinking, isTrue);
+      expect(options.thinkingBudgetTokens, 8192);
+    });
+
+    test('responseSchema accepts Schema type', () {
+      final schema = Schema.fromMap({
+        'type': 'object',
+        'properties': {
+          'name': {'type': 'string'},
+        },
+      });
+      final options = FirebaseAIChatModelOptions(responseSchema: schema);
+      expect(options.responseSchema, isNotNull);
+      expect(options.responseSchema, isA<Schema>());
+    });
+  });
+
+  group('FirebaseAIProvider', () {
+    test('createChatModel passes enableThinking to model', () {
+      final provider = FirebaseAIProvider();
+      final model = provider.createChatModel(enableThinking: true);
+
+      expect(model, isA<FirebaseAIChatModel>());
+    });
+
+    test('createChatModel passes thinking budget via options', () {
+      final provider = FirebaseAIProvider();
+      final model = provider.createChatModel(
+        enableThinking: true,
+        options: const FirebaseAIChatModelOptions(
+          thinkingBudgetTokens: 2048,
+        ),
+      );
+
+      expect(model.defaultOptions.thinkingBudgetTokens, 2048);
+    });
+
+    test('createChatModel passes enableThinking via options', () {
+      final provider = FirebaseAIProvider();
+      final model = provider.createChatModel(
+        options: const FirebaseAIChatModelOptions(enableThinking: true),
+      );
+
+      expect(model.defaultOptions.enableThinking, isTrue);
+    });
+
+    test('createChatModel validates temperature range', () {
+      final provider = FirebaseAIProvider();
+
+      expect(
+        () => provider.createChatModel(temperature: 3),
+        throwsArgumentError,
+      );
+      expect(
+        () => provider.createChatModel(temperature: -1),
+        throwsArgumentError,
+      );
+    });
+
+    test('createChatModel uses default model name', () {
+      final provider = FirebaseAIProvider();
+      final model = provider.createChatModel();
+
+      expect(model.name, 'gemini-2.5-flash');
+    });
+
+    test('createChatModel accepts custom model name', () {
+      final provider = FirebaseAIProvider();
+      final model = provider.createChatModel(name: 'gemini-2.0-flash');
+
+      expect(model.name, 'gemini-2.0-flash');
     });
   });
 }

@@ -14,15 +14,12 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
     required this.backend,
     List<Tool>? tools,
     super.temperature,
+    bool enableThinking = false,
     super.defaultOptions = const FirebaseAIChatModelOptions(),
-  }) : super(
+  }) : _enableThinking = enableThinking,
+       super(
          tools: tools?.where((t) => t.name != kReturnResultToolName).toList(),
        ) {
-    _logger.info(
-      'Creating Firebase AI model: $name (${backend.name}) '
-      'with ${super.tools?.length ?? 0} tools, temp: $temperature',
-    );
-
     _firebaseAiClient = _createFirebaseAiClient();
   }
 
@@ -35,6 +32,8 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
 
   /// The Firebase AI backend this model uses.
   final FirebaseAIBackend backend;
+
+  final bool _enableThinking;
 
   late fai.GenerativeModel _firebaseAiClient;
   String? _currentSystemInstruction;
@@ -55,11 +54,6 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
       );
     }
 
-    _logger.info(
-      'Starting Firebase AI chat stream with ${messages.length} '
-      'messages for model: $name',
-    );
-
     final (
       prompt,
       safetySettings,
@@ -72,7 +66,6 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
       outputSchema: outputSchema,
     );
 
-    var chunkCount = 0;
     return _firebaseAiClient
         .generateContentStream(
           prompt,
@@ -89,11 +82,7 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
           );
           throw error; // ignore: only_throw_errors
         })
-        .map((completion) {
-          chunkCount++;
-          _logger.fine('Received Firebase AI stream chunk $chunkCount');
-          return completion.toChatResult(name);
-        });
+        .map((completion) => completion.toChatResult(name));
   }
 
   (
@@ -129,9 +118,11 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
             ? 'application/json'
             : options?.responseMimeType ?? defaultOptions.responseMimeType,
         responseSchema:
-            _convertOutputSchema(outputSchema) ??
-            (options?.responseSchema ?? defaultOptions.responseSchema)
-                ?.toSchema(),
+            _convertSchema(outputSchema) ??
+            _convertSchema(
+              options?.responseSchema ?? defaultOptions.responseSchema,
+            ),
+        thinkingConfig: _buildThinkingConfig(options),
       ),
       (tools ?? const []).toToolList(
         enableCodeExecution:
@@ -146,16 +137,27 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
   @override
   void dispose() {}
 
-  fai.Schema? _convertOutputSchema(Schema? outputSchema) {
-    if (outputSchema == null) return null;
-    return Map<String, dynamic>.from(outputSchema.value).toSchema();
+  fai.ThinkingConfig? _buildThinkingConfig(
+    FirebaseAIChatModelOptions? options,
+  ) {
+    final enabled = _enableThinking || (options?.enableThinking ?? false);
+    if (!enabled) return null;
+
+    final budget =
+        options?.thinkingBudgetTokens ?? defaultOptions.thinkingBudgetTokens;
+
+    return fai.ThinkingConfig.withThinkingBudget(
+      budget ?? -1,
+      includeThoughts: true,
+    );
+  }
+
+  fai.Schema? _convertSchema(Schema? schema) {
+    if (schema == null) return null;
+    return Map<String, dynamic>.from(schema.value).toSchema();
   }
 
   fai.GenerativeModel _createFirebaseAiClient({String? systemInstruction}) {
-    _logger.fine(
-      'Creating Firebase AI client for model: $name (${backend.name})',
-    );
-
     final firebaseAI = switch (backend) {
       FirebaseAIBackend.googleAI => fai.FirebaseAI.googleAI(),
       FirebaseAIBackend.vertexAI => fai.FirebaseAI.vertexAI(),

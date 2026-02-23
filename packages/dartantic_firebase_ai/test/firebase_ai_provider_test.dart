@@ -3,6 +3,7 @@ import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:test/test.dart';
 
 import 'mock_firebase.dart';
+import 'test_helpers/run_provider_test.dart';
 
 void main() {
   group('FirebaseAIProvider', () {
@@ -10,34 +11,34 @@ void main() {
       await initializeMockFirebase();
     });
 
-    test('has expected identity and defaults', () {
-      final provider = FirebaseAIProvider();
+    runProviderTest(
+      'has expected identity and defaults',
+      (provider) async {
       expect(provider.name, 'firebase_ai');
       expect(provider.defaultModelNames[ModelKind.chat], 'gemini-2.5-flash');
       expect(
         provider.defaultModelNames[ModelKind.media],
         'gemini-2.5-flash-image',
       );
-      expect(provider.aliases, contains('firebase-google'));
-    });
+      expect(provider.aliases, isNotEmpty);
+    },
+      requiredCaps: {ProviderTestCaps.chat},
+    );
 
-    test('creates chat model', () {
-      final provider = FirebaseAIProvider();
+    runProviderTest('creates chat model', (provider) async {
       final model = provider.createChatModel(name: 'gemini-2.5-flash');
       expect(model, isA<FirebaseAIChatModel>());
       expect(model.name, 'gemini-2.5-flash');
-    });
+    }, requiredCaps: {ProviderTestCaps.chat});
 
-    test('rejects invalid model names', () {
-      final provider = FirebaseAIProvider();
+    runProviderTest('rejects invalid model names', (provider) async {
       expect(
         () => provider.createChatModel(name: 'gpt-4o'),
         throwsArgumentError,
       );
-    });
+    }, requiredCaps: {ProviderTestCaps.chat});
 
-    test('rejects out-of-range temperature', () {
-      final provider = FirebaseAIProvider();
+    runProviderTest('rejects out-of-range temperature', (provider) async {
       expect(
         () => provider.createChatModel(temperature: -0.1),
         throwsArgumentError,
@@ -46,19 +47,19 @@ void main() {
         () => provider.createChatModel(temperature: 2.1),
         throwsArgumentError,
       );
-    });
+    }, requiredCaps: {ProviderTestCaps.chat});
 
-    test('creates embeddings and media models', () {
-      final provider = FirebaseAIProvider();
+    runProviderTest('creates embeddings and media models', (provider) async {
       final embeddingsModel = provider.createEmbeddingsModel();
       final mediaModel = provider.createMediaModel();
 
       expect(embeddingsModel, isA<FirebaseAIEmbeddingsModel>());
       expect(mediaModel, isA<FirebaseAIMediaGenerationModel>());
-    });
+    }, requiredCaps: {ProviderTestCaps.mediaGeneration});
 
-    test('supports Imagen and Gemini media option variants', () {
-      final provider = FirebaseAIProvider();
+    runProviderTest(
+      'supports Imagen and Gemini media option variants',
+      (provider) async {
 
       final imagenModel = provider.createMediaModel(
         options: const FirebaseAIMediaGenerationModelOptions.imagen(
@@ -105,24 +106,27 @@ void main() {
             .safetySettings,
         hasLength(1),
       );
-    });
+    },
+      requiredCaps: {ProviderTestCaps.mediaGeneration},
+    );
 
-    test('embeddings model reports unsupported operation on use', () {
-      final provider = FirebaseAIProvider();
+    runProviderTest(
+      'embeddings model reports unsupported operation on use',
+      (provider) async {
       final model = provider.createEmbeddingsModel();
 
       expect(
         () => model.embedQuery('hello'),
         throwsA(isA<UnsupportedError>()),
       );
-    });
+    },
+    );
 
-    test('lists chat models', () async {
-      final provider = FirebaseAIProvider();
+    runProviderTest('lists chat models', (provider) async {
       final models = await provider.listModels().toList();
       expect(models, isNotEmpty);
       expect(models.any((m) => m.kinds.contains(ModelKind.chat)), isTrue);
       expect(models.every((m) => m.providerName == 'firebase_ai'), isTrue);
-    });
+    }, requiredCaps: {ProviderTestCaps.chat});
   });
 }

@@ -1,6 +1,8 @@
 import 'package:dartantic_firebase_ai/dartantic_firebase_ai.dart';
 import 'package:test/test.dart';
 
+import '../mock_firebase.dart';
+
 /// Capabilities of a provider's default model for testing purposes.
 enum ProviderTestCaps {
   /// The provider supports chat.
@@ -45,25 +47,40 @@ bool providerHasTestCaps(
 }
 
 /// Runs a parameterized test across Firebase providers selected by caps.
+///
+/// When [integration] is true, tests are skipped unless real Firebase
+/// credentials (`FIREBASE_API_KEY`, `FIREBASE_PROJECT_ID`) are available in the
+/// environment. Integration tests only run against the `firebase-google`
+/// backend to keep CI simple.
 void runProviderTest(
   String description,
   Future<void> Function(FirebaseAIProvider provider) testFunction, {
   Set<ProviderTestCaps>? requiredCaps,
+  bool integration = false,
   Timeout? timeout,
   Set<String>? skipProviders,
 }) {
   final normalizedSkips =
       skipProviders?.map((name) => name.toLowerCase()).toSet() ?? const {};
 
-  final entries = providerTestCaps.entries.where(
+  var entries = providerTestCaps.entries.where(
     (entry) =>
-        requiredCaps == null || providerHasTestCaps(entry.key, requiredCaps),
+        requiredCaps == null ||
+        providerHasTestCaps(entry.key, requiredCaps),
   );
+
+  if (integration) {
+    entries = entries.where((e) => e.key == 'firebase-google');
+  }
 
   for (final entry in entries) {
     final providerName = entry.key;
     final provider = entry.value.provider;
     final isSkipped = normalizedSkips.contains(providerName);
+
+    final skipReason = integration && !hasFirebaseCredentials
+        ? 'Integration test requires FIREBASE_API_KEY and FIREBASE_PROJECT_ID'
+        : (isSkipped ? '' : null);
 
     test(
       '$providerName: $description',
@@ -71,7 +88,7 @@ void runProviderTest(
         await testFunction(provider);
       },
       timeout: timeout,
-      skip: isSkipped,
+      skip: skipReason ?? isSkipped,
     );
   }
 }

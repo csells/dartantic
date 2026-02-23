@@ -44,18 +44,18 @@ class MessageAccumulator {
           (part) =>
               part is ToolPart &&
               part.kind == ToolPartKind.call &&
-              part.id.isNotEmpty &&
-              part.id == newPart.id,
+              part.callId.isNotEmpty &&
+              part.callId == newPart.callId,
         );
 
         if (existingIndex != -1) {
           // Merge with existing tool call
           final existingToolCall = accumulatedParts[existingIndex] as ToolPart;
           final mergedToolCall = ToolPart.call(
-            id: newPart.id,
-            name: newPart.name.isNotEmpty
-                ? newPart.name
-                : existingToolCall.name,
+            callId: newPart.callId,
+            toolName: newPart.toolName.isNotEmpty
+                ? newPart.toolName
+                : existingToolCall.toolName,
             arguments: newPart.arguments?.isNotEmpty ?? false
                 ? newPart.arguments!
                 : existingToolCall.arguments ?? {},
@@ -76,6 +76,10 @@ class MessageAccumulator {
       ...accumulated.metadata,
       ...newChunk.metadata,
     };
+    _logger.fine(
+      'Merging metadata; accumulated keys=${accumulated.metadata.keys}, '
+      'new keys=${newChunk.metadata.keys}',
+    );
 
     return ChatMessage(
       role: accumulated.role,
@@ -88,6 +92,7 @@ class MessageAccumulator {
   ///
   /// This method performs final processing on the accumulated message:
   /// - Consolidates multiple TextParts into a single TextPart
+  /// - Consolidates multiple ThinkingParts into a single ThinkingPart
   /// - Orders parts appropriately
   /// - Cleans up any streaming artifacts
   ///
@@ -96,11 +101,13 @@ class MessageAccumulator {
     _logger.fine(
       'Consolidating accumulated message: ${accumulated.parts.length} parts',
     );
+    _logger.fine('Consolidated metadata keys: ${accumulated.metadata.keys}');
 
-    // Separate text and non-text parts
+    // Separate parts by type for consolidation
     final textParts = accumulated.parts.whereType<TextPart>().toList();
-    final nonTextParts = accumulated.parts
-        .where((part) => part is! TextPart)
+    final thinkingParts = accumulated.parts.whereType<ThinkingPart>().toList();
+    final otherParts = accumulated.parts
+        .where((part) => part is! TextPart && part is! ThinkingPart)
         .toList();
 
     final finalParts = <Part>[];
@@ -113,8 +120,16 @@ class MessageAccumulator {
       }
     }
 
-    // Add all non-text parts (already properly merged)
-    finalParts.addAll(nonTextParts);
+    // Add consolidated thinking as a single ThinkingPart (if any)
+    if (thinkingParts.isNotEmpty) {
+      final consolidatedThinking = thinkingParts.map((p) => p.text).join();
+      if (consolidatedThinking.isNotEmpty) {
+        finalParts.add(ThinkingPart(consolidatedThinking));
+      }
+    }
+
+    // Add all other parts (already properly merged)
+    finalParts.addAll(otherParts);
 
     // Create final message with consolidated parts
     return ChatMessage(

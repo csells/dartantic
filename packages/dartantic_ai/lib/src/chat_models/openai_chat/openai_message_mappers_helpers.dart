@@ -1,5 +1,4 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 import '../../shared/openai_utils.dart';
@@ -30,8 +29,11 @@ LanguageModelUsage mapUsage(CompletionUsage? usage) {
   );
 }
 
-/// Creates OpenAI ResponseFormat from JsonSchema
-ResponseFormat? _createResponseFormat(JsonSchema? outputSchema) {
+/// Creates OpenAI ResponseFormat from Schema
+ResponseFormat? _createResponseFormat(
+  Schema? outputSchema, {
+  bool strictSchema = true,
+}) {
   if (outputSchema == null) return null;
 
   return ResponseFormat.jsonSchema(
@@ -39,9 +41,10 @@ ResponseFormat? _createResponseFormat(JsonSchema? outputSchema) {
       name: 'output_schema',
       description: 'Generated response following the provided schema',
       schema: OpenAIUtils.prepareSchemaForOpenAI(
-        Map<String, dynamic>.from(outputSchema.schemaMap ?? {}),
+        Map<String, dynamic>.from(outputSchema.value),
+        strict: strictSchema,
       ),
-      strict: true,
+      strict: strictSchema,
     ),
   );
 }
@@ -54,7 +57,8 @@ CreateChatCompletionRequest createChatCompletionRequest(
   List<Tool>? tools,
   double? temperature,
   OpenAIChatOptions? options,
-  JsonSchema? outputSchema,
+  Schema? outputSchema,
+  bool strictSchema = true,
 }) => CreateChatCompletionRequest(
   model: ChatCompletionModel.modelId(modelName),
   messages: messages.toOpenAIMessages(),
@@ -65,15 +69,19 @@ CreateChatCompletionRequest createChatCompletionRequest(
           function: FunctionObject(
             name: tool.name,
             description: tool.description,
-            parameters: tool.inputSchema.schemaMap as Map<String, dynamic>?,
+            // OpenAI requires 'properties' field on object schemas, even if
+            // empty
+            parameters: OpenAIUtils.prepareSchemaForOpenAI(
+              Map<String, dynamic>.from(tool.inputSchema.value),
+            ),
             strict: null, // Explicitly pass null to override any defaults
           ),
         ),
       )
       .toList(),
-  toolChoice: options?.toolChoice ?? defaultOptions.toolChoice,
+  toolChoice: null,
   responseFormat:
-      _createResponseFormat(outputSchema) ??
+      _createResponseFormat(outputSchema, strictSchema: strictSchema) ??
       options?.responseFormat ??
       defaultOptions.responseFormat,
   maxTokens: options?.maxTokens ?? defaultOptions.maxTokens,
@@ -85,7 +93,7 @@ CreateChatCompletionRequest createChatCompletionRequest(
       ? ChatCompletionStop.listString(options?.stop ?? defaultOptions.stop!)
       : null,
   stream: true,
-  streamOptions: const ChatCompletionStreamOptions(includeUsage: true),
+  streamOptions: options?.streamOptions ?? defaultOptions.streamOptions,
   user: options?.user ?? defaultOptions.user,
   frequencyPenalty:
       options?.frequencyPenalty ?? defaultOptions.frequencyPenalty,

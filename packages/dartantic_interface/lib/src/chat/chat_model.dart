@@ -1,5 +1,3 @@
-import 'package:json_schema/json_schema.dart';
-
 import '../tool.dart';
 import 'chat_message.dart';
 import 'chat_model_options.dart';
@@ -42,7 +40,7 @@ abstract class ChatModel<TOptions extends ChatModelOptions> {
   Stream<ChatResult<ChatMessage>> sendStream(
     List<ChatMessage> messages, {
     TOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   });
 
   /// Disposes the chat model.

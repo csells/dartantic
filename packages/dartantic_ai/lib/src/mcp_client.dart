@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:mcp_dart/mcp_dart.dart' as mcp;
 
 import 'platform/platform.dart' as platform;
@@ -96,7 +95,7 @@ class McpClient {
   final Map<String, String>? headers;
 
   // Internal connection state
-  mcp.Client? _client;
+  mcp.McpClient? _client;
   mcp.Transport? _transport;
 
   /// Whether the server is connected.
@@ -115,7 +114,7 @@ class McpClient {
       headers: headers,
     );
 
-    _client = mcp.Client(
+    _client = mcp.McpClient(
       const mcp.Implementation(name: 'dartantic_ai', version: 'any'),
     );
 
@@ -129,7 +128,7 @@ class McpClient {
     if (!isConnected) await _connect();
 
     final result = await _client!.callTool(
-      mcp.CallToolRequestParams(name: toolName, arguments: arguments),
+      mcp.CallToolRequest(name: toolName, arguments: arguments ?? const {}),
     );
 
     // Convert MCP result to simple format
@@ -156,8 +155,7 @@ class McpClient {
           description: tool.description == null
               ? ''
               : '$name: ${tool.description}',
-          inputSchema: JsonSchema.create(tool.inputSchema.toJson()),
-
+          inputSchema: Schema.fromMap(tool.inputSchema.toJson()),
           onCall: (args) => _call(tool.name, args),
         ),
       );

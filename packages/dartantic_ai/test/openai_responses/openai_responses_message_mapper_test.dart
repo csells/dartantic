@@ -86,8 +86,8 @@ void main() {
           '',
           parts: const [
             ToolPart.result(
-              id: 'tool-1',
-              name: 'fetchData',
+              callId: 'tool-1',
+              toolName: 'fetchData',
               result: {'value': 42},
             ),
           ],

@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 import 'package:ollama_dart/ollama_dart.dart' as o;
 
@@ -20,16 +19,18 @@ o.GenerateChatCompletionRequest generateChatCompletionRequest(
   required OllamaChatOptions defaultOptions,
   List<Tool>? tools,
   double? temperature,
-  JsonSchema? outputSchema,
+  Schema? outputSchema,
 }) {
   _logger.fine(
     'Creating Ollama chat completion request for model: $modelName '
     'with ${messages.length} messages',
   );
-  // Use native Ollama format parameter for structured output Note: When
-  // outputSchema is provided, the caller handles schema directly via HTTP
+
+  // Use native Ollama format parameter for structured output
   final format = outputSchema != null
-      ? null // Schema handled separately via direct HTTP
+      ? o.GenerateChatCompletionRequestFormat.schema(
+          Map<String, dynamic>.from(outputSchema.value),
+        )
       : options?.format ?? defaultOptions.format;
 
   return o.GenerateChatCompletionRequest(
@@ -38,8 +39,6 @@ o.GenerateChatCompletionRequest generateChatCompletionRequest(
     format: format,
     keepAlive: options?.keepAlive ?? defaultOptions.keepAlive,
     tools: tools?.toOllamaTools(),
-    // Ollama does not currently support toolChoice on the wire, but we pass it
-    // for future compatibility.
     stream: true,
     options: o.RequestOptions(
       numKeep: options?.numKeep ?? defaultOptions.numKeep,
@@ -88,7 +87,7 @@ extension OllamaToolListMapper on List<Tool> {
       function: o.ToolFunction(
         name: tool.name,
         description: tool.description,
-        parameters: Map<String, dynamic>.from(tool.inputSchema.schemaMap ?? {}),
+        parameters: Map<String, dynamic>.from(tool.inputSchema.value),
       ),
     ),
   ).toList(growable: false);
@@ -98,8 +97,12 @@ extension OllamaToolListMapper on List<Tool> {
 extension MessageListMapper on List<ChatMessage> {
   /// Converts this list of [ChatMessage]s to a list of Ollama SDK
   /// [o.Message]s.
+  ///
+  /// ThinkingPart is implicitly filtered out since only TextPart content
+  /// is extracted for the message text.
   List<o.Message> toMessages() {
     _logger.fine('Converting $length messages to Ollama format');
+
     return map(_mapMessage).expand((msg) => msg).toList(growable: false);
   }
 
@@ -185,7 +188,7 @@ extension MessageListMapper on List<ChatMessage> {
                   .map(
                     (p) => o.ToolCall(
                       function: o.ToolCallFunction(
-                        name: p.name,
+                        name: p.toolName,
                         arguments: p.arguments ?? {},
                       ),
                     ),
@@ -228,8 +231,8 @@ extension ChatResultMapper on o.GenerateChatCompletionResponse {
           );
           parts.add(
             ToolPart.call(
-              id: toolId,
-              name: toolCall.function!.name,
+              callId: toolId,
+              toolName: toolCall.function!.name,
               arguments: toolCall.function!.arguments,
             ),
           );

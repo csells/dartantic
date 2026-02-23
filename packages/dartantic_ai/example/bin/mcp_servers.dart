@@ -3,7 +3,6 @@
 import 'dart:io';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:example/example.dart';
 
 late final List<Tool> hgTools;
@@ -17,7 +16,7 @@ void main() async {
     },
   ).listTools();
 
-  const model = 'openai-responses';
+  const model = 'gemini:gemini-2.5-pro';
   await singleMcpServer(model);
   await multipleToolsAndMcpServers(model);
   exit(0);
@@ -62,6 +61,4 @@ Future<void> multipleToolsAndMcpServers(String model) async {
         history.addAll(r.messages);
       });
   stdout.writeln();
-
-  dumpMessages(history);
 }

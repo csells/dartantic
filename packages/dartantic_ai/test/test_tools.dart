@@ -3,13 +3,12 @@
 import 'dart:math';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 
 // A weather tool that can be called multiple times with different cities
 final weatherTool = Tool<Map<String, dynamic>>(
   name: 'get_weather',
   description: 'Get the current weather for a city',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'city': {'type': 'string', 'description': 'The city to get weather for'},
@@ -38,7 +37,7 @@ final weatherTool = Tool<Map<String, dynamic>>(
 final stringTool = Tool<Map<String, dynamic>>(
   name: 'string_tool',
   description: 'Returns a simple string',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'input': {'type': 'string'},
@@ -60,7 +59,7 @@ final emptyStringTool = Tool<Map<String, dynamic>>(
 final intTool = Tool<Map<String, dynamic>>(
   name: 'int_tool',
   description: 'Returns an integer',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'value': {'type': 'integer'},
@@ -79,7 +78,7 @@ final intTool = Tool<Map<String, dynamic>>(
 final doubleTool = Tool<Map<String, dynamic>>(
   name: 'double_tool',
   description: 'Returns a double',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'value': {'type': 'number'},
@@ -94,7 +93,7 @@ final doubleTool = Tool<Map<String, dynamic>>(
 final boolTool = Tool<Map<String, dynamic>>(
   name: 'bool_tool',
   description: 'Returns a boolean',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'value': {'type': 'boolean'},
@@ -117,7 +116,7 @@ final nullTool = Tool<Map<String, dynamic>>(
 final listTool = Tool<Map<String, dynamic>>(
   name: 'list_tool',
   description: 'Returns a list',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'items': {
@@ -141,7 +140,7 @@ final emptyListTool = Tool<Map<String, dynamic>>(
 final mapTool = Tool<Map<String, dynamic>>(
   name: 'map_tool',
   description: 'Returns a map',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'key': {'type': 'string'},
@@ -159,7 +158,7 @@ final mapTool = Tool<Map<String, dynamic>>(
 final nestedMapTool = Tool<Map<String, dynamic>>(
   name: 'nested_map_tool',
   description: 'Returns a nested map structure',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'level': {'type': 'integer'},
@@ -181,7 +180,7 @@ final nestedMapTool = Tool<Map<String, dynamic>>(
 final veryLongStringTool = Tool<Map<String, dynamic>>(
   name: 'very_long_string_tool',
   description: 'Returns a very long string',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'repeat_count': {'type': 'integer'},
@@ -214,7 +213,7 @@ final specialCharsTool = Tool<Map<String, dynamic>>(
 final errorTool = Tool<Map<String, dynamic>>(
   name: 'error_tool',
   description: 'Throws an error when called',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'error_message': {'type': 'string'},
@@ -236,7 +235,7 @@ final invalidJsonTool = Tool<Map<String, dynamic>>(
 final optionalParamsTool = Tool<Map<String, dynamic>>(
   name: 'optional_params_tool',
   description: 'Tool with optional parameters',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'required_param': {'type': 'string'},
@@ -258,7 +257,7 @@ final optionalParamsTool = Tool<Map<String, dynamic>>(
 final multiStepTool1 = Tool<Map<String, dynamic>>(
   name: 'step1',
   description: 'First step in a multi-tool process',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'input': {'type': 'string'},
@@ -272,7 +271,7 @@ final multiStepTool1 = Tool<Map<String, dynamic>>(
 final multiStepTool2 = Tool<Map<String, dynamic>>(
   name: 'step2',
   description: 'Second step that depends on step1',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'step1_result': {'type': 'string'},
@@ -287,7 +286,7 @@ final multiStepTool2 = Tool<Map<String, dynamic>>(
 final strictTypeTool = Tool<Map<String, dynamic>>(
   name: 'strict_type_tool',
   description: 'Tool that requires specific types',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'string_param': {'type': 'string'},
@@ -371,7 +370,6 @@ List<Tool> get errorTestTools => [errorTool, invalidJsonTool];
 final currentDateTimeTool = Tool<Map<String, dynamic>>(
   name: 'current_date_time',
   description: 'Get the current date and time',
-
   onCall: (_) => DateTime.now().toIso8601String(),
 );
 
@@ -379,7 +377,7 @@ final currentDateTimeTool = Tool<Map<String, dynamic>>(
 final fahrenheitToCelsiusTool = Tool<Map<String, dynamic>>(
   name: 'fahrenheit_to_celsius',
   description: 'Convert a temperature from Fahrenheit to Celsius',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'fahrenheit': {
@@ -402,7 +400,7 @@ final fahrenheitToCelsiusTool = Tool<Map<String, dynamic>>(
 final temperatureTool = Tool<Map<String, dynamic>>(
   name: 'temperature',
   description: 'Get the temperature for a given location',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'location': {
@@ -425,7 +423,7 @@ final temperatureTool = Tool<Map<String, dynamic>>(
 final temperatureConverterTool = Tool<Map<String, dynamic>>(
   name: 'temperature_converter',
   description: 'Convert temperature between Celsius and Fahrenheit',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'value': {
@@ -471,7 +469,7 @@ final temperatureConverterTool = Tool<Map<String, dynamic>>(
 final distanceCalculatorTool = Tool<Map<String, dynamic>>(
   name: 'distance_calculator',
   description: 'Calculate the distance between two cities',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'city1': {'type': 'string', 'description': 'First city'},
@@ -493,7 +491,7 @@ final distanceCalculatorTool = Tool<Map<String, dynamic>>(
 final stockPriceTool = Tool<Map<String, dynamic>>(
   name: 'stock_price',
   description: 'Get the current stock price for a ticker symbol',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'symbol': {
@@ -523,7 +521,7 @@ final stockPriceTool = Tool<Map<String, dynamic>>(
 final recipeLookupTool = Tool<Map<String, dynamic>>(
   name: 'lookup_recipe',
   description: 'Look up a recipe by name',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'recipe_name': {

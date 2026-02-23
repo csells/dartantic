@@ -3,10 +3,9 @@
 import 'dart:io';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:dartantic_interface/dartantic_interface.dart';
 
 void main() async {
-  const model = 'openai-responses';
+  const model = 'gemini';
   final agent = Agent(model);
 
   final documents = [
@@ -52,7 +51,7 @@ void main() async {
   print('\n--- Custom Dimensions (OpenAI) ---');
   final agent2 = Agent(
     model,
-    embeddingsModelOptions: const OpenAIEmbeddingsModelOptions(
+    embeddingsModelOptions: const GoogleEmbeddingsModelOptions(
       dimensions: 256, // Reduced dimensions
     ),
   );

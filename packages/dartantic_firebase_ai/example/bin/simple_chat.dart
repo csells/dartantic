@@ -1,7 +1,8 @@
 import 'dart:io';
-import 'package:firebase_core/firebase_core.dart';
+
 import 'package:dartantic_firebase_ai/dartantic_firebase_ai.dart';
 import 'package:dartantic_interface/dartantic_interface.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:logging/logging.dart';
 
 /// Simple command-line example of Firebase AI provider usage.
@@ -10,7 +11,7 @@ import 'package:logging/logging.dart';
 /// Run with: dart run example/bin/simple_chat.dart
 void main() async {
   final Logger logger = Logger('dartantic.examples.firebase_ai');
-  
+
   logger.info('🔥 Firebase AI Provider Example');
   logger.info('================================');
 
@@ -23,7 +24,7 @@ void main() async {
     // Create provider and model
     final provider = FirebaseAIProvider();
     final chatModel = provider.createChatModel(
-      name: 'gemini-2.0-flash',
+      name: 'gemini-2.5-flash-lite',
       temperature: 0.7,
     );
     logger.info('✅ Firebase AI model created');

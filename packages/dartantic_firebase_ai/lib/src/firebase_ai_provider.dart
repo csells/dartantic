@@ -8,7 +8,7 @@ import 'firebase_ai_chat_options.dart';
 enum FirebaseAIBackend {
   /// Direct Google AI API - simpler setup, good for development/testing.
   googleAI,
-  
+
   /// Vertex AI through Firebase - production-ready with Firebase features.
   vertexAI,
 }
@@ -19,13 +19,20 @@ enum FirebaseAIBackend {
 /// supporting both GoogleAI (direct API) and VertexAI (through Firebase)
 /// backends for flexible development and production deployment.
 class FirebaseAIProvider
-    extends Provider<FirebaseAIChatModelOptions, EmbeddingsModelOptions> {
+    extends
+        Provider<
+          FirebaseAIChatModelOptions,
+          EmbeddingsModelOptions,
+          MediaGenerationModelOptions
+        > {
   // IMPORTANT: Logger must be private (_logger not log) and static final
   static final Logger _logger = Logger('dartantic.chat.providers.firebase_ai');
 
   /// Default base URL for Firebase AI.
   /// Note: Firebase AI uses Firebase SDK, not direct REST API calls.
-  static final defaultBaseUrl = Uri.parse('https://firebaseai.googleapis.com/v1');
+  static final defaultBaseUrl = Uri.parse(
+    'https://firebaseai.googleapis.com/v1',
+  );
 
   /// Creates a new Firebase AI provider instance.
   ///
@@ -35,28 +42,26 @@ class FirebaseAIProvider
   ///
   /// Note: Firebase AI doesn't use traditional API keys. Authentication is
   /// handled through Firebase configuration and App Check.
+  // ignore: sort_constructors_first
   FirebaseAIProvider({
-    this.backend = FirebaseAIBackend.vertexAI,
-    super.baseUrl,  // Use super.baseUrl, don't provide defaults here
+    this.backend = FirebaseAIBackend.googleAI,
+    super.baseUrl, // Use super.baseUrl, don't provide defaults here
+    super.headers,
   }) : super(
-        apiKey: null,
-        apiKeyName: null,
-        name: 'firebase_ai',
-        displayName: backend == FirebaseAIBackend.googleAI 
-            ? 'Firebase AI (Google AI)' 
-            : 'Firebase AI (Vertex AI)',
-        defaultModelNames: const {ModelKind.chat: 'gemini-2.0-flash'},
-        caps: const {
-          ProviderCaps.chat,
-          ProviderCaps.multiToolCalls,
-          ProviderCaps.typedOutput,
-          ProviderCaps.chatVision,
-          ProviderCaps.thinking,
-        },
-        aliases: backend == FirebaseAIBackend.googleAI 
-            ? const ['firebase-google']
-            : const ['firebase-vertex'],
-      );
+         apiKey: null,
+         apiKeyName: null,
+         name: 'firebase_ai',
+         displayName: backend == FirebaseAIBackend.googleAI
+             ? 'Firebase AI (Google AI)'
+             : 'Firebase AI (Vertex AI)',
+         defaultModelNames: const {
+           ModelKind.chat: 'gemini-2.5-flash',
+           ModelKind.media: 'gemini-2.5-flash-image',
+         },
+         aliases: backend == FirebaseAIBackend.googleAI
+             ? const ['firebase-google']
+             : const ['firebase-vertex'],
+       );
 
   /// The backend type this provider instance uses.
   final FirebaseAIBackend backend;
@@ -71,6 +76,7 @@ class FirebaseAIProvider
     String? name,
     List<Tool>? tools,
     double? temperature,
+    bool enableThinking = false,
     FirebaseAIChatModelOptions? options,
   }) {
     final modelName = name ?? defaultModelNames[ModelKind.chat]!;
@@ -93,12 +99,13 @@ class FirebaseAIProvider
     _logger.info(
       'Creating Firebase AI model: $modelName (${backend.name}) with '
       '${tools?.length ?? 0} tools, '
-      'temp: $temperature',
+      'temp: $temperature, '
+      'thinking: $enableThinking',
     );
 
     return FirebaseAIChatModel(
       name: modelName,
-      baseUrl: baseUrl ?? defaultBaseUrl,  // IMPORTANT: Pass baseUrl with fallback
+      baseUrl: baseUrl ?? defaultBaseUrl,
       tools: tools,
       temperature: temperature,
       backend: backend,
@@ -113,6 +120,7 @@ class FirebaseAIProvider
         responseSchema: options?.responseSchema,
         safetySettings: options?.safetySettings,
         enableCodeExecution: options?.enableCodeExecution,
+        enableThinking: enableThinking || (options?.enableThinking ?? false),
       ),
     );
   }
@@ -124,6 +132,17 @@ class FirebaseAIProvider
   }) {
     throw UnimplementedError(
       'Firebase AI does not currently support embeddings models',
+    );
+  }
+
+  @override
+  MediaGenerationModel<MediaGenerationModelOptions> createMediaModel({
+    String? name,
+    List<Tool>? tools,
+    MediaGenerationModelOptions? options,
+  }) {
+    throw UnimplementedError(
+      'Firebase AI does not currently support media generation models',
     );
   }
 
@@ -144,7 +163,8 @@ class FirebaseAIProvider
       providerName: name,
       kinds: {ModelKind.chat},
       displayName: 'Gemini 1.5 Flash',
-      description: 'Fast and versatile multimodal model for scaling across '
+      description:
+          'Fast and versatile multimodal model for scaling across '
           'diverse tasks',
     );
     yield ModelInfo(

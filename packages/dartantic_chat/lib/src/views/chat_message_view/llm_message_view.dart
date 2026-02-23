@@ -1,0 +1,116 @@
+// Copyright 2024 The Flutter Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+import 'package:dartantic_interface/dartantic_interface.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../chat_view_model/chat_view_model_client.dart';
+import '../../styles/chat_view_style.dart';
+import '../../styles/message_style.dart';
+import '../jumping_dots_progress_indicator/jumping_dots_progress_indicator.dart';
+import 'adaptive_copy_text.dart';
+import 'hovering_buttons.dart';
+
+/// A widget that displays an LLM (Language Model) message in a chat interface.
+@immutable
+class LlmMessageView extends StatelessWidget {
+  /// Creates an [LlmMessageView].
+  ///
+  /// The [message] parameter is required and represents the LLM chat message to
+  /// be displayed.
+  const LlmMessageView(
+    this.message, {
+    this.isWelcomeMessage = false,
+    super.key,
+  });
+
+  /// The LLM chat message to be displayed.
+  final ChatMessage message;
+
+  /// Whether the message is the welcome message.
+  final bool isWelcomeMessage;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      // const Spacer(flex: 1,),
+      ChatViewModelClient(
+        builder: (context, viewModel, child) {
+          final text = message.text;
+          final hasText = text.isNotEmpty;
+          final chatStyle = ChatViewStyle.resolve(viewModel.style);
+          final llmStyle = MessageStyle.resolve(chatStyle.llmMessageStyle);
+
+          return Flexible(
+            flex: llmStyle.flex,
+            child: Container(
+              constraints: BoxConstraints(
+                minWidth: llmStyle.minWidth,
+                maxWidth: llmStyle.maxWidth,
+              ),
+              margin: llmStyle.margin,
+              child: Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Container(
+                      height: 20,
+                      width: 20,
+                      decoration: llmStyle.iconDecoration,
+                      child: Icon(
+                        llmStyle.icon,
+                        color: llmStyle.iconColor,
+                        size: 12,
+                      ),
+                    ),
+                  ),
+                  HoveringButtons(
+                    isUserMessage: false,
+                    chatStyle: chatStyle,
+                    clipboardText: text,
+                    child: Container(
+                      width: double.infinity,
+                      decoration: llmStyle.decoration,
+                      margin: const EdgeInsets.only(left: 28),
+                      padding: llmStyle.padding,
+                      child: !hasText
+                          ? SizedBox(
+                              width: 32,
+                              child: JumpingDotsProgressIndicator(
+                                fontSize: 24,
+                                color: chatStyle.progressIndicatorColor!,
+                              ),
+                            )
+                          : AdaptiveCopyText(
+                              clipboardText: text,
+                              chatStyle: chatStyle,
+                              child:
+                                  isWelcomeMessage ||
+                                      viewModel.responseBuilder == null
+                                  ? MarkdownBody(
+                                      data: text,
+                                      selectable: false,
+                                      styleSheet: llmStyle.markdownStyle,
+                                      onTapLink: (_, href, _) {
+                                        if (href != null) {
+                                          launchUrl(Uri.parse(href));
+                                        }
+                                      },
+                                    )
+                                  : viewModel.responseBuilder!(context, text),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+      const Flexible(flex: 2, child: SizedBox()),
+    ],
+  );
+}

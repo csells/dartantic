@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
-import 'package:json_schema/json_schema.dart';
 
 final tools = [
   Tool(
@@ -18,7 +17,7 @@ final tools = [
   Tool(
     name: 'weather',
     description: 'Get the weather for a US zipcode',
-    inputSchema: JsonSchema.create({
+    inputSchema: Schema.fromMap({
       'type': 'object',
       'properties': {
         'zipcode': {
@@ -42,7 +41,7 @@ final tools = [
   Tool(
     name: 'location-lookup',
     description: 'Get location data for a given search query.',
-    inputSchema: JsonSchema.create({
+    inputSchema: Schema.fromMap({
       'type': 'object',
       'properties': {
         'location': {
@@ -53,7 +52,7 @@ final tools = [
       'required': ['location'],
     }),
     onCall: (input) async {
-      final location = (input as Map<String, dynamic>)['location'] as String;
+      final location = (input! as Map<String, dynamic>)['location'] as String;
       try {
         final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
           'q': location,
@@ -78,7 +77,7 @@ final tools = [
   Tool(
     name: 'surf-web',
     description: 'Get the content of a web page.',
-    inputSchema: JsonSchema.create({
+    inputSchema: Schema.fromMap({
       'type': 'object',
       'properties': {
         'link': {
@@ -89,7 +88,7 @@ final tools = [
       'required': ['link'],
     }),
     onCall: (args) async {
-      final link = (args as Map<String, dynamic>)['link'] as String?;
+      final link = (args! as Map<String, dynamic>)['link'] as String?;
       if (link == null) {
         return {'error': 'link is required'};
       }

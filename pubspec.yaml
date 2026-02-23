@@ -1,0 +1,16 @@
+name: dartantic
+environment:
+  sdk: ^3.10.0
+dev_dependencies:
+  melos: ^7.3.0
+workspace:
+  - packages/dartantic_ai
+  - packages/dartantic_interface
+  - packages/dartantic_chat
+  - packages/dartantic_ai/example
+  - packages/dartantic_chat/example
+  - samples/chatarang
+  - samples/dartantic_cli
+melos:
+dependency_overrides:
+  test_api: 0.7.7

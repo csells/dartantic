@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
 
 void main() async {
@@ -105,39 +104,38 @@ class LoggingHttpClient extends http.BaseClient {
 }
 
 /// Custom provider that uses a logging HTTP client
-class LoggingProvider extends OpenAIResponsesProvider {
+class LoggingProvider extends GoogleProvider {
   LoggingProvider({super.apiKey});
 
   @override
-  ChatModel<OpenAIResponsesChatModelOptions> createChatModel({
+  ChatModel<GoogleChatModelOptions> createChatModel({
     String? name,
     List<Tool>? tools,
     double? temperature,
-    OpenAIResponsesChatModelOptions? options,
+    bool enableThinking = false,
+    GoogleChatModelOptions? options,
   }) {
     final modelName = name ?? defaultModelNames[ModelKind.chat]!;
 
-    return OpenAIResponsesChatModel(
+    return GoogleChatModel(
       name: modelName,
       tools: tools,
       temperature: temperature,
-      apiKey: apiKey,
-      httpClient: LoggingHttpClient(),
-      defaultOptions: OpenAIResponsesChatModelOptions(
+      enableThinking: enableThinking,
+      apiKey: apiKey!,
+      baseUrl: baseUrl ?? GoogleProvider.defaultBaseUrl,
+      client: LoggingHttpClient(),
+      defaultOptions: GoogleChatModelOptions(
         temperature: temperature ?? options?.temperature,
         topP: options?.topP,
         maxOutputTokens: options?.maxOutputTokens,
-        store: options?.store ?? true,
-        metadata: options?.metadata,
-        include: options?.include,
-        parallelToolCalls: options?.parallelToolCalls,
-        toolChoice: options?.toolChoice,
-        reasoning: options?.reasoning,
-        reasoningEffort: options?.reasoningEffort,
-        reasoningSummary: options?.reasoningSummary,
-        responseFormat: options?.responseFormat,
-        truncationStrategy: options?.truncationStrategy,
-        user: options?.user,
+        topK: options?.topK,
+        candidateCount: options?.candidateCount,
+        stopSequences: options?.stopSequences,
+        responseMimeType: options?.responseMimeType,
+        responseSchema: options?.responseSchema,
+        safetySettings: options?.safetySettings,
+        serverSideTools: options?.serverSideTools,
       ),
     );
   }

@@ -22,19 +22,20 @@ String _messageToSingleLine(ChatMessage message) {
   final parts = [
     for (final part in message.parts)
       switch (part) {
-        (final TextPart _) => 'TextPart{${part.text.trim()}}',
-        (final DataPart _) =>
-          'DataPart{mimeType: ${part.mimeType}, size: ${part.bytes.length}}',
-        (final LinkPart _) => 'LinkPart{url: ${part.url}}',
-        (final ToolPart _) => switch (part.kind) {
+        (final ThinkingPart p) =>
+          'ThinkingPart{${_clip(p.text, maxLength: 50)}}',
+        (final TextPart p) => 'TextPart{${p.text.trim()}}',
+        (final DataPart p) =>
+          'DataPart{mimeType: ${p.mimeType}, size: ${p.bytes.length}}',
+        (final LinkPart p) => 'LinkPart{url: ${p.url}}',
+        (final ToolPart p) => switch (p.kind) {
           ToolPartKind.call =>
-            'ToolPart.call{id: ${part.id}, name: ${part.name}, '
-                'args: ${part.arguments}}',
+            'ToolPart.call{id: ${p.callId}, name: ${p.toolName}, '
+                'args: ${p.arguments}}',
           ToolPartKind.result =>
-            'ToolPart.result{id: ${part.id}, name: ${part.name}, '
-                'result: ${part.result}}',
+            'ToolPart.result{id: ${p.callId}, name: ${p.toolName}, '
+                'result: ${p.result}}',
         },
-        (final Part _) => throw UnimplementedError(),
       },
   ];
 
@@ -128,16 +129,19 @@ String _messageToSummary(ChatMessage message) {
   final parts = <String>[];
 
   for (final part in message.parts) {
-    if (part is TextPart) {
+    if (part is ThinkingPart) {
+      final preview = _clip(part.text, maxLength: 50);
+      parts.add('Thinking("$preview")');
+    } else if (part is TextPart) {
       final preview = part.text.length > 50
           ? '${part.text.substring(0, 47)}...'
           : part.text;
       parts.add('Text("$preview")');
     } else if (part is ToolPart) {
       if (part.kind == ToolPartKind.call) {
-        parts.add('ToolCall(${part.name})');
+        parts.add('ToolCall(${part.toolName})');
       } else {
-        parts.add('ToolResult(${part.name})');
+        parts.add('ToolResult(${part.toolName})');
       }
     } else if (part is DataPart) {
       parts.add('Data(${part.mimeType})');
@@ -190,6 +194,12 @@ Object? _recursiveTrimJson(Object? value, {required int maxLength}) {
 
   // Handle lists recursively
   if (value is List) {
+    // Check if this is a list of numbers (like byte arrays/signatures)
+    final isNumericList = value.isNotEmpty && value.every((e) => e is num);
+    if (isNumericList && value.length > 8) {
+      // Trim numeric lists to first 8 elements with "..." indicator
+      return [...value.take(8), '...'];
+    }
     return value
         .map((item) => _recursiveTrimJson(item, maxLength: maxLength))
         .toList();
@@ -224,4 +234,74 @@ void dumpImage(String name, String baseFilename, Uint8List bytes) {
   out.createSync(recursive: true);
   out.writeAsBytesSync(bytes);
   stdout.writeln('  🎨 $name mage saved: $filename (${bytes.length} bytes)');
+}
+
+/// Counter used by [resolveAssetName] for generating unique fallback names.
+int _assetCounter = 0;
+
+/// Saves DataParts to disk with deduplication and filename resolution.
+///
+/// - [parts] - List of Parts (only DataParts are saved)
+/// - [outputDirectory] - Directory path to save files to
+/// - [fallbackPrefix] - Prefix for generated filenames when name is missing
+/// - [savedKeys] - Optional set for deduplication (prevents duplicate saves)
+void dumpAssets(
+  Iterable<Part> parts,
+  String outputDirectory, {
+  String fallbackPrefix = 'asset',
+  Set<String>? savedKeys,
+}) {
+  final dir = Directory(outputDirectory);
+  if (!dir.existsSync()) dir.createSync(recursive: true);
+
+  var count = 0;
+  for (final part in parts) {
+    if (part is! DataPart) continue;
+    final name = resolveAssetName(part, fallbackPrefix);
+
+    // Skip duplicates if tracking
+    if (savedKeys != null && !savedKeys.add(name)) continue;
+
+    final file = File('$outputDirectory/$name');
+    file.writeAsBytesSync(part.bytes);
+    stdout.writeln(
+      '  Saved: ${file.path} (${part.mimeType}, ${part.bytes.length} bytes)',
+    );
+    count++;
+  }
+
+  if (count == 0) {
+    stdout.writeln('  No assets generated');
+  }
+}
+
+/// Resolves a filename for a DataPart, sanitizing and adding extensions.
+///
+/// If the part has a name, sanitizes it. Otherwise generates a unique name
+/// using [fallbackPrefix] and an auto-incrementing counter.
+String resolveAssetName(DataPart part, String fallbackPrefix) {
+  final existing = part.name?.trim();
+  if (existing != null && existing.isNotEmpty) {
+    // Sanitize the existing name
+    return existing.replaceAll(RegExp(r'[\\/:]'), '_');
+  }
+  // Generate a unique fallback name
+  final extension = PartHelpers.extensionFromMimeType(part.mimeType);
+  final id = _assetCounter++;
+  return extension == null
+      ? '$fallbackPrefix-$id'
+      : '$fallbackPrefix-$id.$extension';
+}
+
+/// Extracts DataParts from message history and saves them to disk.
+///
+/// This is a convenience function for code execution examples where
+/// generated files appear as DataParts in the message history.
+void dumpAssetsFromHistory(
+  List<ChatMessage> history,
+  String outputDirectory, {
+  String fallbackPrefix = 'file',
+}) {
+  final allParts = history.expand((msg) => msg.parts);
+  dumpAssets(allParts, outputDirectory, fallbackPrefix: fallbackPrefix);
 }

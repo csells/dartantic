@@ -1,5 +1,4 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:openai_core/openai_core.dart' as openai;
 
 import 'openai_responses_chat_options.dart';
@@ -47,7 +46,6 @@ class OpenAIRequestParameters {
     required this.include,
     required this.metadata,
     required this.reasoning,
-    required this.toolChoice,
     required this.truncation,
     required this.textFormat,
     required this.user,
@@ -73,9 +71,6 @@ class OpenAIRequestParameters {
 
   /// Reasoning configuration for thinking models.
   final openai.ReasoningOptions? reasoning;
-
-  /// Tool selection strategy.
-  final openai.ToolChoice? toolChoice;
 
   /// Truncation configuration.
   final openai.Truncation? truncation;
@@ -142,7 +137,7 @@ class OpenAIResponsesInvocationBuilder {
   final OpenAIResponsesChatModelOptions defaultOptions;
 
   /// Optional output schema for typed responses.
-  final JsonSchema? outputSchema;
+  final Schema? outputSchema;
 
   /// Builds the complete invocation.
   ///
@@ -178,9 +173,6 @@ class OpenAIResponsesInvocationBuilder {
         raw: options?.reasoning ?? defaultOptions.reasoning,
         effort: options?.reasoningEffort ?? defaultOptions.reasoningEffort,
         summary: options?.reasoningSummary ?? defaultOptions.reasoningSummary,
-      ),
-      toolChoice: OpenAIResponsesOptionsMapper.toToolChoice(
-        options?.toolChoice ?? defaultOptions.toolChoice,
       ),
       truncation: OpenAIResponsesOptionsMapper.toTruncation(
         options?.truncationStrategy ?? defaultOptions.truncationStrategy,

@@ -120,9 +120,9 @@ class OpenAIResponsesToolEventRecorder {
     // Yield a metadata-only chunk with the event as a single-item list
     // Following the thinking pattern: always emit as list for consistency
     yield ChatResult<ChatMessage>(
-      output: const ChatMessage(
+      output: ChatMessage(
         role: ChatMessageRole.model,
-        parts: [], // No text parts - just metadata
+        parts: const [], // No text parts - just metadata
       ),
       messages: const [],
       metadata: {

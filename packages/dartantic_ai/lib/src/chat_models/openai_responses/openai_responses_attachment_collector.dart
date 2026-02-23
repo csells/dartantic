@@ -82,7 +82,7 @@ class AttachmentCollector {
       final inferredMime =
           lookupMimeType('image.bin', headerBytes: decodedBytes) ??
           'application/octet-stream';
-      final extension = Part.extensionFromMimeType(inferredMime);
+      final extension = PartHelpers.extensionFromMimeType(inferredMime);
       final baseName = 'image_$index';
 
       // Build filename with extension if available (extension lacks dot prefix)
@@ -109,7 +109,7 @@ class AttachmentCollector {
           data.mimeType ??
           lookupMimeType(data.fileName ?? '', headerBytes: data.bytes) ??
           'application/octet-stream';
-      final extension = Part.extensionFromMimeType(inferredMime);
+      final extension = PartHelpers.extensionFromMimeType(inferredMime);
       final fileName =
           data.fileName ?? (extension != null ? '$fileId.$extension' : fileId);
 

@@ -1,7 +1,7 @@
 import 'package:chrono_dart/chrono_dart.dart' show Chrono;
+import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' show Freezed;
 import 'package:json_annotation/json_annotation.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:soti_schema_plus/soti_schema_plus.dart';
 
 part 'example_types.g.dart';
@@ -31,7 +31,7 @@ class TimeAndTemperature {
         temperature: (json['temperature'] as num).toDouble(),
       );
 
-  static final schema = JsonSchema.create({
+  static final schema = Schema.fromMap({
     'type': 'object',
     'properties': {
       'time': {'type': 'string'},

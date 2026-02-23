@@ -1,19 +1,18 @@
 // ignore_for_file: avoid_print
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:dartantic_interface/dartantic_interface.dart';
 
 void main() {
   assert(
-    Providers.anthropic.defaultModelNames[ModelKind.chat] ==
-        'claude-3-5-sonnet-20241022',
+    Agent.getProvider('anthropic').defaultModelNames[ModelKind.chat] ==
+        'claude-sonnet-4-0',
   );
 
   // all four of these resolve to the same model
   const model1 = 'anthropic';
-  const model2 = 'anthropic:claude-3-5-sonnet-20241022';
-  const model3 = 'anthropic/claude-3-5-sonnet-20241022';
-  const model4 = 'anthropic?chat=claude-3-5-sonnet-20241022';
+  const model2 = 'anthropic:claude-sonnet-4-0';
+  const model3 = 'anthropic/claude-sonnet-4-0';
+  const model4 = 'anthropic?chat=claude-sonnet-4-0';
 
   final agent1 = Agent(model1);
   final agent2 = Agent(model2);

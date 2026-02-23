@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 
 /// Tool that returns the current location
 final locationTool = Tool<Map<String, dynamic>>(
@@ -21,7 +20,6 @@ final localTimeTool = Tool<Map<String, dynamic>>(
 final currentDateTimeTool = Tool<Map<String, dynamic>>(
   name: 'current_date_time',
   description: 'Get the current date and time',
-
   onCall: (_) => DateTime.now().toIso8601String(),
 );
 
@@ -29,7 +27,7 @@ final currentDateTimeTool = Tool<Map<String, dynamic>>(
 final weatherTool = Tool<Map<String, dynamic>>(
   name: 'weather',
   description: 'Get the weather for a given location',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'location': {
@@ -57,7 +55,7 @@ final weatherTool = Tool<Map<String, dynamic>>(
 final fahrenheitToCelsiusTool = Tool<Map<String, dynamic>>(
   name: 'fahrenheit_to_celsius',
   description: 'Convert a temperature from Fahrenheit to Celsius',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'fahrenheit': {
@@ -80,7 +78,7 @@ final fahrenheitToCelsiusTool = Tool<Map<String, dynamic>>(
 final temperatureTool = Tool<Map<String, dynamic>>(
   name: 'temperature',
   description: 'Get the temperature for a given location',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'location': {
@@ -103,7 +101,7 @@ final temperatureTool = Tool<Map<String, dynamic>>(
 final temperatureConverterTool = Tool<Map<String, dynamic>>(
   name: 'temperature_converter',
   description: 'Convert temperature between Celsius and Fahrenheit',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'value': {
@@ -149,7 +147,7 @@ final temperatureConverterTool = Tool<Map<String, dynamic>>(
 final distanceCalculatorTool = Tool<Map<String, dynamic>>(
   name: 'distance_calculator',
   description: 'Calculate the distance between two cities',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'city1': {'type': 'string', 'description': 'First city'},
@@ -171,7 +169,7 @@ final distanceCalculatorTool = Tool<Map<String, dynamic>>(
 final stockPriceTool = Tool<Map<String, dynamic>>(
   name: 'stock_price',
   description: 'Get the current stock price for a ticker symbol',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'symbol': {
@@ -201,7 +199,7 @@ final stockPriceTool = Tool<Map<String, dynamic>>(
 final recipeLookupTool = Tool<Map<String, dynamic>>(
   name: 'lookup_recipe',
   description: 'Look up a recipe by name',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'recipe_name': {

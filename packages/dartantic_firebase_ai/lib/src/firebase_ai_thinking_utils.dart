@@ -63,7 +63,7 @@ class FirebaseAIThinkingUtils {
       // Extract reasoning steps from block_reason and finish_message
       if (options.includeReasoningSteps) {
         final blockReason = result.metadata['block_reason'] as String?;
-        final blockReasonMessage = 
+        final blockReasonMessage =
             result.metadata['block_reason_message'] as String?;
         final finishMessage = result.metadata['finish_message'] as String?;
 
@@ -89,7 +89,7 @@ class FirebaseAIThinkingUtils {
 
       // Extract citation metadata if requested
       if (options.verboseCitationMetadata) {
-        final citationMetadata = 
+        final citationMetadata =
             result.metadata['citation_metadata'] as String?;
         if (citationMetadata != null && citationMetadata.isNotEmpty) {
           buffer.writeln('[CITATION ANALYSIS]');
@@ -112,19 +112,13 @@ class FirebaseAIThinkingUtils {
       }
 
       if (hasContent) {
-        _logger.fine(
-          'Extracted thinking content: ${buffer.length} characters',
-        );
+        _logger.fine('Extracted thinking content: ${buffer.length} characters');
         return buffer.toString().trim();
       }
 
       return null;
     } on Exception catch (e, stackTrace) {
-      _logger.warning(
-        'Error extracting thinking content: $e',
-        e,
-        stackTrace,
-      );
+      _logger.warning('Error extracting thinking content: $e', e, stackTrace);
       return null;
     }
   }
@@ -132,11 +126,11 @@ class FirebaseAIThinkingUtils {
   /// Extracts reasoning patterns from model output.
   static List<String> _extractReasoningPatterns(ChatMessage message) {
     final patterns = <String>[];
-    
+
     for (final part in message.parts) {
       if (part is TextPart) {
         final text = part.text;
-        
+
         // Look for explicit reasoning markers
         final reasoningMarkers = [
           'Let me think',
@@ -148,7 +142,7 @@ class FirebaseAIThinkingUtils {
           'Step by step',
           'My reasoning',
         ];
-        
+
         for (final marker in reasoningMarkers) {
           if (text.toLowerCase().contains(marker.toLowerCase())) {
             // Extract the sentence containing the reasoning marker
@@ -163,7 +157,7 @@ class FirebaseAIThinkingUtils {
         }
       }
     }
-    
+
     return patterns;
   }
 

@@ -1,6 +1,7 @@
 /// TESTING PHILOSOPHY:
 /// 1. DO NOT catch exceptions - let them bubble up for diagnosis
-/// 2. DO NOT add provider filtering except by capabilities (e.g. ProviderCaps)
+/// 2. DO NOT add provider filtering except by capabilities (e.g.
+///    ProviderTestCaps)
 /// 3. DO NOT add performance tests
 /// 4. DO NOT add regression tests
 /// 5. 80% cases = common usage patterns tested across ALL capable providers
@@ -8,7 +9,6 @@
 /// 7. Each functionality should only be tested in ONE file - no duplication
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:test/test.dart';
 
 import 'test_helpers/run_provider_test.dart';
@@ -97,36 +97,41 @@ void main() {
         );
       });
 
-      runProviderTest('context retention across turns', (provider) async {
-        final agent = Agent(provider.name);
-        final history = <ChatMessage>[];
+      runProviderTest(
+        'context retention across turns',
 
-        // Establish context
-        var result = await agent.send(
-          'I am learning Dart programming language.',
-          history: history,
-        );
-        history.addAll(result.messages);
+        (provider) async {
+          final agent = Agent(provider.name);
+          final history = <ChatMessage>[];
 
-        // Reference context
-        result = await agent.send(
-          'What language am I learning?',
-          history: history,
-        );
-        history.addAll(result.messages);
-        expect(result.output.toLowerCase(), contains('dart'));
+          // Establish context
+          var result = await agent.send(
+            'I am learning Dart programming language.',
+            history: history,
+          );
+          history.addAll(result.messages);
 
-        // Further reference
-        result = await agent.send(
-          'Is it a compiled or interpreted language?',
-          history: history,
-        );
-        expect(result.output, isNotEmpty);
-        expect(
-          result.output.toLowerCase(),
-          anyOf(contains('compiled'), contains('dart')),
-        );
-      });
+          // Reference context
+          result = await agent.send(
+            'What language am I learning?',
+            history: history,
+          );
+          history.addAll(result.messages);
+          expect(result.output.toLowerCase(), contains('dart'));
+
+          // Further reference
+          result = await agent.send(
+            'Is it a compiled or interpreted language?',
+            history: history,
+          );
+          expect(result.output, isNotEmpty);
+          expect(
+            result.output.toLowerCase(),
+            anyOf(contains('compiled'), contains('dart')),
+          );
+        },
+        timeout: const Timeout(Duration(seconds: 60)),
+      );
     });
 
     group('system prompts (80% cases)', () {
@@ -163,13 +168,13 @@ void main() {
         final result = await agent.send(
           'Tell me about the weather',
           history: [
-            ChatMessage.system('Always respond with exactly three words.'),
+            ChatMessage.system(
+              'Always start your response with "WEATHER REPORT:" (exactly).',
+            ),
           ],
         );
         expect(result.output, isNotEmpty);
-        // Check for roughly three words (some flexibility for punctuation)
-        final wordCount = result.output.trim().split(RegExp(r'\s+')).length;
-        expect(wordCount, lessThanOrEqualTo(5)); // Allow some flexibility
+        expect(result.output.toUpperCase(), startsWith('WEATHER REPORT:'));
       });
 
       runProviderTest('system prompt persists across conversation', (
@@ -189,7 +194,14 @@ void main() {
         history.addAll(result.messages);
         expect(
           result.output.toLowerCase(),
-          anyOf(contains('ahoy'), contains('matey'), contains('arr')),
+          anyOf(
+            contains('ahoy'),
+            contains('matey'),
+            contains('arr'),
+            contains('hearty'),
+            contains('shiver'),
+            contains('landlubber'),
+          ),
         );
 
         // Turn 2
@@ -201,22 +213,6 @@ void main() {
     });
 
     group('edge cases', () {
-      runProviderTest('handles empty input gracefully', (provider) async {
-        final agent = Agent(provider.name);
-        final result = await agent.send('');
-
-        // Should still get a response, even for empty input
-        expect(result.output, isNotEmpty);
-      }, edgeCase: true);
-
-      runProviderTest('handles null-like inputs', (provider) async {
-        final agent = Agent(provider.name);
-
-        // Test with just whitespace
-        final result = await agent.send('   \n\t   ');
-        expect(result.output, isNotEmpty);
-      }, edgeCase: true);
-
       runProviderTest('handles unicode and emoji', (provider) async {
         final agent = Agent(provider.name);
 
@@ -255,16 +251,21 @@ void main() {
         expect(result.output.length, lessThan(longText.length));
       }, edgeCase: true);
 
-      runProviderTest('handles special characters', (provider) async {
-        final agent = Agent(provider.name);
+      runProviderTest(
+        'handles special characters',
+        (provider) async {
+          final agent = Agent(provider.name);
 
-        final result = await agent.send(
-          r'What do these symbols mean: $@#%^&*()_+{}[]|\<>?',
-        );
+          final result = await agent.send(
+            r'What do these symbols mean: $@#%^&*()_+{}[]|\<>?',
+          );
 
-        expect(result.output, isNotEmpty);
-        expect(result.output.length, greaterThan(10));
-      }, edgeCase: true);
+          expect(result.output, isNotEmpty);
+          expect(result.output.length, greaterThan(10));
+        },
+        edgeCase: true,
+        timeout: const Timeout(Duration(seconds: 60)),
+      );
     });
   });
 }

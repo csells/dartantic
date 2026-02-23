@@ -26,7 +26,7 @@ class FirebaseAIStreamingAccumulator {
   final List<String> _allCitations = <String>[];
 
   ChatResult<ChatMessage> _finalResult = ChatResult<ChatMessage>(
-    output: const ChatMessage(role: ChatMessageRole.model, parts: []),
+    output: ChatMessage(role: ChatMessageRole.model, parts: const []),
     messages: const [],
     finishReason: FinishReason.unspecified,
     metadata: const <String, dynamic>{},
@@ -62,30 +62,29 @@ class FirebaseAIStreamingAccumulator {
       final thinking = result.metadata['thinking'] as String?;
       if (thinking != null && thinking.isNotEmpty) {
         _thinkingBuffer.write(thinking);
-        _logger.fine(
-          'Accumulated thinking content: ${thinking.length} chars',
-        );
+        _logger.fine('Accumulated thinking content: ${thinking.length} chars');
       }
 
       // Accumulate safety ratings
       final safetyRatings = result.metadata['safety_ratings'] as List?;
       if (safetyRatings != null) {
-        _allSafetyRatings.addAll(
-          safetyRatings.cast<Map<String, dynamic>>(),
-        );
+        _allSafetyRatings.addAll(safetyRatings.cast<Map<String, dynamic>>());
       }
 
       // Accumulate citation metadata
       final citationMetadata = result.metadata['citation_metadata'] as String?;
-      if (citationMetadata != null && 
+      if (citationMetadata != null &&
           !_allCitations.contains(citationMetadata)) {
         _allCitations.add(citationMetadata);
       }
 
       // Merge other metadata (preserving response-level info from final chunk)
       for (final entry in result.metadata.entries) {
-        if (!{'thinking', 'safety_ratings', 'citation_metadata'}
-            .contains(entry.key)) {
+        if (!{
+          'thinking',
+          'safety_ratings',
+          'citation_metadata',
+        }.contains(entry.key)) {
           _accumulatedMetadata[entry.key] = entry.value;
         }
       }
@@ -112,7 +111,7 @@ class FirebaseAIStreamingAccumulator {
         ..._accumulatedMetadata,
         if (_thinkingBuffer.isNotEmpty) 'thinking': _thinkingBuffer.toString(),
         if (_allSafetyRatings.isNotEmpty) 'safety_ratings': _allSafetyRatings,
-        if (_allCitations.isNotEmpty) 
+        if (_allCitations.isNotEmpty)
           'citation_metadata': _allCitations.join('; '),
         'chunk_count': _chunkCount,
       };

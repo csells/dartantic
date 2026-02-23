@@ -1,6 +1,5 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:firebase_ai/firebase_ai.dart' as fai;
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 
 import 'firebase_ai_chat_options.dart';
@@ -12,7 +11,7 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
   /// Creates a [FirebaseAIChatModel] instance.
   FirebaseAIChatModel({
     required super.name,
-    required this.baseUrl,  // Required from provider (already has fallback)
+    required this.baseUrl, // Required from provider (already has fallback)
     List<Tool>? tools,
     super.temperature,
     this.backend = FirebaseAIBackend.vertexAI,
@@ -49,7 +48,7 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
   Stream<ChatResult<ChatMessage>> sendStream(
     List<ChatMessage> messages, {
     FirebaseAIChatModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) {
     // Check if we have both tools and output schema
     if (outputSchema != null &&
@@ -94,7 +93,7 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
             error,
             stackTrace,
           );
-          
+
           // Re-throw with more context for common Firebase AI errors
           if (error.toString().contains('quota')) {
             throw Exception(
@@ -113,14 +112,14 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
               'Original error: $error',
             );
           }
-          
+
           // Re-throw original error if no specific handling
           throw error;
         })
         .map((completion) {
           chunkCount++;
           _logger.fine('Received Firebase AI stream chunk $chunkCount');
-          
+
           try {
             final result = completion.toChatResult(name);
             return ChatResult<ChatMessage>(
@@ -153,9 +152,9 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
   _generateCompletionRequest(
     List<ChatMessage> messages, {
     FirebaseAIChatModelOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) {
-    _updateClientIfNeeded(messages, options);
+    _updateClientIfNeeded(messages);
 
     return (
       messages.toContentList(),
@@ -193,12 +192,12 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
   @override
   void dispose() {}
 
-  /// Creates Firebase Schema from JsonSchema
-  fai.Schema? _createFirebaseSchema(JsonSchema? outputSchema) {
+  /// Creates Firebase schema from `Schema`.
+  fai.Schema? _createFirebaseSchema(Schema? outputSchema) {
     if (outputSchema == null) return null;
 
     return _convertSchemaToFirebase(
-      Map<String, dynamic>.from(outputSchema.schemaMap ?? {}),
+      Map<String, dynamic>.from(outputSchema.value),
     );
   }
 
@@ -311,13 +310,13 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
       _logger.fine(
         'Creating Firebase AI client for model: $name (${backend.name})',
       );
-      
+
       // Use the appropriate backend based on configuration
       final firebaseAI = switch (backend) {
         FirebaseAIBackend.googleAI => fai.FirebaseAI.googleAI(),
         FirebaseAIBackend.vertexAI => fai.FirebaseAI.vertexAI(),
       };
-      
+
       return firebaseAI.generativeModel(
         model: name,
         systemInstruction: systemInstruction != null
@@ -331,15 +330,15 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
         e,
         stackTrace,
       );
-      
+
       // Provide helpful error messages for common issues
       if (e.toString().contains('Firebase')) {
         final backendHelp = backend == FirebaseAIBackend.vertexAI
             ? 'Ensure Firebase is properly configured in your app and '
-              'Vertex AI services are enabled in your Firebase project.'
+                  'Vertex AI services are enabled in your Firebase project.'
             : 'Ensure Firebase is properly configured in your app and '
-              'Google AI API is accessible.';
-        
+                  'Google AI API is accessible.';
+
         throw Exception(
           'Failed to initialize Firebase AI (${backend.name}). '
           '$backendHelp Original error: $e',
@@ -351,16 +350,13 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
           'Original error: $e',
         );
       }
-      
+
       rethrow;
     }
   }
 
   /// Updates the model if needed.
-  void _updateClientIfNeeded(
-    List<ChatMessage> messages,
-    FirebaseAIChatModelOptions? options,
-  ) {
+  void _updateClientIfNeeded(List<ChatMessage> messages) {
     final systemInstruction =
         messages.firstOrNull?.role == ChatMessageRole.system
         ? messages.firstOrNull?.parts

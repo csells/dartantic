@@ -52,7 +52,7 @@ void main() {
       test('ignores non-text parts', () {
         final parts = <Part>[
           const TextPart('Hello'),
-          const ToolPart.call(id: '123', name: 'test', arguments: {}),
+          const ToolPart.call(callId: '123', toolName: 'test', arguments: {}),
           const TextPart(' world'),
           DataPart(Uint8List(0), mimeType: 'image/png'),
         ];
@@ -61,7 +61,7 @@ void main() {
 
       test('handles list with only non-text parts', () {
         final parts = <Part>[
-          const ToolPart.call(id: '123', name: 'test', arguments: {}),
+          const ToolPart.call(callId: '123', toolName: 'test', arguments: {}),
           DataPart(Uint8List(0), mimeType: 'image/png'),
         ];
         expect(parts.text, equals(''));
@@ -95,15 +95,19 @@ void main() {
       test('returns empty list when no tool calls present', () {
         final parts = <Part>[
           const TextPart('Hello'),
-          const ToolPart.result(id: '123', name: 'test', result: 'result'),
+          const ToolPart.result(
+            callId: '123',
+            toolName: 'test',
+            result: 'result',
+          ),
         ];
         expect(parts.toolCalls, isEmpty);
       });
 
       test('extracts single tool call', () {
         const toolCall = ToolPart.call(
-          id: '123',
-          name: 'get_weather',
+          callId: '123',
+          toolName: 'get_weather',
           arguments: {'location': 'Boston'},
         );
         final parts = <Part>[
@@ -114,26 +118,30 @@ void main() {
         final calls = parts.toolCalls;
         expect(calls, hasLength(1));
         expect(calls.first, equals(toolCall));
-        expect(calls.first.id, equals('123'));
-        expect(calls.first.name, equals('get_weather'));
+        expect(calls.first.callId, equals('123'));
+        expect(calls.first.toolName, equals('get_weather'));
       });
 
       test('extracts multiple tool calls', () {
         const call1 = ToolPart.call(
-          id: '123',
-          name: 'get_weather',
+          callId: '123',
+          toolName: 'get_weather',
           arguments: {'location': 'Boston'},
         );
         const call2 = ToolPart.call(
-          id: '456',
-          name: 'get_time',
+          callId: '456',
+          toolName: 'get_time',
           arguments: {'timezone': 'EST'},
         );
 
         final parts = <Part>[
           const TextPart('Checking weather and time'),
           call1,
-          const ToolPart.result(id: '123', name: 'get_weather', result: '72°F'),
+          const ToolPart.result(
+            callId: '123',
+            toolName: 'get_weather',
+            result: '72°F',
+          ),
           call2,
         ];
 
@@ -145,8 +153,8 @@ void main() {
 
       test('handles tool calls with empty arguments', () {
         const toolCall = ToolPart.call(
-          id: '123',
-          name: 'get_current_time',
+          callId: '123',
+          toolName: 'get_current_time',
           arguments: null,
         );
         final parts = <Part>[toolCall];
@@ -158,15 +166,15 @@ void main() {
 
       test('handles tool calls with empty IDs', () {
         const toolCall = ToolPart.call(
-          id: '',
-          name: 'test_tool',
+          callId: '',
+          toolName: 'test_tool',
           arguments: {},
         );
         final parts = <Part>[toolCall];
 
         final calls = parts.toolCalls;
         expect(calls, hasLength(1));
-        expect(calls.first.id, equals(''));
+        expect(calls.first.callId, equals(''));
       });
     });
 
@@ -179,15 +187,15 @@ void main() {
       test('returns empty list when no tool results present', () {
         final parts = <Part>[
           const TextPart('Hello'),
-          const ToolPart.call(id: '123', name: 'test', arguments: {}),
+          const ToolPart.call(callId: '123', toolName: 'test', arguments: {}),
         ];
         expect(parts.toolResults, isEmpty);
       });
 
       test('extracts single tool result', () {
         const toolResult = ToolPart.result(
-          id: '123',
-          name: 'get_weather',
+          callId: '123',
+          toolName: 'get_weather',
           result: '72°F and sunny',
         );
         final parts = <Part>[const TextPart('The weather is:'), toolResult];
@@ -200,20 +208,28 @@ void main() {
 
       test('extracts multiple tool results', () {
         const result1 = ToolPart.result(
-          id: '123',
-          name: 'get_weather',
+          callId: '123',
+          toolName: 'get_weather',
           result: '72°F',
         );
         const result2 = ToolPart.result(
-          id: '456',
-          name: 'get_time',
+          callId: '456',
+          toolName: 'get_time',
           result: '3:45 PM',
         );
 
         final parts = <Part>[
-          const ToolPart.call(id: '123', name: 'get_weather', arguments: {}),
+          const ToolPart.call(
+            callId: '123',
+            toolName: 'get_weather',
+            arguments: {},
+          ),
           result1,
-          const ToolPart.call(id: '456', name: 'get_time', arguments: {}),
+          const ToolPart.call(
+            callId: '456',
+            toolName: 'get_time',
+            arguments: {},
+          ),
           result2,
           const TextPart('Results shown above'),
         ];
@@ -231,8 +247,8 @@ void main() {
           'conditions': 'sunny',
         };
         final toolResult = ToolPart.result(
-          id: '123',
-          name: 'get_weather',
+          callId: '123',
+          toolName: 'get_weather',
           result: jsonResult,
         );
         final parts = <Part>[toolResult];
@@ -392,16 +408,16 @@ void main() {
       final chunk1Parts = <Part>[
         const TextPart("I'll check the weather for you."),
         const ToolPart.call(
-          id: 'call_abc123',
-          name: 'get_weather',
+          callId: 'call_abc123',
+          toolName: 'get_weather',
           arguments: null,
         ),
       ];
 
       final chunk2Parts = <Part>[
         const ToolPart.call(
-          id: 'call_abc123',
-          name: '',
+          callId: 'call_abc123',
+          toolName: '',
           arguments: {'location': 'Boston'},
         ),
       ];
@@ -416,10 +432,14 @@ void main() {
     test('Google-style complete tool calls', () {
       final parts = <Part>[
         const TextPart('Let me get that information for you.'),
-        const ToolPart.call(id: '', name: 'current_date_time', arguments: {}),
         const ToolPart.call(
-          id: '',
-          name: 'get_temperature',
+          callId: '',
+          toolName: 'current_date_time',
+          arguments: {},
+        ),
+        const ToolPart.call(
+          callId: '',
+          toolName: 'get_temperature',
           arguments: {'location': 'NYC'},
         ),
       ];
@@ -427,7 +447,7 @@ void main() {
       expect(parts.text, equals('Let me get that information for you.'));
       final calls = parts.toolCalls;
       expect(calls, hasLength(2));
-      expect(calls.every((c) => c.id.isEmpty), isTrue);
+      expect(calls.every((c) => c.callId.isEmpty), isTrue);
     });
 
     test('Tool result handling with various types', () {
@@ -467,13 +487,13 @@ void main() {
         const TextPart('Based on your request, '),
         const TextPart("I've executed the following tools:\n\n"),
         const ToolPart.call(
-          id: '1',
-          name: 'search',
+          callId: '1',
+          toolName: 'search',
           arguments: {'query': 'Dart'},
         ),
         const ToolPart.result(
-          id: '1',
-          name: 'search',
+          callId: '1',
+          toolName: 'search',
           result: 'Found 10 results',
         ),
         const TextPart('\nThe search returned 10 results.'),

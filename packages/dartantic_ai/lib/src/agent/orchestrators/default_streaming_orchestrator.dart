@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 
@@ -38,7 +37,7 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     state.resetForNewMessage();
     await beforeModelStream(state, model, outputSchema: outputSchema);
@@ -72,7 +71,7 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
   Future<void> beforeModelStream(
     StreamingState state,
     ChatModel<ChatModelOptions> model, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async {}
 
   /// Handles a single streaming chunk from the model response.
@@ -82,11 +81,14 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
     StreamingState state,
   ) async* {
     final textOutput = _extractText(result);
+    final thinkingOutput = _extractThinking(result);
     final hasMetadata = result.metadata.isNotEmpty;
 
     final streamText =
         textOutput.isNotEmpty && allowTextStreaming(state, result);
-    if (!streamText && !hasMetadata) {
+    final hasThinking = thinkingOutput.isNotEmpty;
+
+    if (!streamText && !hasMetadata && !hasThinking) {
       return;
     }
 
@@ -98,14 +100,22 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
 
     _logger.fine(
       'Streaming chunk: text=${streamOutput.length} chars, '
-      'metadata=${result.metadata.keys}',
+      'metadata=${result.metadata.keys}, '
+      'thinking=${thinkingOutput.length} chars',
     );
+
+    // NOTE: ThinkingPart content is NOT yielded in messages[] to avoid
+    // polluting the caller's message history with duplicates. The thinking
+    // content will be consolidated into the final model message via
+    // MessageAccumulator. Instead, thinking is streamed via the `thinking`
+    // field for real-time display.
 
     yield StreamingIterationResult(
       output: streamOutput,
       messages: const [],
       shouldContinue: true,
       finishReason: result.finishReason,
+      thinking: hasThinking ? thinkingOutput : null,
       metadata: result.metadata,
       usage: null, // Usage only in final result
     );
@@ -133,7 +143,7 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
     ChatMessage consolidatedMessage,
     StreamingState state,
     ChatModel<ChatModelOptions> model, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     final emptyHandler = handleEmptyMessage(consolidatedMessage, state);
     if (emptyHandler != null) {
@@ -245,9 +255,14 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
         .toList();
 
     if (toolResultParts.isNotEmpty) {
+      // Copy provider-specific metadata (e.g., Google's thoughtSignatures)
+      // from the model's tool call message to the tool result message
+      final toolCallMessageMetadata = _findToolCallMessageMetadata(state);
+
       final toolResultMessage = ChatMessage(
         role: ChatMessageRole.user,
         parts: toolResultParts,
+        metadata: toolCallMessageMetadata,
       );
 
       state.addToHistory(toolResultMessage);
@@ -273,6 +288,26 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
     );
   }
 
+  /// Finds provider-specific metadata from the model message containing
+  /// tool calls. This allows providers like Google to pass through thought
+  /// signatures required by Gemini 3+ models.
+  Map<String, dynamic> _findToolCallMessageMetadata(StreamingState state) {
+    // Find the most recent model message with tool calls
+    for (var i = state.conversationHistory.length - 1; i >= 0; i--) {
+      final message = state.conversationHistory[i];
+      if (message.role == ChatMessageRole.model && message.hasToolCalls) {
+        // Return metadata that should be passed to tool results
+        // Currently supports Google's thought signatures
+        final thoughtSigs = message.metadata['_google_thought_signatures'];
+        if (thoughtSigs != null) {
+          return {'_google_thought_signatures': thoughtSigs};
+        }
+        break;
+      }
+    }
+    return const {};
+  }
+
   /// Executes the batch of tools via the shared tool executor.
   @protected
   Future<List<ToolExecutionResult>> executeToolBatch(
@@ -285,8 +320,8 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
   void registerToolCalls(List<ToolPart> toolCalls, StreamingState state) {
     for (final toolCall in toolCalls) {
       state.registerToolCall(
-        id: toolCall.id,
-        name: toolCall.name,
+        id: toolCall.callId,
+        name: toolCall.toolName,
         arguments: toolCall.arguments,
       );
     }
@@ -325,6 +360,9 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
 
 String _extractText(ChatResult<ChatMessage> result) =>
     result.output.parts.whereType<TextPart>().map((p) => p.text).join();
+
+String _extractThinking(ChatResult<ChatMessage> result) =>
+    result.output.parts.whereType<ThinkingPart>().map((p) => p.text).join();
 
 bool _shouldPrefixNewline(StreamingState state) =>
     state.shouldPrefixNextMessage && state.isFirstChunkOfMessage;

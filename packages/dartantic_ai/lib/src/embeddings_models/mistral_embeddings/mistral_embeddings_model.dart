@@ -1,7 +1,9 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
+import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:mistralai_dart/mistralai_dart.dart';
 
+import '../chunk_list.dart';
 import 'mistral_embeddings_model_options.dart';
 
 /// Mistral AI embeddings model implementation.
@@ -12,10 +14,17 @@ class MistralEmbeddingsModel
     required super.name,
     required String apiKey,
     Uri? baseUrl,
+    http.Client? client,
+    Map<String, String>? headers,
     super.dimensions,
     super.batchSize = 100,
     MistralEmbeddingsModelOptions? options,
-  }) : _client = MistralAIClient(apiKey: apiKey, baseUrl: baseUrl?.toString()),
+  }) : _client = MistralAIClient(
+         apiKey: apiKey,
+         baseUrl: baseUrl?.toString(),
+         client: client,
+         headers: headers,
+       ),
        super(defaultOptions: options ?? const MistralEmbeddingsModelOptions()) {
     _logger.info(
       'Created Mistral embeddings model: $name '
@@ -62,16 +71,10 @@ class MistralEmbeddingsModel
     List<String> texts, {
     MistralEmbeddingsModelOptions? options,
   }) async {
-    final chunks = <List<String>>[];
     final actualBatchSize = options?.batchSize ?? batchSize ?? 100;
     final totalTexts = texts.length;
     final totalCharacters = texts.map((t) => t.length).reduce((a, b) => a + b);
-
-    for (var i = 0; i < texts.length; i += actualBatchSize) {
-      chunks.add(
-        texts.sublist(i, (i + actualBatchSize).clamp(0, texts.length)),
-      );
-    }
+    final chunks = chunkList(texts, chunkSize: actualBatchSize);
 
     _logger.info(
       'Embedding $totalTexts documents with Mistral model "$name" '
@@ -95,10 +98,20 @@ class MistralEmbeddingsModel
         '(${chunk.length} texts, $chunkCharacters chars)',
       );
 
+      final actualDimensions = options?.dimensions ?? dimensions;
+      final actualEncodingFormat = options?.encodingFormat;
+
       final result = await _client.createEmbedding(
         request: EmbeddingRequest(
           model: EmbeddingModel.modelId(name),
           input: chunk,
+          outputDimension: actualDimensions,
+          encodingFormat: actualEncodingFormat != null
+              ? EmbeddingEncodingFormat.values.firstWhere(
+                  (e) => e.name == actualEncodingFormat,
+                  orElse: () => EmbeddingEncodingFormat.float,
+                )
+              : null,
         ),
       );
 

@@ -326,7 +326,7 @@ _logger.fine('Starting model stream processing');
 _logger.fine('Stream closed. Consolidated message has ${consolidatedMessage.parts.length} parts');
 
 // Tool detection
-_logger.info('Found ${toolCalls.length} tool calls to execute: ${toolCalls.map((t) => t.name).join(', ')}');
+_logger.info('Found ${toolCalls.length} tool calls to execute: ${toolCalls.map((t) => t.toolName).join(', ')}');
 
 // Workflow completion
 _logger.fine('Finalizing ${providerHint} orchestrator');
@@ -336,12 +336,12 @@ _logger.fine('Finalizing ${providerHint} orchestrator');
 
 ```dart
 // Batch execution start
-_logger.info('Executing batch of ${toolCalls.length} tools: ${toolCalls.map((t) => t.name).join(', ')}');
+_logger.info('Executing batch of ${toolCalls.length} tools: ${toolCalls.map((t) => t.toolName).join(', ')}');
 
 // Individual tool execution
-_logger.fine('Executing tool: ${toolCall.name} with args: ${json.encode(toolCall.arguments ?? {})}');
-_logger.info('Tool ${toolCall.name} executed successfully, result length: ${result.length}');
-_logger.warning('Tool ${toolCall.name} execution failed: $error');
+_logger.fine('Executing tool: ${toolCall.toolName} with args: ${json.encode(toolCall.arguments ?? {})}');
+_logger.info('Tool ${toolCall.toolName} executed successfully, result length: ${result.length}');
+_logger.warning('Tool ${toolCall.toolName} execution failed: $error');
 ```
 
 #### Model Creation and Disposal (Direct)

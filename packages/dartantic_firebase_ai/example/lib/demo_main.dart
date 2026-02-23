@@ -46,11 +46,10 @@ class _DemoScreenState extends State<DemoScreen> {
 
     try {
       // Register Firebase AI providers with new naming
-      Providers.providerMap['firebase-vertex'] = FirebaseAIProvider();
-      Providers.providerMap['firebase-google'] = FirebaseAIProvider(
-        backend: FirebaseAIBackend.googleAI,
-      );
-      
+      Agent.providerFactories['firebase-vertex'] = FirebaseAIProvider.new;
+      Agent.providerFactories['firebase-google'] = () =>
+          FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
+
       setState(() {
         _logs.add('✅ FirebaseAIProvider registered successfully');
         _logs.add('✅ Vertex AI provider available as: firebase-vertex');
@@ -74,13 +73,15 @@ class _DemoScreenState extends State<DemoScreen> {
       // Create agents with both Firebase AI backends using new naming
       final vertexAgent = Agent('firebase-vertex:gemini-2.0-flash-exp');
       final googleAgent = Agent('firebase-google:gemini-2.0-flash-exp');
-      
+
       setState(() {
         _logs.add('🎯 Agents created successfully!');
         _logs.add('✅ Vertex AI: firebase-vertex:gemini-2.0-flash-exp');
         _logs.add('✅ Google AI: firebase-google:gemini-2.0-flash-exp');
         _logs.add('✅ Ready for chat operations');
-        _logs.add('✅ Agent instances: ${vertexAgent.runtimeType}, ${googleAgent.runtimeType}');
+        _logs.add(
+          '✅ Agent instances: ${vertexAgent.runtimeType}, ${googleAgent.runtimeType}',
+        );
         _logs.add('');
         _logs.add('📋 Provider Integration Status:');
         _logs.add('• Vertex AI Provider: ✅ Registered');
@@ -125,25 +126,28 @@ class _DemoScreenState extends State<DemoScreen> {
                     Row(
                       children: [
                         Icon(
-                          _providerReady ? Icons.check_circle : Icons.hourglass_empty,
+                          _providerReady
+                              ? Icons.check_circle
+                              : Icons.hourglass_empty,
                           color: _providerReady ? Colors.green : Colors.orange,
                         ),
                         const SizedBox(width: 8),
                         Text(
                           'Provider Status',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _providerReady 
-                          ? 'Firebase AI Provider is ready!' 
+                      _providerReady
+                          ? 'Firebase AI Provider is ready!'
                           : 'Initializing...',
                       style: TextStyle(
-                        color: _providerReady ? Colors.green[700] : Colors.orange[700],
+                        color: _providerReady
+                            ? Colors.green[700]
+                            : Colors.orange[700],
                       ),
                     ),
                   ],
@@ -164,16 +168,22 @@ class _DemoScreenState extends State<DemoScreen> {
                   child: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: _logs.map((log) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2.0),
-                        child: Text(
-                          log,
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                          ),
-                        ),
-                      )).toList(),
+                      children: _logs
+                          .map(
+                            (log) => Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 2.0,
+                              ),
+                              child: Text(
+                                log,
+                                style: const TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
                     ),
                   ),
                 ),
@@ -196,7 +206,9 @@ class _DemoScreenState extends State<DemoScreen> {
                     const SizedBox(height: 8),
                     const Text('1. Configure Firebase in your project'),
                     const Text('2. Add Firebase credentials'),
-                    const Text('3. Call agent.sendStream(prompt) for AI responses'),
+                    const Text(
+                      '3. Call agent.sendStream(prompt) for AI responses',
+                    ),
                     const Text('4. Handle streaming responses in your UI'),
                   ],
                 ),

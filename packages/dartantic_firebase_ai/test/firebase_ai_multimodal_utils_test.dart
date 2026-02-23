@@ -325,7 +325,14 @@ void main() {
 
       test('rejects images with invalid signatures', () {
         final invalidBytes = Uint8List.fromList([
-          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+          0x00,
+          0x00,
+          0x00,
+          0x00,
+          0x00,
+          0x00,
+          0x00,
+          0x00,
         ]);
         final result = FirebaseAIMultiModalUtils.validateMedia(
           bytes: invalidBytes,
@@ -338,7 +345,14 @@ void main() {
 
       test('assumes validity for other image types', () {
         final genericBytes = Uint8List.fromList([
-          0x48, 0x45, 0x49, 0x43, 0x00, 0x00, 0x00, 0x00
+          0x48,
+          0x45,
+          0x49,
+          0x43,
+          0x00,
+          0x00,
+          0x00,
+          0x00,
         ]);
         final result = FirebaseAIMultiModalUtils.validateMedia(
           bytes: genericBytes,
@@ -353,7 +367,14 @@ void main() {
     group('Audio Validation', () {
       test('validates audio files with sufficient size', () {
         final audioBytes = Uint8List.fromList([
-          0x52, 0x49, 0x46, 0x46, 0x24, 0x08, 0x00, 0x00
+          0x52,
+          0x49,
+          0x46,
+          0x46,
+          0x24,
+          0x08,
+          0x00,
+          0x00,
         ]);
         final result = FirebaseAIMultiModalUtils.validateMedia(
           bytes: audioBytes,
@@ -379,7 +400,14 @@ void main() {
     group('Video Validation', () {
       test('validates video files with sufficient size', () {
         final videoBytes = Uint8List.fromList([
-          0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70
+          0x00,
+          0x00,
+          0x00,
+          0x20,
+          0x66,
+          0x74,
+          0x79,
+          0x70,
         ]);
         final result = FirebaseAIMultiModalUtils.validateMedia(
           bytes: videoBytes,
@@ -449,7 +477,14 @@ void main() {
 
       test('validates non-text documents without text validation', () {
         final pdfBytes = Uint8List.fromList([
-          0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34
+          0x25,
+          0x50,
+          0x44,
+          0x46,
+          0x2D,
+          0x31,
+          0x2E,
+          0x34,
         ]);
         final result = FirebaseAIMultiModalUtils.validateMedia(
           bytes: pdfBytes,
@@ -467,7 +502,7 @@ void main() {
         final pngHeader = _createPngBytes();
         final padding = Uint8List(10 * 1024 * 1024 - pngHeader.length);
         final fullBytes = Uint8List.fromList([...pngHeader, ...padding]);
-        
+
         final result = FirebaseAIMultiModalUtils.validateMedia(
           bytes: fullBytes,
           mimeType: 'image/png',
@@ -551,7 +586,7 @@ void main() {
         final pngHeader = _createPngBytes();
         final padding = Uint8List(512 * 1024 - pngHeader.length);
         final fullBytes = Uint8List.fromList([...pngHeader, ...padding]);
-        
+
         final dataPart = FirebaseAIMultiModalUtils.createOptimizedDataPart(
           bytes: fullBytes,
           mimeType: 'image/png',
@@ -575,14 +610,17 @@ void main() {
       test('handles very large content types', () {
         final result = FirebaseAIMultiModalUtils.validateMedia(
           bytes: Uint8List.fromList([1, 2, 3, 4, 5, 6, 7, 8]),
-          mimeType: 'application/very-long-and-complex-mime-type-that-should-still-work',
+          mimeType:
+              'application/very-long-and-complex-mime-type-that-should-still-work',
         );
         expect(result.isValid, isFalse); // Unsupported, but shouldn't crash
       });
 
       test('handles special characters in MIME types', () {
         expect(
-          FirebaseAIMultiModalUtils.isSupportedMediaType('text/plain; charset=utf-8'),
+          FirebaseAIMultiModalUtils.isSupportedMediaType(
+            'text/plain; charset=utf-8',
+          ),
           isFalse, // Should not match due to extra parameters
         );
       });
@@ -642,26 +680,59 @@ void main() {
 }
 
 // Test helper functions
-Uint8List _createPngBytes() {
-  // Valid PNG signature
-  return Uint8List.fromList([
-    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-    0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
-  ]);
-}
+Uint8List _createPngBytes() => Uint8List.fromList([
+  0x89,
+  0x50,
+  0x4E,
+  0x47,
+  0x0D,
+  0x0A,
+  0x1A,
+  0x0A,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x48,
+  0x44,
+  0x52,
+]);
 
-Uint8List _createJpegBytes() {
-  // Valid JPEG signature
-  return Uint8List.fromList([
-    0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46,
-    0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00, 0x48,
-  ]);
-}
+Uint8List _createJpegBytes() => Uint8List.fromList([
+  0xFF,
+  0xD8,
+  0xFF,
+  0xE0,
+  0x00,
+  0x10,
+  0x4A,
+  0x46,
+  0x49,
+  0x46,
+  0x00,
+  0x01,
+  0x01,
+  0x01,
+  0x00,
+  0x48,
+]);
 
-Uint8List _createWebpBytes() {
-  // Valid WebP signature (RIFF header)
-  return Uint8List.fromList([
-    0x52, 0x49, 0x46, 0x46, 0x24, 0x08, 0x00, 0x00,
-    0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x4C,
-  ]);
-}
+Uint8List _createWebpBytes() => Uint8List.fromList([
+  0x52,
+  0x49,
+  0x46,
+  0x46,
+  0x24,
+  0x08,
+  0x00,
+  0x00,
+  0x57,
+  0x45,
+  0x42,
+  0x50,
+  0x56,
+  0x50,
+  0x38,
+  0x4C,
+]);

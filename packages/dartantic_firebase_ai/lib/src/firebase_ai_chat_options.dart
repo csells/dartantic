@@ -18,6 +18,7 @@ class FirebaseAIChatModelOptions extends ChatModelOptions {
     this.responseSchema,
     this.safetySettings,
     this.enableCodeExecution,
+    this.enableThinking,
   });
 
   /// The maximum cumulative probability of tokens to consider when sampling.
@@ -49,6 +50,9 @@ class FirebaseAIChatModelOptions extends ChatModelOptions {
 
   /// Enable code execution in the model.
   final bool? enableCodeExecution;
+
+  /// Enables inclusion of model reasoning/thinking content.
+  final bool? enableThinking;
 }
 
 /// Safety setting for Firebase AI.

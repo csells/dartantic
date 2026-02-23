@@ -93,7 +93,7 @@ extension MessageListMapper on List<ChatMessage> {
         case DataPart(:final bytes, :final mimeType):
           contentParts.add(f.InlineDataPart(mimeType, bytes));
         case LinkPart(:final url):
-          // Note: FilePart API may have changed in v3.3.0 - 
+          // Note: FilePart API may have changed in v3.3.0 -
           // using TextPart as fallback
           contentParts.add(f.TextPart('Link: $url'));
         case ToolPart():
@@ -126,7 +126,7 @@ extension MessageListMapper on List<ChatMessage> {
     for (final part in toolParts) {
       if (part.kind == ToolPartKind.call) {
         // This is a tool call, not a result
-        contentParts.add(f.FunctionCall(part.name, part.arguments ?? {}));
+        contentParts.add(f.FunctionCall(part.toolName, part.arguments ?? {}));
         toolCallCount++;
       }
     }
@@ -152,12 +152,15 @@ extension MessageListMapper on List<ChatMessage> {
           // Firebase's FunctionResponse requires a Map<String, Object?>
           // If the result is already a Map, use it directly
           // Otherwise, wrap it in a Map with a "result" key
-          final response = part.result is Map<String, Object?>
-              ? part.result as Map<String, Object?>
-              : <String, Object?>{'result': part.result};
+          final result = part.result;
+          final response = switch (result) {
+            final Map<String, Object?> map => map,
+            _ => <String, Object?>{'result': result},
+          };
 
           // Extract the original function name from our generated ID
-          final functionName = _extractToolNameFromId(part.id) ?? part.name;
+          final functionName =
+              _extractToolNameFromId(part.callId) ?? part.toolName;
           _logger.fine('Creating function response for tool: $functionName');
 
           functionResponses.add(f.FunctionResponse(functionName, response));
@@ -206,7 +209,9 @@ extension GenerateContentResponseMapper on f.GenerateContentResponse {
             providerHint: 'firebase',
             arguments: args,
           );
-          parts.add(ToolPart.call(id: toolId, name: name, arguments: args));
+          parts.add(
+            ToolPart.call(callId: toolId, toolName: name, arguments: args),
+          );
         case f.FunctionResponse():
           // Function responses shouldn't appear in model output
           break;
@@ -255,7 +260,7 @@ extension GenerateContentResponseMapper on f.GenerateContentResponse {
       result,
       options: const FirebaseAIThinkingOptions(enabled: true),
     );
-    
+
     if (thinkingContent != null && thinkingContent.isNotEmpty) {
       result.metadata['thinking'] = thinkingContent;
       _logger.fine('Added thinking metadata: ${thinkingContent.length} chars');
@@ -269,6 +274,7 @@ extension GenerateContentResponseMapper on f.GenerateContentResponse {
     f.FinishReason.maxTokens => FinishReason.length,
     f.FinishReason.safety => FinishReason.contentFilter,
     f.FinishReason.recitation => FinishReason.recitation,
+    f.FinishReason.malformedFunctionCall => FinishReason.unspecified,
     f.FinishReason.other => FinishReason.unspecified,
     f.FinishReason.unknown => FinishReason.unspecified,
     null => FinishReason.unspecified,
@@ -351,7 +357,7 @@ extension ChatToolListMapper on List<Tool>? {
                   tool.description,
                   parameters: <String, f.Schema>{
                     'properties': Map<String, dynamic>.from(
-                      tool.inputSchema.schemaMap ?? <String, dynamic>{},
+                      tool.inputSchema.value,
                     ).toSchema(),
                   },
                 ),
@@ -384,8 +390,8 @@ extension SchemaMapper on Map<String, dynamic> {
     final properties = jsonSchema['properties'] != null
         ? Map<String, dynamic>.from(jsonSchema['properties'] as Map)
         : null;
-    final requiredProperties = 
-        (jsonSchema['required'] as List?)?.cast<String>();
+    final requiredProperties = (jsonSchema['required'] as List?)
+        ?.cast<String>();
 
     switch (type) {
       case 'string':

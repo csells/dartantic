@@ -54,7 +54,7 @@ flowchart LR
     
     C --> G[Examples: OpenAI, Anthropic]
     E --> H[Examples: Google, Ollama]
-    F --> I[Example: Mistral]
+    F --> I[Providers without native typed output]
 ```
 
 ## Provider Capabilities
@@ -65,11 +65,10 @@ flowchart LR
 |------------|--------------|--------|---------------------------|
 | OpenAI     | ✅          | Native response_format | ✅ |
 | OpenAI Responses | ✅     | Native text_format (stateful) | ✅ |
-| OpenRouter | ✅          | Native (OpenAI-compatible) | ✅ |
+| OpenRouter | ✅          | Native (OpenAI-compatible) | ❌ |
 | Anthropic  | ✅          | return_result tool | ✅ |
-| Google     | ✅          | Native responseSchema | ❌ (TODO: add return_result) |
-| Ollama     | ✅          | Native format param | ❌ (TODO: add return_result) |
-| Together   | ✅          | Native (OpenAI-compatible) | ✅ |
+| Google     | ✅          | Native responseSchema + Double Agent | ✅ |
+| Ollama     | ✅          | Native format param (as of ollama_dart ^0.3.0) | ❌ |
 | Cohere     | ✅          | Native (OpenAI-compatible) | ❌ (API limitation) |
 | Mistral    | ❌          | Not supported | ❌ |
 
@@ -86,10 +85,10 @@ OpenAI supports both tools and typed output simultaneously with no conflicts:
 ```dart
 // OpenAI uses response_format.json_schema
 ResponseFormat.jsonSchema(
-  jsonSchema: JsonSchemaObject(
+  jsonSchema: SchemaObject(
     name: 'response',
     description: 'Generated response following the provided schema',
-    schema: outputSchema.schemaMap,
+    schema: outputSchema.value,
     strict: true,
   ),
 )
@@ -101,9 +100,9 @@ The OpenAI Responses provider uses the stateful Responses API with session manag
 
 ```dart
 // OpenAI Responses uses text_format with session continuations
-TextFormatJsonSchema(
+TextFormatSchema(
   name: 'dartantic_output',
-  schema: outputSchema.schemaMap,
+  schema: outputSchema.value,
   strict: true,
 )
 ```
@@ -133,7 +132,7 @@ This unified approach allows the Agent to support both native typed output (Open
 - **Final decoding**: APIs such as `Agent.send()` and `Agent.sendFor()` buffer the streamed chunks internally and decode once streaming completes. External consumers that want the final JSON document must follow the same pattern: concatenate the streamed chunks and parse once because the terminal assistant message does not repeat the streamed text.
 - **Provider responsibility**: Provider implementations should avoid emitting conflicting chunks; once a fragment is streamed it cannot be “taken back.” If a provider cannot supply coherent streaming deltas, it should suppress progressive JSON and emit only the final payload.
 
-**Still TODO**: Make Google and Ollama work with the return_result pattern when both tools and typed output are needed.
+**Note**: Ollama now supports JSON schema natively as of `ollama_dart ^0.3.0`. However, like Google, Ollama does not support using tools and typed output simultaneously. A future enhancement will add the double agent pattern for Ollama.
 
 #### Google/Gemini
 ```dart
@@ -144,11 +143,26 @@ GenerationConfig(
 )
 ```
 
+**Double Agent Pattern**: Google's API does not support using tools and typed output (responseSchema) simultaneously in a single API call. To work around this limitation, Google uses the `GoogleDoubleAgentOrchestrator` which implements a two-phase approach:
+
+**Phase 1 - Tool Execution:**
+- Sends messages with tools (no outputSchema)
+- Suppresses text output (we only care about tool calls)
+- Executes all tool calls
+- Accumulates tool results
+
+**Phase 2 - Structured Output:**
+- Sends tool results with outputSchema (no tools)
+- Returns the structured JSON output
+- Attaches metadata about suppressed content from Phase 1
+
+This pattern allows Google to support the same capability as Anthropic and OpenAI, just with a different implementation strategy. The orchestrator is selected automatically by the Agent when both `outputSchema` and `tools` are present.
+
 #### Ollama
 ```dart
 // Ollama uses format parameter in HTTP request
 {
-  "format": outputSchema.schemaMap,
+  "format": outputSchema.value,
   "model": "...",
   "messages": [...],
 }
@@ -196,7 +210,7 @@ class TypedOutputStreamingOrchestrator extends DefaultStreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     state.resetForNewMessage();
 
@@ -240,7 +254,7 @@ class TypedOutputStreamingOrchestrator extends DefaultStreamingOrchestrator {
     // Check if this message has return_result tool call
     final hasReturnResultCall = consolidatedMessage.parts
         .whereType<ToolPart>()
-        .any((p) => p.kind == ToolPartKind.call && p.name == kReturnResultToolName);
+        .any((p) => p.kind == ToolPartKind.call && p.toolName == kReturnResultToolName);
 
     if (hasReturnResultCall) {
       // Execute tools and create synthetic message with JSON
@@ -256,14 +270,14 @@ class TypedOutputStreamingOrchestrator extends DefaultStreamingOrchestrator {
 
       // Extract return_result JSON
       for (final result in executionResults) {
-        if (result.toolPart.name == kReturnResultToolName && result.isSuccess) {
+        if (result.toolPart.toolName == kReturnResultToolName && result.isSuccess) {
           final returnResultJson = result.resultPart.result ?? '';
-          
+
           // Create synthetic message
           final syntheticMessage = ChatMessage(
             role: ChatMessageRole.model,
             parts: [TextPart(returnResultJson)],
-            metadata: {'toolId': result.toolPart.id},
+            metadata: {'toolId': result.toolPart.callId},
           );
 
           yield StreamingIterationResult(
@@ -317,7 +331,7 @@ The Agent automatically selects the TypedOutputStreamingOrchestrator when output
 ```dart
 // In Agent._selectOrchestrator()
 StreamingOrchestrator _selectOrchestrator({
-  JsonSchema? outputSchema,
+  Schema? outputSchema,
   List<Tool>? tools,
 }) {
   if (outputSchema != null) {
@@ -434,11 +448,14 @@ try {
 - **Edge case**: Sometimes returns empty final message after return_result call (Agent replaces with JSON)
 
 ### Google/Gemini
-- **Method**: Native `responseSchema` in GenerationConfig
-- **Behavior**: Directly returns JSON in response
-- **Tools**: Cannot use tools and typed output together
-- **Current**: Works for typed output without tools
-- **TODO**: Add return_result pattern for simultaneous tools+output
+- **Method**: Native `responseSchema` in GenerationConfig + Double Agent orchestrator
+- **Behavior**: Phase 1 executes tools, Phase 2 returns JSON with suppressed metadata
+- **Tools**: Supports tools and typed output together via double agent pattern
+- **Implementation**: `GoogleDoubleAgentOrchestrator` handles two-phase workflow
+  - Phase 1: Sends request with tools (no outputSchema), executes tool calls
+  - Phase 2: Sends tool results with outputSchema (no tools), gets structured output
+  - Suppresses text from Phase 1 and attaches as metadata to Phase 2 output
+- **Metadata**: Attaches `suppressedText` metadata when model attempts to output text in Phase 1
 
 ### Ollama
 - **Method**: Native `format` parameter
@@ -460,7 +477,7 @@ try {
 
 ```dart
 // Define schema
-final schema = JsonSchema.create({
+final schema = Schema.fromMap({
   'type': 'object',
   'properties': {
     'name': {'type': 'string'},
@@ -478,20 +495,21 @@ final result = await agent.runFor<Person>(
 );
 ```
 
-### Future Enhancement: Google/Ollama with return_result
+### Ollama Support
 
-Currently, Google and Ollama don't support simultaneous tools and typed output. The plan is to enhance them to use the same return_result pattern as Anthropic:
+As of `ollama_dart ^0.3.0`, Ollama supports JSON schema natively through the `GenerateChatCompletionRequestFormat.schema()` API. Ollama supports typed output natively, making structured output work seamlessly:
 
 ```dart
-// Future: This will work just like Anthropic
-final agent = Agent('google', tools: [weatherTool]);
-final result = await agent.runFor<Report>(
-  'Get weather and format as report',
-  outputSchema: reportSchema,
+final agent = Agent('ollama:qwen2.5:7b-instruct');
+final result = await agent.runFor<Person>(
+  'Generate a person named Jane who is 25 years old',
+  outputSchema: personSchema,
+  outputFromJson: Person.fromJson,
 );
-// The Agent will add return_result tool automatically
-// Google will use the tool instead of native responseSchema when tools are present
+// Ollama uses native JSON schema format parameter
 ```
+
+**Limitation**: Like Google, Ollama does not support using tools and typed output simultaneously. A future enhancement will add the double agent pattern for Ollama to enable this combination.
 
 ## Key Design Principles
 
@@ -543,6 +561,7 @@ Examples of when to pass through:
 - Requires array schemas to have `items` property
 - Requires object schemas to have at least one property
 - Only supports basic types: string, number, integer, boolean, array, object
+- Cannot use tools and outputSchema in same API call (handled by double agent orchestrator)
 
 #### Error Messages
 

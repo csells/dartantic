@@ -30,28 +30,28 @@ class MockFirebasePlatform extends FirebasePlatform {
     String? name,
     FirebaseOptions? options,
   }) async => MockFirebaseApp(
-      name: name ?? defaultFirebaseAppName,
-      options:
-          options ??
-          const FirebaseOptions(
-            apiKey: 'mock-api-key',
-            appId: 'mock-app-id',
-            messagingSenderId: 'mock-sender-id',
-            projectId: 'mock-project-id',
-          ),
-    );
+    name: name ?? defaultFirebaseAppName,
+    options:
+        options ??
+        const FirebaseOptions(
+          apiKey: 'mock-api-key',
+          appId: 'mock-app-id',
+          messagingSenderId: 'mock-sender-id',
+          projectId: 'mock-project-id',
+        ),
+  );
 
   @override
-  FirebaseAppPlatform app([String name = defaultFirebaseAppName]) => 
+  FirebaseAppPlatform app([String name = defaultFirebaseAppName]) =>
       MockFirebaseApp(
-      name: name,
-      options: const FirebaseOptions(
-        apiKey: 'mock-api-key',
-        appId: 'mock-app-id',
-        messagingSenderId: 'mock-sender-id',
-        projectId: 'mock-project-id',
-      ),
-    );
+        name: name,
+        options: const FirebaseOptions(
+          apiKey: 'mock-api-key',
+          appId: 'mock-app-id',
+          messagingSenderId: 'mock-sender-id',
+          projectId: 'mock-project-id',
+        ),
+      );
 }
 
 /// Mock Firebase app implementation for testing

@@ -20,9 +20,9 @@ void main() {
   group('Message API', () {
     group('basic message construction', () {
       test('creates simple text messages', () {
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.user,
-          parts: [TextPart('Hello, world!')],
+          parts: const [TextPart('Hello, world!')],
         );
 
         expect(message.role, equals(ChatMessageRole.user));
@@ -32,9 +32,9 @@ void main() {
       });
 
       test('creates system messages', () {
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.system,
-          parts: [TextPart('You are a helpful assistant.')],
+          parts: const [TextPart('You are a helpful assistant.')],
         );
 
         expect(message.role, equals(ChatMessageRole.system));
@@ -47,9 +47,9 @@ void main() {
       });
 
       test('creates model response messages', () {
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [TextPart('I can help you with that!')],
+          parts: const [TextPart('I can help you with that!')],
         );
 
         expect(message.role, equals(ChatMessageRole.model));
@@ -62,16 +62,19 @@ void main() {
       });
 
       test('creates empty messages', () {
-        const message = ChatMessage(role: ChatMessageRole.user, parts: []);
+        final message = ChatMessage(
+          role: ChatMessageRole.user,
+          parts: const [],
+        );
 
         expect(message.role, equals(ChatMessageRole.user));
         expect(message.parts, isEmpty);
       });
 
       test('creates messages with multiple text parts', () {
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.user,
-          parts: [TextPart('First part. '), TextPart('Second part.')],
+          parts: const [TextPart('First part. '), TextPart('Second part.')],
         );
 
         expect(message.role, equals(ChatMessageRole.user));
@@ -287,14 +290,14 @@ void main() {
     group('tool integration in messages', () {
       test('creates messages with tool calls', () {
         const toolCall = ToolPart.call(
-          id: 'call_123',
-          name: 'string_tool',
+          callId: 'call_123',
+          toolName: 'string_tool',
           arguments: {'input': 'test value'},
         );
 
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [
+          parts: const [
             TextPart('I will use the tool to process your request.'),
             toolCall,
           ],
@@ -306,22 +309,22 @@ void main() {
         expect(message.parts[1], isA<ToolPart>());
 
         final toolPart = message.parts[1] as ToolPart;
-        expect(toolPart.id, equals('call_123'));
-        expect(toolPart.name, equals('string_tool'));
+        expect(toolPart.callId, equals('call_123'));
+        expect(toolPart.toolName, equals('string_tool'));
         expect(toolPart.arguments!['input'], equals('test value'));
         expect(toolPart.kind, equals(ToolPartKind.call));
       });
 
       test('creates messages with tool results', () {
         const toolResult = ToolPart.result(
-          id: 'call_123',
-          name: 'string_tool',
+          callId: 'call_123',
+          toolName: 'string_tool',
           result: 'Tool executed successfully',
         );
 
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [TextPart('Here is the result:'), toolResult],
+          parts: const [TextPart('Here is the result:'), toolResult],
         );
 
         expect(message.role, equals(ChatMessageRole.model));
@@ -330,27 +333,35 @@ void main() {
         expect(message.toolResults, hasLength(1));
 
         final result = message.toolResults.first;
-        expect(result.id, equals('call_123'));
-        expect(result.name, equals('string_tool'));
+        expect(result.callId, equals('call_123'));
+        expect(result.toolName, equals('string_tool'));
         expect(result.result, equals('Tool executed successfully'));
         expect(result.kind, equals(ToolPartKind.result));
       });
 
       test('creates messages with multiple tool results', () {
-        const toolResults = [
-          ToolPart.result(id: 'call_1', name: 'tool_1', result: 'Result 1'),
-          ToolPart.result(id: 'call_2', name: 'tool_2', result: 'Result 2'),
+        final toolResults = [
+          const ToolPart.result(
+            callId: 'call_1',
+            toolName: 'tool_1',
+            result: 'Result 1',
+          ),
+          const ToolPart.result(
+            callId: 'call_2',
+            toolName: 'tool_2',
+            result: 'Result 2',
+          ),
         ];
 
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [TextPart('Multiple tools executed:'), ...toolResults],
+          parts: [const TextPart('Multiple tools executed:'), ...toolResults],
         );
 
         expect(message.hasToolResults, isTrue);
         expect(message.toolResults, hasLength(2));
-        expect(message.toolResults[0].id, equals('call_1'));
-        expect(message.toolResults[1].id, equals('call_2'));
+        expect(message.toolResults[0].callId, equals('call_1'));
+        expect(message.toolResults[1].callId, equals('call_2'));
         expect(message.toolResults[0].result, equals('Result 1'));
         expect(message.toolResults[1].result, equals('Result 2'));
       });
@@ -363,40 +374,40 @@ void main() {
         };
 
         const toolResult = ToolPart.result(
-          id: 'call_complex',
-          name: 'complex_tool',
+          callId: 'call_complex',
+          toolName: 'complex_tool',
           result: complexOutput,
         );
 
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [TextPart('Complex tool completed:'), toolResult],
+          parts: const [TextPart('Complex tool completed:'), toolResult],
         );
 
         final result = message.toolResults.first;
         expect(result.result, equals(complexOutput));
         expect(
-          (result.result as Map<String, dynamic>)['status'],
+          (result.result! as Map<String, dynamic>)['status'],
           equals('success'),
         );
       });
 
       test('distinguishes between tool calls and results', () {
         const toolCall = ToolPart.call(
-          id: 'call_456',
-          name: 'test_tool',
+          callId: 'call_456',
+          toolName: 'test_tool',
           arguments: {'param': 'value'},
         );
 
         const toolResult = ToolPart.result(
-          id: 'call_456',
-          name: 'test_tool',
+          callId: 'call_456',
+          toolName: 'test_tool',
           result: 'Success',
         );
 
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [
+          parts: const [
             TextPart('Processing...'),
             toolCall,
             TextPart('Done.'),
@@ -408,8 +419,8 @@ void main() {
         expect(message.hasToolResults, isTrue);
         expect(message.toolCalls, hasLength(1));
         expect(message.toolResults, hasLength(1));
-        expect(message.toolCalls.first.id, equals('call_456'));
-        expect(message.toolResults.first.id, equals('call_456'));
+        expect(message.toolCalls.first.callId, equals('call_456'));
+        expect(message.toolResults.first.callId, equals('call_456'));
       });
     });
 
@@ -432,9 +443,9 @@ void main() {
       });
 
       test('system messages typically contain instructions', () {
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.system,
-          parts: [
+          parts: const [
             TextPart(
               'You are an expert data analyst. Be concise and accurate.',
             ),
@@ -447,9 +458,9 @@ void main() {
       });
 
       test('user messages typically contain queries', () {
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.user,
-          parts: [TextPart('Can you help me analyze this data?')],
+          parts: const [TextPart('Can you help me analyze this data?')],
         );
 
         expect(message.role, equals(ChatMessageRole.user));
@@ -458,9 +469,11 @@ void main() {
       });
 
       test('model messages typically contain responses', () {
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [TextPart('I would be happy to help you analyze your data.')],
+          parts: const [
+            TextPart('I would be happy to help you analyze your data.'),
+          ],
         );
 
         expect(message.role, equals(ChatMessageRole.model));
@@ -471,9 +484,9 @@ void main() {
 
     group('message immutability and copying', () {
       test('messages are immutable after creation', () {
-        const originalMessage = ChatMessage(
+        final originalMessage = ChatMessage(
           role: ChatMessageRole.user,
-          parts: [TextPart('Original text')],
+          parts: const [TextPart('Original text')],
         );
 
         // Attempting to modify parts should not affect original
@@ -486,9 +499,9 @@ void main() {
       });
 
       test('can create message variants', () {
-        const baseMessage = ChatMessage(
+        final baseMessage = ChatMessage(
           role: ChatMessageRole.user,
-          parts: [TextPart('Base message')],
+          parts: const [TextPart('Base message')],
         );
 
         // Create a new message with additional parts
@@ -507,19 +520,19 @@ void main() {
 
       test('tool results are preserved in message copies', () {
         const originalToolResult = ToolPart.result(
-          id: 'tool_1',
-          name: 'original_tool',
+          callId: 'tool_1',
+          toolName: 'original_tool',
           result: 'Original result',
         );
 
-        const originalMessage = ChatMessage(
+        final originalMessage = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [TextPart('Original response'), originalToolResult],
+          parts: const [TextPart('Original response'), originalToolResult],
         );
 
         const newToolResult = ToolPart.result(
-          id: 'tool_2',
-          name: 'new_tool',
+          callId: 'tool_2',
+          toolName: 'new_tool',
           result: 'New result',
         );
 
@@ -530,29 +543,32 @@ void main() {
 
         expect(originalMessage.toolResults, hasLength(1));
         expect(newMessage.toolResults, hasLength(2));
-        expect(newMessage.toolResults[1].id, equals('tool_2'));
+        expect(newMessage.toolResults[1].callId, equals('tool_2'));
       });
     });
 
     group('message collection patterns', () {
       test('builds conversation history', () {
-        const conversation = <ChatMessage>[
+        final conversation = <ChatMessage>[
           ChatMessage(
             role: ChatMessageRole.system,
-            parts: [TextPart('You are a helpful assistant.')],
-          ),
-          ChatMessage(role: ChatMessageRole.user, parts: [TextPart('Hello!')]),
-          ChatMessage(
-            role: ChatMessageRole.model,
-            parts: [TextPart('Hello! How can I help you today?')],
+            parts: const [TextPart('You are a helpful assistant.')],
           ),
           ChatMessage(
             role: ChatMessageRole.user,
-            parts: [TextPart('What is 2 + 2?')],
+            parts: const [TextPart('Hello!')],
           ),
           ChatMessage(
             role: ChatMessageRole.model,
-            parts: [TextPart('2 + 2 equals 4.')],
+            parts: const [TextPart('Hello! How can I help you today?')],
+          ),
+          ChatMessage(
+            role: ChatMessageRole.user,
+            parts: const [TextPart('What is 2 + 2?')],
+          ),
+          ChatMessage(
+            role: ChatMessageRole.model,
+            parts: const [TextPart('2 + 2 equals 4.')],
           ),
         ];
 
@@ -565,20 +581,26 @@ void main() {
       });
 
       test('filters messages by role', () {
-        const conversation = <ChatMessage>[
+        final conversation = <ChatMessage>[
           ChatMessage(
             role: ChatMessageRole.system,
-            parts: [TextPart('System')],
+            parts: const [TextPart('System')],
           ),
-          ChatMessage(role: ChatMessageRole.user, parts: [TextPart('User 1')]),
+          ChatMessage(
+            role: ChatMessageRole.user,
+            parts: const [TextPart('User 1')],
+          ),
           ChatMessage(
             role: ChatMessageRole.model,
-            parts: [TextPart('Model 1')],
+            parts: const [TextPart('Model 1')],
           ),
-          ChatMessage(role: ChatMessageRole.user, parts: [TextPart('User 2')]),
+          ChatMessage(
+            role: ChatMessageRole.user,
+            parts: const [TextPart('User 2')],
+          ),
           ChatMessage(
             role: ChatMessageRole.model,
-            parts: [TextPart('Model 2')],
+            parts: const [TextPart('Model 2')],
           ),
         ];
 
@@ -596,24 +618,36 @@ void main() {
       });
 
       test('extracts all tool results from conversation', () {
-        const conversation = <ChatMessage>[
+        final conversation = <ChatMessage>[
           ChatMessage(
             role: ChatMessageRole.model,
-            parts: [
+            parts: const [
               TextPart('Using tool...'),
-              ToolPart.result(id: 'call_1', name: 'tool_1', result: 'Result 1'),
+              ToolPart.result(
+                callId: 'call_1',
+                toolName: 'tool_1',
+                result: 'Result 1',
+              ),
             ],
           ),
           ChatMessage(
             role: ChatMessageRole.user,
-            parts: [TextPart('Continue')],
+            parts: const [TextPart('Continue')],
           ),
           ChatMessage(
             role: ChatMessageRole.model,
-            parts: [
+            parts: const [
               TextPart('Using another tool...'),
-              ToolPart.result(id: 'call_2', name: 'tool_2', result: 'Result 2'),
-              ToolPart.result(id: 'call_3', name: 'tool_3', result: 'Result 3'),
+              ToolPart.result(
+                callId: 'call_2',
+                toolName: 'tool_2',
+                result: 'Result 2',
+              ),
+              ToolPart.result(
+                callId: 'call_3',
+                toolName: 'tool_3',
+                result: 'Result 3',
+              ),
             ],
           ),
         ];
@@ -623,9 +657,9 @@ void main() {
             .toList();
 
         expect(allToolResults, hasLength(3));
-        expect(allToolResults[0].id, equals('call_1'));
-        expect(allToolResults[1].id, equals('call_2'));
-        expect(allToolResults[2].id, equals('call_3'));
+        expect(allToolResults[0].callId, equals('call_1'));
+        expect(allToolResults[1].callId, equals('call_2'));
+        expect(allToolResults[2].callId, equals('call_3'));
       });
 
       test('counts parts by type across conversation', () {
@@ -645,13 +679,13 @@ void main() {
               DataPart(imageBytes, mimeType: 'image/jpeg'),
             ],
           ),
-          const ChatMessage(
+          ChatMessage(
             role: ChatMessageRole.model,
-            parts: [
+            parts: const [
               TextPart('Response'),
               ToolPart.call(
-                id: 'call_1',
-                name: 'test_tool',
+                callId: 'call_1',
+                toolName: 'test_tool',
                 arguments: {'param': 'value'},
               ),
             ],
@@ -686,9 +720,9 @@ void main() {
 
       test('handles unicode and special characters', () {
         const unicodeText = '🚀 Hello 世界! 🌟 Testing émojis and accénts';
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.user,
-          parts: [TextPart(unicodeText)],
+          parts: const [TextPart(unicodeText)],
         );
 
         final text = (message.parts.first as TextPart).text;
@@ -706,9 +740,9 @@ Line 2
   - Another bullet
 
 Final paragraph.''';
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.user,
-          parts: [TextPart(formattedText)],
+          parts: const [TextPart(formattedText)],
         );
 
         final text = (message.parts.first as TextPart).text;
@@ -718,9 +752,9 @@ Final paragraph.''';
       });
 
       test('handles empty strings gracefully', () {
-        const message = ChatMessage(
+        final message = ChatMessage(
           role: ChatMessageRole.user,
-          parts: [TextPart('')],
+          parts: const [TextPart('')],
         );
 
         expect(message.parts, hasLength(1));
@@ -743,27 +777,27 @@ Final paragraph.''';
       });
 
       test('hasToolCalls and hasToolResults work correctly', () {
-        const messageWithCalls = ChatMessage(
+        final messageWithCalls = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [
+          parts: const [
             TextPart('Using tool...'),
-            ToolPart.call(id: 'call_1', name: 'tool', arguments: {}),
+            ToolPart.call(callId: 'call_1', toolName: 'tool', arguments: {}),
           ],
         );
 
-        const messageWithResults = ChatMessage(
+        final messageWithResults = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [
+          parts: const [
             TextPart('Tool completed.'),
-            ToolPart.result(id: 'call_1', name: 'tool', result: 'Done'),
+            ToolPart.result(callId: 'call_1', toolName: 'tool', result: 'Done'),
           ],
         );
 
-        const messageWithBoth = ChatMessage(
+        final messageWithBoth = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [
-            ToolPart.call(id: 'call_1', name: 'tool', arguments: {}),
-            ToolPart.result(id: 'call_1', name: 'tool', result: 'Done'),
+          parts: const [
+            ToolPart.call(callId: 'call_1', toolName: 'tool', arguments: {}),
+            ToolPart.result(callId: 'call_1', toolName: 'tool', result: 'Done'),
           ],
         );
 
@@ -802,7 +836,7 @@ Final paragraph.''';
         final modelMessage = ChatMessage.model(
           'Processing...',
           parts: const [
-            ToolPart.call(id: 'call_1', name: 'analyze', arguments: {}),
+            ToolPart.call(callId: 'call_1', toolName: 'analyze', arguments: {}),
           ],
         );
 

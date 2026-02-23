@@ -8,3 +8,36 @@ pubspec.lock
 .vscode/settings.json
 .DS_Store
 packages/dartantic_ai/example/.env
+packages/dartantic_chat/example/.env
+
+# Claude Code local settings
+.claude/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Flutter build artifacts
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Temp/scratch files
+tmp/
+
+# Misc
+*.class
+*.log
+*.pyc
+*.swp
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+AGENT.md
+
+# FVM Version Cache
+.fvm/

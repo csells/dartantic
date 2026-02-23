@@ -1,18 +1,12 @@
 import 'dart:io';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:example/src/dump_stuff.dart';
 
 void main() async {
-  // enable thinking output with gpt-5
-  final agent = Agent(
-    'openai-responses:gpt-5',
-    chatModelOptions: const OpenAIResponsesChatModelOptions(
-      reasoningSummary: OpenAIReasoningSummary.detailed,
-    ),
-  );
-
+  final agent = Agent('google:gemini-3-flash-preview', enableThinking: true);
+  // final agent = Agent('openai-responses:gpt-5', enableThinking: true);
+  // final agent = Agent('claude', enableThinking: true);
   stdout.writeln('[[model thinking appears in brackets]]\n');
   await thinking(agent);
   await thinkingStream(agent);
@@ -20,39 +14,33 @@ void main() async {
 }
 
 Future<void> thinking(Agent agent) async {
-  stdout.writeln('\nthinking:');
+  stdout.writeln('\n${agent.displayName} thinking:');
   final result = await agent.send('In one sentence: how does quicksort work?');
 
-  // Thinking metadata is in result.metadata (not in message metadata)
-  final thinking = result.metadata['thinking'];
-  assert(thinking is String && thinking.isNotEmpty);
-  stdout.writeln('[[$thinking]]\n');
+  // Thinking is available via result.thinking (accumulated from streaming)
+  assert(result.thinking != null && result.thinking!.isNotEmpty);
+  stdout.writeln('[[${result.thinking}]]\n');
   stdout.writeln(result.output);
   dumpMessages(result.messages);
 }
 
 Future<void> thinkingStream(Agent agent) async {
-  stdout.writeln('\nthinkingStream:');
+  stdout.writeln('\n${agent.displayName} thinkingStream:');
 
   final history = <ChatMessage>[];
   var stillThinking = true;
   stdout.write('[[');
 
-  final thinkingBuffer = StringBuffer();
   await for (final chunk in agent.sendStream(
     'In one sentence: how does quicksort work?',
   )) {
-    // Check for thinking in the ChatResult metadata (not message metadata)
-    final thinking = chunk.metadata['thinking'] as String?;
-    final hasThinking = thinking != null && thinking.isNotEmpty;
-    final hasText = chunk.output.isNotEmpty;
-
-    if (hasThinking) {
-      thinkingBuffer.write(thinking);
-      stdout.write(thinking);
+    // Display thinking in real-time via chunk.thinking field
+    if (chunk.thinking != null) {
+      stdout.write(chunk.thinking);
     }
 
-    if (hasText) {
+    // Display response text
+    if (chunk.output.isNotEmpty) {
       if (stillThinking) {
         stillThinking = false;
         stdout.writeln(']]\n');
@@ -60,10 +48,11 @@ Future<void> thinkingStream(Agent agent) async {
       stdout.write(chunk.output);
     }
 
+    // Add messages to history - chunk.messages contains consolidated messages
+    // that are ready for the conversation history
     history.addAll(chunk.messages);
   }
 
   stdout.writeln('\n');
   dumpMessages(history);
-  exit(0);
 }

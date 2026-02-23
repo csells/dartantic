@@ -74,20 +74,20 @@ class ToolExecutor {
     ToolPart toolCall,
     Map<String, Tool> toolMap,
   ) async {
-    final tool = toolMap[toolCall.name];
+    final tool = toolMap[toolCall.toolName];
 
     if (tool == null) {
       _logger.warning(
-        'Tool ${toolCall.name} not found in available tools: '
+        'Tool ${toolCall.toolName} not found in available tools: '
         '${toolMap.keys.join(', ')}',
       );
 
-      final error = Exception('Tool ${toolCall.name} not found');
+      final error = Exception('Tool ${toolCall.toolName} not found');
       return ToolExecutionResult(
         toolPart: toolCall,
         resultPart: ToolPart.result(
-          id: toolCall.id,
-          name: toolCall.name,
+          callId: toolCall.callId,
+          toolName: toolCall.toolName,
           result: formatError(error),
         ),
         error: error,
@@ -95,7 +95,7 @@ class ToolExecutor {
     }
 
     _logger.fine(
-      'Executing tool: ${toolCall.name} with args: '
+      'Executing tool: ${toolCall.toolName} with args: '
       '${json.encode(toolCall.arguments ?? {})}',
     );
 
@@ -105,22 +105,22 @@ class ToolExecutor {
       final resultString = formatResult(result);
 
       _logger.info(
-        'Tool ${toolCall.name}(${toolCall.id}) executed '
+        'Tool ${toolCall.toolName}(${toolCall.callId}) executed '
         'successfully, result length: ${resultString.length}',
       );
 
       return ToolExecutionResult(
         toolPart: toolCall,
         resultPart: ToolPart.result(
-          id: toolCall.id,
-          name: toolCall.name,
+          callId: toolCall.callId,
+          toolName: toolCall.toolName,
           result: resultString,
         ),
       );
     } on Exception catch (error, stackTrace) {
       // Must catch this exception to pass the error along to the LLM
       _logger.warning(
-        'Tool ${toolCall.name} execution failed: $error',
+        'Tool ${toolCall.toolName} execution failed: $error',
         error,
         stackTrace,
       );
@@ -128,8 +128,8 @@ class ToolExecutor {
       return ToolExecutionResult(
         toolPart: toolCall,
         resultPart: ToolPart.result(
-          id: toolCall.id,
-          name: toolCall.name,
+          callId: toolCall.callId,
+          toolName: toolCall.toolName,
           result: formatError(error),
         ),
         error: error,

@@ -4,6 +4,8 @@ import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
+import '../../retry_http_client.dart';
+import '../chunk_list.dart';
 import 'cohere_embeddings_model_options.dart';
 
 const _defaultBatchSize = 96;
@@ -26,7 +28,8 @@ class CohereEmbeddingsModel
        _baseUrl = baseUrl,
        _truncate = truncate,
        _embeddingTypes = embeddingTypes,
-       _inputType = inputType {
+       _inputType = inputType,
+       _httpClient = RetryHttpClient(inner: http.Client()) {
     _logger.info(
       'Created Cohere embeddings model: $name '
       '(dimensions: $dimensions, batchSize: $batchSize)',
@@ -40,6 +43,7 @@ class CohereEmbeddingsModel
   final String? _inputType;
   final List<String>? _embeddingTypes;
   final String? _truncate;
+  final http.Client _httpClient;
 
   @override
   Future<EmbeddingsResult> embedQuery(
@@ -77,17 +81,11 @@ class CohereEmbeddingsModel
     List<String> texts, {
     CohereEmbeddingsModelOptions? options,
   }) async {
-    final chunks = <List<String>>[];
     final actualBatchSize =
         options?.batchSize ?? batchSize ?? _defaultBatchSize;
     final totalTexts = texts.length;
     final totalCharacters = texts.map((t) => t.length).reduce((a, b) => a + b);
-
-    for (var i = 0; i < texts.length; i += actualBatchSize) {
-      chunks.add(
-        texts.sublist(i, (i + actualBatchSize).clamp(0, texts.length)),
-      );
-    }
+    final chunks = chunkList(texts, chunkSize: actualBatchSize);
 
     _logger.info(
       'Embedding $totalTexts documents with Cohere model "$name" '
@@ -209,7 +207,7 @@ class CohereEmbeddingsModel
 
     _logger.fine('Making Cohere API request for ${texts.length} texts');
 
-    final response = await http.post(
+    final response = await _httpClient.post(
       url,
       headers: {
         'Authorization': 'Bearer $_apiKey',
@@ -235,6 +233,6 @@ class CohereEmbeddingsModel
 
   @override
   void dispose() {
-    // Nothing to close for HTTP-based model
+    _httpClient.close();
   }
 }

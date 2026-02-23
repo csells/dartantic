@@ -1,10 +1,8 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
-import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 import 'package:openai_dart/openai_dart.dart';
 
-import '../../agent/tool_constants.dart';
 import '../../retry_http_client.dart';
 import 'openai_chat_options.dart';
 import 'openai_message_mappers.dart';
@@ -35,39 +33,20 @@ class OpenAIChatModel extends ChatModel<OpenAIChatOptions> {
              ? RetryHttpClient(inner: client)
              : RetryHttpClient(inner: http.Client()),
        ),
+       _isTogetherAI =
+           baseUrl?.toString().toLowerCase().contains('together.xyz') ?? false,
        super(
          defaultOptions: defaultOptions ?? const OpenAIChatOptions(),
-         // Filter out return_result tool as OpenAI has native typed output
-         // support
-         tools: () {
-           if (tools == null) return null;
-           final filtered = tools
-               .where((t) => t.name != kReturnResultToolName)
-               .toList();
-           return filtered.isEmpty ? null : filtered;
-         }(),
+         tools: tools,
        ) {
     // Validate that providers with known tool limitations don't use tools
-    // Check the original tools parameter BEFORE filtering
     if (tools != null && tools.isNotEmpty) {
-      final normalizedBaseUrl = baseUrl?.toString().toLowerCase() ?? '';
-
-      // Together AI doesn't support OpenAI-style tool calls
-      // Exception: Allow return_result tool for typed output support
-      if (normalizedBaseUrl.contains('together.xyz')) {
-        final hasOnlyReturnResult =
-            tools.length == 1 && tools.first.name == kReturnResultToolName;
-
-        if (!hasOnlyReturnResult) {
-          throw ArgumentError(
-            'Together AI does not support OpenAI-compatible tool calls. '
-            'Their streaming API returns tools in a custom format with '
-            '<|python_tag|> prefix instead of standard tool_calls.',
-          );
-        }
-
-        // If only return_result tool, we'll filter it out and use
-        // response_format
+      if (_isTogetherAI) {
+        throw ArgumentError(
+          'Together AI does not support OpenAI-compatible tool calls. '
+          'Their streaming API returns tools in a custom format with '
+          '<|python_tag|> prefix instead of standard tool_calls.',
+        );
       }
     }
   }
@@ -76,12 +55,13 @@ class OpenAIChatModel extends ChatModel<OpenAIChatOptions> {
   static final Logger _logger = Logger('dartantic.chat.models.openai');
 
   final OpenAIClient _client;
+  final bool _isTogetherAI;
 
   @override
   Stream<ChatResult<ChatMessage>> sendStream(
     List<ChatMessage> messages, {
     OpenAIChatOptions? options,
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     _logger.info(
       'Starting OpenAI chat stream with ${messages.length} messages '
@@ -96,13 +76,15 @@ class OpenAIChatModel extends ChatModel<OpenAIChatOptions> {
       options: options,
       defaultOptions: defaultOptions,
       outputSchema: outputSchema,
+      // Together AI has issues with strict grammar compilation for some schemas
+      strictSchema: !_isTogetherAI,
     );
 
     final accumulatedToolCalls = <StreamingToolCall>[];
     final accumulatedTextBuffer = StringBuffer();
     var chunkCount = 0;
     var lastResult = ChatResult<ChatMessage>(
-      output: const ChatMessage(role: ChatMessageRole.model, parts: []),
+      output: ChatMessage(role: ChatMessageRole.model, parts: const []),
       finishReason: FinishReason.unspecified,
       metadata: const {},
       usage: null,
@@ -192,9 +174,9 @@ class OpenAIChatModel extends ChatModel<OpenAIChatOptions> {
       } else {
         // Yield final result with empty output to provide usage without
         // duplicating text
-        const emptyMessage = ChatMessage(
+        final emptyMessage = ChatMessage(
           role: ChatMessageRole.model,
-          parts: [],
+          parts: const [],
         );
         yield ChatResult<ChatMessage>(
           id: lastResult.id,

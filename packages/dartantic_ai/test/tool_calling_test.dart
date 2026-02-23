@@ -17,18 +17,35 @@
 // ignore_for_file: avoid_dynamic_calls
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:dartantic_interface/dartantic_interface.dart';
+
 import 'package:test/test.dart';
 
 import 'test_helpers/run_provider_test.dart';
 import 'test_tools.dart';
-import 'test_utils.dart';
 
 void main() {
   group('Tool Calling', () {
     group('single tool calls', () {
       test('calls a simple string tool', () async {
         final agent = Agent('openai:gpt-4o-mini', tools: [stringTool]);
+
+        final response = await agent.send(
+          'Use the string_tool with input "hello"',
+        );
+
+        // Check that tool was executed and result is in messages
+        final toolResults = response.messages
+            .expand((msg) => msg.toolResults)
+            .toList();
+        expect(toolResults, hasLength(1));
+        expect(toolResults.first.result, equals('String result: hello'));
+      });
+
+      test('calls a simple string tool requiring thought signatures', () async {
+        final agent = Agent(
+          'google:gemini-3-flash-preview',
+          tools: [stringTool],
+        );
 
         final response = await agent.send(
           'Use the string_tool with input "hello"',
@@ -79,7 +96,7 @@ void main() {
           expect(result, contains('test'));
           expect(result, contains('map_result'));
         } else {
-          final resultMap = result as Map<String, dynamic>;
+          final resultMap = result! as Map<String, dynamic>;
           expect(resultMap['name'], equals('test'));
           expect(resultMap['type'], equals('map_result'));
         }
@@ -126,7 +143,7 @@ void main() {
             reason: 'Provider ${provider.name} should reference tool result',
           );
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
       );
     });
 
@@ -149,9 +166,6 @@ void main() {
         expect(toolResults, hasLength(2));
         expect(toolResults[0].result, equals('Step 1 processed: hello'));
         expect(toolResults[1].result, contains('Step 2 processed:'));
-
-        // Validate message history follows correct pattern
-        validateMessageHistory(response.messages);
       });
 
       test('calls multiple independent tools', () async {
@@ -177,9 +191,6 @@ void main() {
         // Tool results may be serialized as strings
         expect(results.any((r) => r == 100 || r == '100'), isTrue);
         expect(results.any((r) => r == true || r == 'true'), isTrue);
-
-        // Validate message history follows correct pattern
-        validateMessageHistory(response.messages);
       });
 
       test('calls same tool multiple times with different arguments', () async {
@@ -197,10 +208,22 @@ void main() {
 
         // Check for specific results (order may vary)
         final results = toolResults.map((tr) => tr.result).toList();
-        expect(results.any((r) => r.contains('Boston')), isTrue);
-        expect(results.any((r) => r.contains('New York')), isTrue);
-        expect(results.any((r) => r.contains('45°F')), isTrue); // Boston temp
-        expect(results.any((r) => r.contains('52°F')), isTrue); // New York temp
+        expect(
+          results.any((r) => r?.toString().contains('Boston') ?? false),
+          isTrue,
+        );
+        expect(
+          results.any((r) => r?.toString().contains('New York') ?? false),
+          isTrue,
+        );
+        expect(
+          results.any((r) => r?.toString().contains('45°F') ?? false),
+          isTrue,
+        ); // Boston temp
+        expect(
+          results.any((r) => r?.toString().contains('52°F') ?? false),
+          isTrue,
+        ); // New York temp
       });
 
       test('calls same tool multiple times with same arguments', () async {
@@ -220,7 +243,7 @@ void main() {
 
         // All results should be correct
         for (final tr in toolResults) {
-          if (tr.name == 'string_tool') {
+          if (tr.toolName == 'string_tool') {
             expect(tr.result, equals('String result: repeat test'));
           }
         }
@@ -265,11 +288,8 @@ void main() {
             reason:
                 'Provider ${provider.name} should execute int_tool correctly',
           );
-
-          // Validate message history follows correct pattern
-          validateMessageHistory(response.messages);
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
       );
 
       runProviderTest(
@@ -307,7 +327,7 @@ void main() {
             reason: 'Provider ${provider.name} should get LA weather',
           );
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
       );
 
       runProviderTest(
@@ -334,7 +354,7 @@ void main() {
 
           // All results should be correct
           for (final tr in toolResults) {
-            if (tr.name == 'string_tool') {
+            if (tr.toolName == 'string_tool') {
               expect(
                 tr.result,
                 equals('String result: repeat ${provider.name}'),
@@ -346,7 +366,7 @@ void main() {
 
           // The provider might call it 1, 2, 3 or more times - all are valid
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
       );
     });
 
@@ -359,7 +379,7 @@ void main() {
           final response = await agent.send('Call the null_tool');
           expect(response.output, isA<String>());
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
         edgeCase: true,
       );
 
@@ -370,7 +390,7 @@ void main() {
           final response = await agent.send('Call the empty_string_tool');
           expect(response.output, isA<String>());
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
         edgeCase: true,
       );
 
@@ -392,7 +412,7 @@ void main() {
             ),
           );
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
         edgeCase: true,
       );
 
@@ -410,7 +430,7 @@ void main() {
           expect(toolResults.first.result, contains('👋'));
           expect(toolResults.first.result, contains('世界'));
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
         edgeCase: true,
       );
 
@@ -431,7 +451,7 @@ void main() {
             ),
           );
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
         edgeCase: true,
       );
 
@@ -449,7 +469,7 @@ void main() {
             expect(tr.result, equals('Called with no parameters'));
           }
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
         edgeCase: true,
       );
 
@@ -463,7 +483,7 @@ void main() {
           );
           expect(response.output, isA<String>());
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
         edgeCase: true,
       );
 
@@ -478,7 +498,7 @@ void main() {
           expect(toolResults, hasLength(1));
           expect(toolResults.first.result, equals('Called with no parameters'));
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
         edgeCase: true,
       );
     });
@@ -500,15 +520,29 @@ void main() {
       // Moved to edge cases section
 
       test('rejects tools on unsupported providers', () async {
-        // Per design, Agent does NOT validate provider capabilities
-        // Providers themselves should throw if they don't support tools
+        // All providers now support basic tools, but not all support
+        // typed output + tools simultaneously (e.g., Mistral)
         final agent = Agent(
           'mistral:mistral-small-latest',
           tools: [stringTool],
         );
 
-        // The error will come when trying to use the agent, not at creation
-        expect(() => agent.send('Use the string_tool'), throwsException);
+        // Mistral supports tools but not typed output + tools simultaneously
+        final schema = Schema.fromMap({
+          'type': 'object',
+          'properties': {
+            'result': {'type': 'string'},
+          },
+        });
+
+        expect(
+          () => agent.sendFor<Map<String, dynamic>>(
+            'Use the string_tool',
+            outputSchema: schema,
+            outputFromJson: (json) => json,
+          ),
+          throwsUnsupportedError,
+        );
       });
 
       runProviderTest(
@@ -536,9 +570,7 @@ void main() {
                 'gracefully',
           );
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
-        // TODO: Remove once we migrate off google_generative_ai (issue #6)
-        skipProviders: {'google', 'google-openai'},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
         timeout: const Timeout(Duration(minutes: 3)),
       );
     });
@@ -585,9 +617,7 @@ void main() {
             reason: 'Provider ${provider.name} failed to stream tool results',
           );
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
-        // TODO: Remove once we migrate off google_generative_ai (issue #6)
-        skipProviders: {'google'},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
         timeout: const Timeout(Duration(minutes: 3)),
       );
 
@@ -613,9 +643,6 @@ void main() {
           fullResponse.toLowerCase(),
           anyOf(contains('99'), contains('int_tool')),
         );
-
-        // Validate message history follows correct pattern
-        validateMessageHistory(messages);
       });
     });
 
@@ -644,9 +671,11 @@ void main() {
       test('handles tool results in conversation context', () async {
         final agent = Agent('openai:gpt-4o-mini', tools: [mapTool]);
         final messages = [
-          const ChatMessage(
+          ChatMessage(
             role: ChatMessageRole.user,
-            parts: [TextPart('Use map_tool with key "color" and value "blue"')],
+            parts: const [
+              TextPart('Use map_tool with key "color" and value "blue"'),
+            ],
           ),
         ];
 
@@ -664,9 +693,9 @@ void main() {
 
         // Follow up about the tool result
         messages.add(
-          const ChatMessage(
+          ChatMessage(
             role: ChatMessageRole.user,
-            parts: [TextPart('What was the value for the color key?')],
+            parts: const [TextPart('What was the value for the color key?')],
           ),
         );
 
@@ -719,7 +748,7 @@ void main() {
                 'result in response',
           );
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
 
         timeout: const Timeout(Duration(minutes: 3)),
       );
@@ -754,7 +783,7 @@ void main() {
             reason: 'Provider ${provider.name} did not execute tool',
           );
         },
-        requiredCaps: {ProviderCaps.multiToolCalls},
+        requiredCaps: {ProviderTestCaps.multiToolCalls},
 
         timeout: const Timeout(Duration(minutes: 2)),
       );

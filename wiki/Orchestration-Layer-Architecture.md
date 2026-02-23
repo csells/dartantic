@@ -101,7 +101,7 @@ abstract interface class StreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   });
   
   /// Finalize the orchestrator after streaming completes
@@ -280,7 +280,7 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     // 1. Reset state for new message
     state.resetForNewMessage();
@@ -354,18 +354,18 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
     if (toolCalls.isNotEmpty) {
       _logger.info(
         'Found ${toolCalls.length} tool calls to execute: '
-        '${toolCalls.map((t) => '${t.name}(${t.id})').join(', ')}',
+        '${toolCalls.map((t) => '${t.toolName}(${t.callId})').join(', ')}',
       );
-      
+
       // Execute tools
       final results = await state.executor.executeBatch(toolCalls, state.toolMap);
-      
+
       // Convert to tool result parts
       final toolResultParts = results.map((result) => ToolPart.result(
-        id: result.toolCall.id,
-        name: result.toolCall.name,
-        result: result.isSuccess 
-            ? result.result 
+        callId: result.toolCall.callId,
+        toolName: result.toolCall.toolName,
+        result: result.isSuccess
+            ? result.result
             : json.encode({'error': result.error}),
       )).toList();
       
@@ -413,6 +413,219 @@ class DefaultStreamingOrchestrator implements StreamingOrchestrator {
 }
 ```
 
+### GoogleDoubleAgentOrchestrator
+
+Specialized handling for Google's limitation of not supporting tools and typed output simultaneously:
+
+```dart
+class GoogleDoubleAgentOrchestrator extends DefaultStreamingOrchestrator {
+  static final _logger = Logger('dartantic.orchestrator.google-double-agent');
+
+  @override
+  String get providerHint => 'google-double-agent';
+
+  /// Tracks which phase we're in (true = phase 1 tools, false = phase 2).
+  /// Each orchestrator instance is created per request, so instance state
+  /// is safe and isolated.
+  bool _isPhase1 = true;
+
+  @override
+  void initialize(StreamingState state) {
+    super.initialize(state);
+    _isPhase1 = true;
+  }
+
+  @override
+  Stream<StreamingIterationResult> processIteration(
+    ChatModel<ChatModelOptions> model,
+    StreamingState state, {
+    Schema? outputSchema,
+  }) async* {
+    if (_isPhase1) {
+      // Phase 1: Run with tools, no outputSchema
+      // Execute tool calls and transition to Phase 2
+      yield* _executePhase1(model, state);
+
+      // If tools were executed, continue to Phase 2
+      if (!_isPhase1) {
+        yield* processIteration(model, state, outputSchema: outputSchema);
+      }
+    } else {
+      // Phase 2: Run with outputSchema, no tools
+      // Get structured output and attach suppressed metadata
+      yield* _executePhase2(model, state, outputSchema);
+    }
+  }
+
+  Stream<StreamingIterationResult> _executePhase1(
+    ChatModel<ChatModelOptions> model,
+    StreamingState state,
+  ) async* {
+    _logger.fine('Phase 1: Executing tool calls');
+
+    // Stream with tools (no outputSchema)
+    // Text output is suppressed via allowTextStreaming()
+    await for (final result in model.sendStream(
+      state.conversationHistory,
+      outputSchema: null,
+    )) {
+      yield* onModelChunk(result, state);
+      state.accumulatedMessage = state.accumulator.accumulate(
+        state.accumulatedMessage,
+        selectMessageForAccumulation(result),
+      );
+      state.lastResult = result;
+    }
+
+    final consolidatedMessage = state.accumulator.consolidate(
+      state.accumulatedMessage,
+    );
+
+    final toolCalls = extractToolCalls(consolidatedMessage);
+
+    if (toolCalls.isEmpty) {
+      // No tools called - suppress text and go to Phase 2
+      final textParts = consolidatedMessage.parts.whereType<TextPart>().toList();
+      if (textParts.isNotEmpty) {
+        state.addSuppressedTextParts(textParts);
+      }
+      state.addSuppressedMetadata({...consolidatedMessage.metadata});
+
+      _isPhase1 = false;
+      yield StreamingIterationResult(
+        output: '',
+        messages: const [],
+        shouldContinue: true,
+        finishReason: state.lastResult.finishReason,
+        metadata: const {},
+        usage: state.lastResult.usage,
+      );
+    } else {
+      // Execute tools and transition to Phase 2
+      state.addToHistory(consolidatedMessage);
+      yield StreamingIterationResult(
+        output: '',
+        messages: [consolidatedMessage],
+        shouldContinue: true,
+        finishReason: state.lastResult.finishReason,
+        metadata: const {},
+        usage: null,
+      );
+
+      registerToolCalls(toolCalls, state);
+      state.requestNextMessagePrefix();
+
+      final executionResults = await executeToolBatch(state, toolCalls);
+      final toolResultParts = executionResults
+          .map((result) => result.resultPart)
+          .toList();
+
+      if (toolResultParts.isNotEmpty) {
+        final toolResultMessage = ChatMessage(
+          role: ChatMessageRole.user,
+          parts: toolResultParts,
+        );
+
+        state.addToHistory(toolResultMessage);
+        state.resetEmptyAfterToolsContinuation();
+
+        yield StreamingIterationResult(
+          output: '',
+          messages: [toolResultMessage],
+          shouldContinue: true,
+          finishReason: state.lastResult.finishReason,
+          metadata: const {},
+          usage: state.lastResult.usage,
+        );
+      }
+
+      // Transition to phase 2
+      _isPhase1 = false;
+      _logger.fine('Transitioning to phase 2');
+
+      yield StreamingIterationResult(
+        output: '',
+        messages: const [],
+        shouldContinue: true,
+        finishReason: state.lastResult.finishReason,
+        metadata: const {},
+        usage: state.lastResult.usage,
+      );
+    }
+  }
+
+  Stream<StreamingIterationResult> _executePhase2(
+    ChatModel<ChatModelOptions> model,
+    StreamingState state,
+    Schema? outputSchema,
+  ) async* {
+    _logger.fine('Phase 2: Getting structured output');
+
+    state.resetForNewMessage();
+
+    // Stream with outputSchema (no tools)
+    await for (final result in model.sendStream(
+      state.conversationHistory,
+      outputSchema: outputSchema,
+    )) {
+      yield* onModelChunk(result, state);
+      state.accumulatedMessage = state.accumulator.accumulate(
+        state.accumulatedMessage,
+        selectMessageForAccumulation(result),
+      );
+      state.lastResult = result;
+    }
+
+    final consolidatedMessage = state.accumulator.consolidate(
+      state.accumulatedMessage,
+    );
+
+    // Create final message with suppressed metadata
+    final mergedMetadata = <String, dynamic>{
+      ...state.suppressedToolCallMetadata,
+      if (state.suppressedTextParts.isNotEmpty)
+        'suppressedText': state.suppressedTextParts
+            .map((p) => p.text)
+            .join(),
+    };
+
+    final finalMessage = ChatMessage(
+      role: ChatMessageRole.model,
+      parts: consolidatedMessage.parts,
+      metadata: mergedMetadata,
+    );
+
+    state.addToHistory(finalMessage);
+
+    yield StreamingIterationResult(
+      output: '',
+      messages: [finalMessage],
+      shouldContinue: false,
+      finishReason: state.lastResult.finishReason,
+      metadata: state.lastResult.metadata,
+      usage: state.lastResult.usage,
+    );
+
+    state.clearSuppressedData();
+  }
+
+  @override
+  bool allowTextStreaming(
+    StreamingState state,
+    ChatResult<ChatMessage> result,
+  ) =>
+      // Phase 1: Suppress text, we only care about tool calls
+      // Phase 2: Allow text streaming (it's the structured JSON output)
+      !_isPhase1;
+}
+```
+
+**Key Features:**
+- **Two-Phase Execution**: Phase 1 executes tools, Phase 2 gets structured output
+- **Metadata Preservation**: Suppressed text from Phase 1 is attached to Phase 2 output
+- **Instance State**: Uses instance variable `_isPhase1` (safe because orchestrator instances are per-request)
+- **Automatic Selection**: Agent selects this orchestrator when Google provider has both `outputSchema` and `tools`
+
 ### TypedOutputStreamingOrchestrator
 
 Specialized handling for structured JSON output:
@@ -428,7 +641,7 @@ class TypedOutputStreamingOrchestrator implements StreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     // Use standard streaming until model response complete
     await for (final result in _streamModelWithTypedHandling(
@@ -459,12 +672,12 @@ class TypedOutputStreamingOrchestrator implements StreamingOrchestrator {
   Future<StreamingIterationResult?> _processTypedOutput(
     ChatMessage message,
     StreamingState state,
-    JsonSchema outputSchema,
+    Schema outputSchema,
   ) async {
     // Check for return_result tool calls first (Anthropic pattern)
     final returnResultCalls = message.parts
         .whereType<ToolPart>()
-        .where((p) => p.kind == ToolPartKind.call && p.name == kReturnResultToolName)
+        .where((p) => p.kind == ToolPartKind.call && p.toolName == kReturnResultToolName)
         .toList();
     
     if (returnResultCalls.isNotEmpty) {
@@ -600,61 +813,61 @@ class ToolExecutor {
   ) async {
     _logger.info(
       'Executing batch of ${toolCalls.length} tools: '
-      '${toolCalls.map((t) => t.name).join(', ')}',
+      '${toolCalls.map((t) => t.toolName).join(', ')}',
     );
-    
+
     final results = <ToolExecutionResult>[];
-    
+
     // Execute sequentially by default
     // Future: ParallelToolExecutor for concurrent execution
     for (final toolCall in toolCalls) {
       final result = await executeSingle(toolCall, toolMap);
       results.add(result);
     }
-    
+
     return results;
   }
-  
+
   @override
   Future<ToolExecutionResult> executeSingle(
     ToolPart toolCall,
     Map<String, Tool> toolMap,
   ) async {
-    _logger.fine('Executing tool: ${toolCall.name} with args: ${json.encode(toolCall.arguments ?? {})}');
-    
+    _logger.fine('Executing tool: ${toolCall.toolName} with args: ${json.encode(toolCall.arguments ?? {})}');
+
     try {
       // 1. Parse arguments with fallback handling
       final args = _parseToolArguments(toolCall);
-      
+
       // 2. Get tool
-      final tool = toolMap[toolCall.name];
+      final tool = toolMap[toolCall.toolName];
       if (tool == null) {
         return ToolExecutionResult.error(
           toolCall: toolCall,
-          error: 'Tool "${toolCall.name}" not found in available tools: ${toolMap.keys.join(', ')}',
+          error: 'Tool "${toolCall.toolName}" not found in available tools: ${toolMap.keys.join(', ')}',
         );
       }
-      
+
       // 3. Execute tool
       final result = await tool.invoke(args);
       final resultString = result is String ? result : json.encode(result);
-      
+
       _logger.info(
-        'Tool ${toolCall.name} executed successfully, result length: ${resultString.length}',
+        'Tool ${toolCall.toolName} executed successfully, result length: ${resultString.length}',
       );
-      
+
       return ToolExecutionResult.success(
         toolCall: toolCall,
         result: resultString,
       );
-      
+
     } on Exception catch (error, stackTrace) {
       _logger.warning(
-        'Tool ${toolCall.name} execution failed: $error',
+        'Tool ${toolCall.toolName} execution failed: $error',
         error,
         stackTrace,
       );
-      
+
       return ToolExecutionResult.error(
         toolCall: toolCall,
         error: error.toString(),
@@ -871,16 +1084,16 @@ class MessageAccumulator {
     final existingIndex = existingParts.indexWhere((part) =>
         part is ToolPart &&
         part.kind == ToolPartKind.call &&
-        part.id.isNotEmpty &&
-        part.id == newPart.id,
+        part.callId.isNotEmpty &&
+        part.callId == newPart.callId,
     );
-    
+
     if (existingIndex != -1) {
       // Merge with existing tool call
       final existingToolCall = existingParts[existingIndex] as ToolPart;
       final mergedToolCall = ToolPart.call(
-        id: newPart.id,
-        name: newPart.name.isNotEmpty ? newPart.name : existingToolCall.name,
+        callId: newPart.callId,
+        toolName: newPart.toolName.isNotEmpty ? newPart.toolName : existingToolCall.toolName,
         arguments: newPart.arguments?.isNotEmpty ?? false
             ? newPart.arguments!
             : existingToolCall.arguments ?? {},
@@ -901,7 +1114,7 @@ class MessageAccumulator {
 ```dart
 /// Agent's orchestrator selection strategy
 StreamingOrchestrator _selectOrchestrator({
-  JsonSchema? outputSchema,
+  Schema? outputSchema,
   List<Tool>? tools,
 }) {
   // Specialized orchestrator for typed output
@@ -929,7 +1142,7 @@ StreamingOrchestrator _selectOrchestrator({
 ```dart
 /// Future: More sophisticated orchestrator selection
 StreamingOrchestrator _selectAdvancedOrchestrator({
-  JsonSchema? outputSchema,
+  Schema? outputSchema,
   List<Tool>? tools,
   Map<String, dynamic>? context,
 }) {
@@ -1109,7 +1322,7 @@ class MultiStepReasoningOrchestrator implements StreamingOrchestrator {
   Stream<StreamingIterationResult> processIteration(
     ChatModel<ChatModelOptions> model,
     StreamingState state, {
-    JsonSchema? outputSchema,
+    Schema? outputSchema,
   }) async* {
     // Phase 1: Analysis
     yield* _performAnalysisPhase(model, state);
@@ -1162,9 +1375,9 @@ class ParallelToolExecutor extends ToolExecutor {
   ) async {
     _logger.info(
       'Executing ${toolCalls.length} tools in parallel: '
-      '${toolCalls.map((t) => t.name).join(', ')}',
+      '${toolCalls.map((t) => t.toolName).join(', ')}',
     );
-    
+
     // Execute all tools concurrently
     final futures = toolCalls.map((call) => executeSingle(call, toolMap));
     final results = await Future.wait(futures);
@@ -1265,7 +1478,7 @@ void main() {
 void main() {
   group('Orchestration Integration', () {
     test('complete workflow with real providers', () async {
-      for (final provider in ChatProviders.allWith({ProviderCaps.multiToolCalls})) {
+      for (final provider in Agent.allProviders) {
         final agent = Agent('${provider.name}:${provider.defaultModel}', tools: [weatherTool]);
         
         final results = <String>[];

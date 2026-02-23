@@ -8,6 +8,12 @@
       "program": "packages/dartantic_ai/example/bin/chat.dart"
     },
     {
+      "name": "custom_http_client",
+      "request": "launch",
+      "type": "dart",
+      "program": "packages/dartantic_ai/example/bin/custom_http_client.dart"
+    },
+    {
       "name": "custom_provider",
       "request": "launch",
       "type": "dart",
@@ -38,6 +44,24 @@
       "program": "packages/dartantic_ai/example/bin/mcp_servers.dart"
     },
     {
+      "name": "media_gen (Google)",
+      "request": "launch",
+      "type": "dart",
+      "program": "packages/dartantic_ai/example/bin/media_gen/media_gen_google.dart"
+    },
+    {
+      "name": "media_gen (OpenAI)",
+      "request": "launch",
+      "type": "dart",
+      "program": "packages/dartantic_ai/example/bin/media_gen/media_gen_openai.dart"
+    },
+    {
+      "name": "media_gen (Anthropic)",
+      "request": "launch",
+      "type": "dart",
+      "program": "packages/dartantic_ai/example/bin/media_gen/media_gen_anthropic.dart"
+    },
+    {
       "name": "model_string",
       "request": "launch",
       "type": "dart",
@@ -62,10 +86,17 @@
       "program": "packages/dartantic_ai/example/bin/multi_turn_chat.dart"
     },
     {
-      "name": "multimedia",
+      "name": "multimedia_input",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/packages/dartantic_ai",
+      "type": "dart",
+      "program": "example/bin/multimedia_input.dart"
+    },
+    {
+      "name": "openai_compat",
       "request": "launch",
       "type": "dart",
-      "program": "packages/dartantic_ai/example/bin/multimedia.dart"
+      "program": "packages/dartantic_ai/example/bin/openai_compat.dart"
     },
     {
       "name": "provider_models",
@@ -92,6 +123,12 @@
       "program": "packages/dartantic_ai/example/bin/system_message.dart"
     },
     {
+      "name": "thinking",
+      "request": "launch",
+      "type": "dart",
+      "program": "packages/dartantic_ai/example/bin/thinking.dart"
+    },
+    {
       "name": "typed_output",
       "request": "launch",
       "type": "dart",
@@ -104,40 +141,58 @@
       "program": "packages/dartantic_ai/example/bin/usage_tracking.dart"
     },
     {
-      "name": "custom_http_client",
+      "name": "server-side code interpreter (OpenAI)",
       "request": "launch",
       "type": "dart",
-      "program": "packages/dartantic_ai/example/bin/custom_http_client.dart"
+      "program": "packages/dartantic_ai/example/bin/server_side_tools_openai/server_side_code_interpreter.dart"
     },
     {
-      "name": "thinking",
+      "name": "server-side image generation (OpenAI)",
       "request": "launch",
       "type": "dart",
-      "program": "packages/dartantic_ai/example/bin/thinking.dart"
+      "program": "packages/dartantic_ai/example/bin/server_side_tools_openai/server_side_image_gen.dart"
     },
     {
-      "name": "server-side code interpreter",
+      "name": "server-side vector search (OpenAI)",
       "request": "launch",
       "type": "dart",
-      "program": "packages/dartantic_ai/example/bin/server_side_tools/server_side_code_interpreter.dart"
+      "program": "packages/dartantic_ai/example/bin/server_side_tools_openai/server_side_vector_search.dart"
     },
     {
-      "name": "server-side image generation",
+      "name": "server-side web search (OpenAI)",
       "request": "launch",
       "type": "dart",
-      "program": "packages/dartantic_ai/example/bin/server_side_tools/server_side_image_gen.dart"
+      "program": "packages/dartantic_ai/example/bin/server_side_tools_openai/server_side_web_search.dart"
     },
     {
-      "name": "server-side vector search",
+      "name": "server-side code execution (Anthropic)",
       "request": "launch",
       "type": "dart",
-      "program": "packages/dartantic_ai/example/bin/server_side_tools/server_side_vector_search.dart"
+      "program": "packages/dartantic_ai/example/bin/server_side_tools_anthropic/server_side_code_interpreter.dart"
     },
     {
-      "name": "server-side web search",
+      "name": "server-side web search (Anthropic)",
       "request": "launch",
       "type": "dart",
-      "program": "packages/dartantic_ai/example/bin/server_side_tools/server_side_web_search.dart"
+      "program": "packages/dartantic_ai/example/bin/server_side_tools_anthropic/server_side_web_search.dart"
+    },
+    {
+      "name": "server-side web fetch (Anthropic)",
+      "request": "launch",
+      "type": "dart",
+      "program": "packages/dartantic_ai/example/bin/server_side_tools_anthropic/server_side_web_fetch.dart"
+    },
+    {
+      "name": "server-side code execution (Google)",
+      "request": "launch",
+      "type": "dart",
+      "program": "packages/dartantic_ai/example/bin/server_side_tools_google/server_side_code_execution.dart"
+    },
+    {
+      "name": "server-side google search (Google)",
+      "request": "launch",
+      "type": "dart",
+      "program": "packages/dartantic_ai/example/bin/server_side_tools_google/server_side_google_search.dart"
     },
     {
       "name": "chatarang",
@@ -145,6 +200,166 @@
       "type": "dart",
       "program": "samples/chatarang/bin/chatarang.dart",
       "console": "terminal"
+    },
+    {
+      "name": "chat: main",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: demo",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/demo/demo.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: welcome",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/welcome/welcome.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: cupertino",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/cupertino/cupertino.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: custom styles",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/custom_styles/custom_styles.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: dark mode",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/dark_mode/dark_mode.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: history",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/history/history.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: suggestions",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/suggestions/suggestions.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: logging",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/logging/logging.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: on cancel",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/callbacks/on_cancel.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: on error",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/callbacks/on_error.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: function calls",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/function_calls/function_calls.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: restricted",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/restricted/restricted.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: image upload (simulated)",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/image_upload/image_upload.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: custom stt",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/custom_stt/custom_stt.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
+    },
+    {
+      "name": "chat: recipes",
+      "cwd": "packages/dartantic_chat/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/recipes/recipes.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${env:GEMINI_API_KEY}"
+      ]
     }
   ]
 }

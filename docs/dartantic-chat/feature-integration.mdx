@@ -1,0 +1,241 @@
+---
+title: Feature Integration
+description: "Customize and extend the chat experience"
+---
+
+## Welcome Messages
+
+Display an initial greeting:
+
+```dart
+AgentChatView(
+  welcomeMessage: 'Hello and welcome to Dartantic Chat!',
+  provider: DartanticProvider(
+    agent: Agent('gemini'),
+  ),
+)
+```
+
+## Suggested Prompts
+
+Show predefined prompts (only when no history exists):
+
+```dart
+AgentChatView(
+  suggestions: [
+    'I\'m a Star Wars fan. What should I wear for Halloween?',
+    'I\'m allergic to peanuts. What candy should I avoid at Halloween?',
+    'What\'s the difference between a pumpkin and a squash?',
+  ],
+  provider: DartanticProvider(
+    agent: Agent('gemini'),
+  ),
+)
+```
+
+## Custom Commands
+
+Add slash commands that users can trigger by typing `/` in the chat input. Pass a
+list of `ChatCommand` objects to `AgentChatView`:
+
+```dart
+AgentChatView(
+  provider: DartanticProvider(agent: Agent('gemini')),
+  commands: [
+    ChatCommand(
+      name: 'Help',
+      icon: Icons.help_outline,
+      onPressed: () {
+        // Open a help dialog, navigate to a page, etc.
+      },
+    ),
+    ChatCommand(
+      name: 'Clear',
+      icon: Icons.delete_outline,
+      onPressed: () {
+        provider.history = [];
+      },
+    ),
+    ChatCommand(
+      name: 'Settings',
+      icon: Icons.settings,
+      onPressed: () {
+        Navigator.of(context).pushNamed('/settings');
+      },
+    ),
+  ],
+)
+```
+
+Each `ChatCommand` has:
+
+| Property    | Type               | Description                                    |
+| ----------- | ------------------ | ---------------------------------------------- |
+| `name`      | `String`           | Display name shown in the menu and used for filtering |
+| `icon`      | `IconData`         | Icon displayed next to the command name         |
+| `onPressed` | `VoidCallback`     | Action executed when the command is selected    |
+| `style`     | `ActionButtonStyle?` | Optional visual style override                |
+
+When a user types `/`, the command menu appears with all available commands.
+Typing further filters the list by name (case-insensitive). The user can select a
+command by clicking it, using the arrow keys and pressing Enter, or by typing
+enough to match a single command.
+
+<Note>
+Custom commands appear alongside the built-in attachment commands (Camera, Image
+Gallery, Attach File, Attach Link) in the menu. If you want only your custom
+commands, set `enableAttachments: false`.
+</Note>
+
+## Disable Attachments and Audio Input
+
+```dart
+AgentChatView(
+  provider: DartanticProvider(agent: Agent('gemini')),
+  enableAttachments: false,
+  enableVoiceNotes: false,
+)
+```
+
+## Custom Speech-to-Text
+
+Provide your own implementation:
+
+```dart
+AgentChatView(
+  provider: DartanticProvider(agent: Agent('gemini')),
+  speechToText: MyCustomSpeechToText(),
+)
+```
+
+## Cancel and Error Behavior
+
+Override default cancel/error handling:
+
+```dart
+AgentChatView(
+  provider: DartanticProvider(agent: Agent('gemini')),
+  onCancelCallback: (context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Chat cancelled')),
+    );
+  },
+  cancelMessage: 'Request cancelled',
+)
+```
+
+## Manage History
+
+Access and modify history via the provider:
+
+```dart
+void _clearHistory() => _provider.history = [];
+```
+
+## Chat Serialization/Deserialization
+
+Save history:
+
+```dart
+Future<void> _saveHistory() async {
+  final history = _provider.history.toList();
+  for (var i = 0; i != history.length; ++i) {
+    final file = await _messageFile(i);
+    if (file.existsSync()) continue;
+    final map = history[i].toJson();
+    final json = JsonEncoder.withIndent('  ').convert(map);
+    await file.writeAsString(json);
+  }
+}
+```
+
+Restore history:
+
+```dart
+Future<void> _loadHistory() async {
+  final history = <ChatMessage>[];
+  for (var i = 0;; ++i) {
+    final file = await _messageFile(i);
+    if (!file.existsSync()) break;
+    final map = jsonDecode(await file.readAsString());
+    history.add(ChatMessage.fromJson(map));
+  }
+  _provider.history = history;
+}
+```
+
+## Custom Response Widgets
+
+Replace default Markdown rendering:
+
+```dart
+AgentChatView(
+  provider: _provider,
+  welcomeMessage: _welcomeMessage,
+  responseBuilder: (context, response) => RecipeResponseView(response),
+)
+```
+
+## Custom Styling
+
+Fully customize the appearance:
+
+```dart
+AgentChatView(
+  provider: DartanticProvider(agent: Agent('gemini')),
+  style: ChatViewStyle(...),
+)
+```
+
+See the [styles
+example](https://github.com/csells/dartantic/tree/main/packages/dartantic_chat/blob/main/example/lib/styles/styles.dart)
+for complete options.
+
+## Drag and Drop
+
+On desktop and web platforms, users can drag and drop files directly into the
+chat to attach them. The drop zone overlay can be customized:
+
+```dart
+AgentChatView(
+  provider: DartanticProvider(agent: Agent('gemini')),
+  style: ChatViewStyle(
+    fileDropOverlayStyle: FileDropOverlayStyle(
+      iconSize: 64.0,
+      iconColor: Colors.blue,
+      backgroundColor: Colors.blue.withOpacity(0.1),
+      text: 'Drop files here',
+      textStyle: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
+    ),
+  ),
+)
+```
+
+Drag and drop is automatically enabled when `enableAttachments` is true (the
+default). It's not available on mobile platforms (Android/iOS) where users
+should use the attachment buttons instead.
+
+## Rerouting Prompts
+
+Debug, log, or manipulate the connection:
+
+```dart
+AgentChatView(
+  provider: _provider,
+  messageSender: _logMessage,
+)
+
+Stream<String> _logMessage(
+  String prompt, {
+  required Iterable<Part> attachments,
+}) async* {
+  debugPrint('# Sending Message');
+  debugPrint('## Prompt\n$prompt');
+
+  final response = _provider.sendMessageStream(prompt, attachments: attachments);
+  final text = await response.join();
+  debugPrint('## Response\n$text');
+
+  yield text;
+}
+```

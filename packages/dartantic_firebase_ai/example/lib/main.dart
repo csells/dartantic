@@ -46,7 +46,8 @@ class _DemoScreenState extends State<DemoScreen> {
 
     try {
       // Register Firebase AI providers with new naming
-      Agent.providerFactories['firebase-vertex'] = FirebaseAIProvider.new;
+      Agent.providerFactories['firebase-vertex'] = () =>
+          FirebaseAIProvider(backend: FirebaseAIBackend.vertexAI);
       Agent.providerFactories['firebase-google'] = () =>
           FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
 

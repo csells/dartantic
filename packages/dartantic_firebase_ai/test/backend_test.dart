@@ -10,10 +10,10 @@ void main() {
       await initializeMockFirebase();
     });
 
-    test('defaults to VertexAI backend', () {
+    test('defaults to GoogleAI backend', () {
       final provider = FirebaseAIProvider();
-      expect(provider.backend, FirebaseAIBackend.vertexAI);
-      expect(provider.displayName, 'Firebase AI (Vertex AI)');
+      expect(provider.backend, FirebaseAIBackend.googleAI);
+      expect(provider.displayName, 'Firebase AI (Google AI)');
     });
 
     test('supports GoogleAI backend', () {

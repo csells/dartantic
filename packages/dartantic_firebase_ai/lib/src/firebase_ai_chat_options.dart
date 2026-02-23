@@ -1,6 +1,8 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:meta/meta.dart';
 
+import 'firebase_ai_safety_options.dart';
+
 /// Options to pass into the Firebase AI Chat Model.
 ///
 /// Firebase AI uses Gemini models through Firebase.
@@ -53,55 +55,4 @@ class FirebaseAIChatModelOptions extends ChatModelOptions {
 
   /// Enables inclusion of model reasoning/thinking content.
   final bool? enableThinking;
-}
-
-/// Safety setting for Firebase AI.
-class FirebaseAISafetySetting {
-  /// Creates a safety setting.
-  const FirebaseAISafetySetting({
-    required this.category,
-    required this.threshold,
-  });
-
-  /// The category for this setting.
-  final FirebaseAISafetySettingCategory category;
-
-  /// Controls the probability threshold at which harm is blocked.
-  final FirebaseAISafetySettingThreshold threshold;
-}
-
-/// Safety settings categories.
-enum FirebaseAISafetySettingCategory {
-  /// The harm category is unspecified.
-  unspecified,
-
-  /// The harm category is harassment.
-  harassment,
-
-  /// The harm category is hate speech.
-  hateSpeech,
-
-  /// The harm category is sexually explicit content.
-  sexuallyExplicit,
-
-  /// The harm category is dangerous content.
-  dangerousContent,
-}
-
-/// Controls the probability threshold at which harm is blocked.
-enum FirebaseAISafetySettingThreshold {
-  /// Threshold is unspecified, block using default threshold.
-  unspecified,
-
-  /// Block when low, medium or high probability of unsafe content.
-  blockLowAndAbove,
-
-  /// Block when medium or high probability of unsafe content.
-  blockMediumAndAbove,
-
-  /// Block when high probability of unsafe content.
-  blockOnlyHigh,
-
-  /// Always show regardless of probability of unsafe content.
-  blockNone,
 }

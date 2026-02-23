@@ -18,7 +18,7 @@ void main() {
         provider.defaultModelNames[ModelKind.media],
         'gemini-2.5-flash-image',
       );
-      expect(provider.aliases, contains('firebase-vertex'));
+      expect(provider.aliases, contains('firebase-google'));
     });
 
     test('creates chat model', () {
@@ -48,10 +48,73 @@ void main() {
       );
     });
 
-    test('embeddings/media are currently unimplemented', () {
+    test('creates embeddings and media models', () {
       final provider = FirebaseAIProvider();
-      expect(provider.createEmbeddingsModel, throwsUnimplementedError);
-      expect(provider.createMediaModel, throwsUnimplementedError);
+      final embeddingsModel = provider.createEmbeddingsModel();
+      final mediaModel = provider.createMediaModel();
+
+      expect(embeddingsModel, isA<FirebaseAIEmbeddingsModel>());
+      expect(mediaModel, isA<FirebaseAIMediaGenerationModel>());
+    });
+
+    test('supports Imagen and Gemini media option variants', () {
+      final provider = FirebaseAIProvider();
+
+      final imagenModel = provider.createMediaModel(
+        options: const FirebaseAIMediaGenerationModelOptions.imagen(
+          imageSampleCount: 2,
+          responseMimeType: 'image/png',
+          safetySettings: FirebaseAIImagenSafetySettings(
+            safetyFilterLevel:
+                FirebaseAIImagenSafetyFilterLevel.blockMediumAndAbove,
+            personFilterLevel: FirebaseAIImagenPersonFilterLevel.allowAdult,
+          ),
+        ),
+      );
+      expect(
+        imagenModel.defaultOptions,
+        isA<FirebaseAIImagenMediaGenerationModelOptions>(),
+      );
+      expect(
+        (imagenModel.defaultOptions
+                as FirebaseAIImagenMediaGenerationModelOptions)
+            .safetySettings?.safetyFilterLevel,
+        FirebaseAIImagenSafetyFilterLevel.blockMediumAndAbove,
+      );
+
+      final geminiModel = provider.createMediaModel(
+        name: 'gemini-2.5-flash',
+        options: const FirebaseAIMediaGenerationModelOptions.gemini(
+          imageSampleCount: 1,
+          responseMimeType: 'image/png',
+          safetySettings: [
+            FirebaseAISafetySetting(
+              category: FirebaseAISafetySettingCategory.harassment,
+              threshold: FirebaseAISafetySettingThreshold.blockOnlyHigh,
+            ),
+          ],
+        ),
+      );
+      expect(
+        geminiModel.defaultOptions,
+        isA<FirebaseAIGeminiMediaGenerationModelOptions>(),
+      );
+      expect(
+        (geminiModel.defaultOptions
+                as FirebaseAIGeminiMediaGenerationModelOptions)
+            .safetySettings,
+        hasLength(1),
+      );
+    });
+
+    test('embeddings model reports unsupported operation on use', () {
+      final provider = FirebaseAIProvider();
+      final model = provider.createEmbeddingsModel();
+
+      expect(
+        () => model.embedQuery('hello'),
+        throwsA(isA<UnsupportedError>()),
+      );
     });
 
     test('lists chat models', () async {

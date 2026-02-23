@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_firebase_ai/dartantic_firebase_ai.dart';
+import 'package:flutter/material.dart';
 
 void main() {
   runApp(const MyApp());
@@ -46,7 +46,8 @@ class _DemoScreenState extends State<DemoScreen> {
 
     try {
       // Register Firebase AI providers with new naming
-      Agent.providerFactories['firebase-vertex'] = FirebaseAIProvider.new;
+      Agent.providerFactories['firebase-vertex'] = () =>
+          FirebaseAIProvider(backend: FirebaseAIBackend.vertexAI);
       Agent.providerFactories['firebase-google'] = () =>
           FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
 

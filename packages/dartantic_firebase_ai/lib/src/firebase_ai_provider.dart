@@ -3,6 +3,10 @@ import 'package:logging/logging.dart';
 
 import 'firebase_ai_chat_model.dart';
 import 'firebase_ai_chat_options.dart';
+import 'firebase_ai_embeddings_model.dart';
+import 'firebase_ai_embeddings_options.dart';
+import 'firebase_ai_media_generation_model.dart';
+import 'firebase_ai_media_generation_options.dart';
 
 /// Backend type for Firebase AI provider.
 enum FirebaseAIBackend {
@@ -22,8 +26,8 @@ class FirebaseAIProvider
     extends
         Provider<
           FirebaseAIChatModelOptions,
-          EmbeddingsModelOptions,
-          MediaGenerationModelOptions
+          FirebaseAIEmbeddingsModelOptions,
+          FirebaseAIMediaGenerationModelOptions
         > {
   // IMPORTANT: Logger must be private (_logger not log) and static final
   static final Logger _logger = Logger('dartantic.chat.providers.firebase_ai');
@@ -126,23 +130,40 @@ class FirebaseAIProvider
   }
 
   @override
-  EmbeddingsModel<EmbeddingsModelOptions> createEmbeddingsModel({
+  EmbeddingsModel<FirebaseAIEmbeddingsModelOptions> createEmbeddingsModel({
     String? name,
-    EmbeddingsModelOptions? options,
+    FirebaseAIEmbeddingsModelOptions? options,
   }) {
-    throw UnimplementedError(
-      'Firebase AI does not currently support embeddings models',
+    final modelName = name ?? 'text-embedding-004';
+
+    _logger.info('Creating Firebase AI embeddings model: $modelName');
+
+    return FirebaseAIEmbeddingsModel(
+      name: modelName,
+      dimensions: options?.dimensions,
+      batchSize: options?.batchSize,
+      options: options,
     );
   }
 
   @override
-  MediaGenerationModel<MediaGenerationModelOptions> createMediaModel({
+  MediaGenerationModel<FirebaseAIMediaGenerationModelOptions> createMediaModel({
     String? name,
     List<Tool>? tools,
-    MediaGenerationModelOptions? options,
+    FirebaseAIMediaGenerationModelOptions? options,
   }) {
-    throw UnimplementedError(
-      'Firebase AI does not currently support media generation models',
+    final modelName = name ?? defaultModelNames[ModelKind.media]!;
+
+    _logger.info(
+      'Creating Firebase AI media model: $modelName '
+      'with ${(tools ?? const []).length} tools',
+    );
+
+    return FirebaseAIMediaGenerationModel(
+      name: modelName,
+      backend: backend,
+      tools: tools,
+      defaultOptions: options,
     );
   }
 

@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:dartantic_firebase_ai/src/firebase_ai_chat_options.dart';
+import 'package:dartantic_firebase_ai/src/firebase_ai_safety_options.dart';
 import 'package:dartantic_firebase_ai/src/firebase_message_mappers.dart';
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:firebase_ai/firebase_ai.dart' as f;

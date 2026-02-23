@@ -2,7 +2,7 @@ import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:firebase_ai/firebase_ai.dart' as f;
 import 'package:logging/logging.dart';
 
-import 'firebase_ai_chat_options.dart';
+import 'firebase_ai_safety_options.dart';
 import 'firebase_ai_thinking_utils.dart';
 
 /// Logger for Firebase message mapping operations.

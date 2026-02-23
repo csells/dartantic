@@ -4,8 +4,6 @@ import 'package:test/test.dart';
 
 import 'mock_firebase.dart';
 
-const _testBaseUrl = 'https://test-firebase-ai.googleapis.com/v1';
-
 void main() {
   group('FirebaseAIChatModel', () {
     setUpAll(() async {
@@ -14,19 +12,19 @@ void main() {
 
     test('constructs with defaults', () {
       final model = FirebaseAIChatModel(
-        baseUrl: Uri.parse(_testBaseUrl),
         name: 'gemini-2.5-flash',
+        backend: FirebaseAIBackend.googleAI,
       );
 
       expect(model.name, 'gemini-2.5-flash');
-      expect(model.backend, FirebaseAIBackend.vertexAI);
+      expect(model.backend, FirebaseAIBackend.googleAI);
       expect(model.defaultOptions, isA<FirebaseAIChatModelOptions>());
     });
 
     test('filters return_result tool', () {
       final model = FirebaseAIChatModel(
-        baseUrl: Uri.parse(_testBaseUrl),
         name: 'gemini-2.5-flash',
+        backend: FirebaseAIBackend.googleAI,
         tools: [
           Tool<Map<String, dynamic>>(
             name: 'return_result',
@@ -49,8 +47,8 @@ void main() {
 
     test('sendStream accepts Schema outputSchema', () {
       final model = FirebaseAIChatModel(
-        baseUrl: Uri.parse(_testBaseUrl),
         name: 'gemini-2.5-flash',
+        backend: FirebaseAIBackend.googleAI,
       );
       final schema = Schema.fromMap({
         'type': 'object',
@@ -67,8 +65,8 @@ void main() {
 
     test('rejects tools and outputSchema together', () {
       final model = FirebaseAIChatModel(
-        baseUrl: Uri.parse(_testBaseUrl),
         name: 'gemini-2.5-flash',
+        backend: FirebaseAIBackend.googleAI,
         tools: [
           Tool<Map<String, dynamic>>(
             name: 'lookup',
@@ -81,7 +79,10 @@ void main() {
       final schema = Schema.fromMap({'type': 'object'});
 
       expect(
-        () => model.sendStream([ChatMessage.user('run')], outputSchema: schema),
+        () => model.sendStream(
+          [ChatMessage.user('run')],
+          outputSchema: schema,
+        ),
         throwsArgumentError,
       );
     });

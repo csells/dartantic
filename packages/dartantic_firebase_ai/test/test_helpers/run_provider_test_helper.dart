@@ -57,8 +57,7 @@ void runProviderTest(
 
   final entries = providerTestCaps.entries.where(
     (entry) =>
-        requiredCaps == null ||
-        providerHasTestCaps(entry.key, requiredCaps),
+        requiredCaps == null || providerHasTestCaps(entry.key, requiredCaps),
   );
 
   for (final entry in entries) {

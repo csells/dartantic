@@ -15,9 +15,6 @@ class FirebaseAISafetySetting {
 
 /// Safety setting categories for Gemini requests.
 enum FirebaseAISafetySettingCategory {
-  /// The harm category is unspecified.
-  unspecified,
-
   /// The harm category is harassment.
   harassment,
 
@@ -33,9 +30,6 @@ enum FirebaseAISafetySettingCategory {
 
 /// Controls the probability threshold at which harm is blocked.
 enum FirebaseAISafetySettingThreshold {
-  /// Threshold is unspecified, block using default threshold.
-  unspecified,
-
   /// Block when low, medium or high probability of unsafe content.
   blockLowAndAbove,
 

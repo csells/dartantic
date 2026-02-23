@@ -3,7 +3,6 @@ import 'package:firebase_ai/firebase_ai.dart' as f;
 import 'package:logging/logging.dart';
 
 import 'firebase_ai_safety_options.dart';
-import 'firebase_ai_thinking_utils.dart';
 
 /// Logger for Firebase message mapping operations.
 final Logger _logger = Logger('dartantic.chat.mappers.firebase_ai');
@@ -172,11 +171,14 @@ extension MessageListMapper on List<ChatMessage> {
   }
 
   /// Extracts the tool name from a generated tool call ID.
+  ///
+  /// IDs are in the format `toolName#hash`, using `#` as separator so that
+  /// tool names containing underscores (e.g. `get_weather`) are preserved.
   String? _extractToolNameFromId(String? id) {
     if (id == null) return null;
-    // Tool IDs are typically in format: toolName_hash
-    final parts = id.split('_');
-    return parts.isNotEmpty ? parts.first : null;
+    final separatorIndex = id.lastIndexOf('#');
+    if (separatorIndex < 0) return id;
+    return id.substring(0, separatorIndex);
   }
 }
 
@@ -203,12 +205,7 @@ extension GenerateContentResponseMapper on f.GenerateContentResponse {
           parts.add(DataPart(bytes, mimeType: mimeType));
         case f.FunctionCall(:final name, :final args):
           _logger.fine('Processing function call: $name');
-          // Generate a unique ID for this tool call
-          final toolId = _generateToolCallId(
-            toolName: name,
-            providerHint: 'firebase',
-            arguments: args,
-          );
+          final toolId = _generateToolCallId(toolName: name);
           parts.add(
             ToolPart.call(callId: toolId, toolName: name, arguments: args),
           );
@@ -255,17 +252,6 @@ extension GenerateContentResponseMapper on f.GenerateContentResponse {
       ),
     );
 
-    // Extract thinking metadata and add to result metadata
-    final thinkingContent = FirebaseAIThinkingUtils.extractThinking(
-      result,
-      options: const FirebaseAIThinkingOptions(enabled: true),
-    );
-
-    if (thinkingContent != null && thinkingContent.isNotEmpty) {
-      result.metadata['thinking'] = thinkingContent;
-      _logger.fine('Added thinking metadata: ${thinkingContent.length} chars');
-    }
-
     return result;
   }
 
@@ -280,15 +266,17 @@ extension GenerateContentResponseMapper on f.GenerateContentResponse {
     null => FinishReason.unspecified,
   };
 
+  static int _toolCallCounter = 0;
+
   /// Generates a unique ID for a tool call.
+  ///
+  /// Uses `#` as separator so tool names with underscores are preserved
+  /// when extracted via [_extractToolNameFromId].
   String _generateToolCallId({
     required String toolName,
-    required String providerHint,
-    required Map<String, Object?> arguments,
   }) {
-    // Simple implementation: toolName_hashCode
-    final hash = Object.hash(toolName, providerHint, arguments);
-    return '${toolName}_${hash.abs()}';
+    _toolCallCounter++;
+    return '$toolName#$_toolCallCounter';
   }
 }
 
@@ -302,10 +290,6 @@ extension SafetySettingsMapper on List<FirebaseAISafetySetting> {
     return map(
       (setting) => f.SafetySetting(
         switch (setting.category) {
-          FirebaseAISafetySettingCategory.unspecified =>
-            f
-                .HarmCategory
-                .harassment, // Use a default since unspecified is removed
           FirebaseAISafetySettingCategory.harassment =>
             f.HarmCategory.harassment,
           FirebaseAISafetySettingCategory.hateSpeech =>
@@ -316,10 +300,6 @@ extension SafetySettingsMapper on List<FirebaseAISafetySetting> {
             f.HarmCategory.dangerousContent,
         },
         switch (setting.threshold) {
-          FirebaseAISafetySettingThreshold.unspecified =>
-            f
-                .HarmBlockThreshold
-                .none, // Use a default since unspecified is removed
           FirebaseAISafetySettingThreshold.blockLowAndAbove =>
             f.HarmBlockThreshold.low,
           FirebaseAISafetySettingThreshold.blockMediumAndAbove =>
@@ -329,7 +309,7 @@ extension SafetySettingsMapper on List<FirebaseAISafetySetting> {
           FirebaseAISafetySettingThreshold.blockNone =>
             f.HarmBlockThreshold.none,
         },
-        null, // Third parameter seems to be needed but null works as default
+        null,
       ),
     ).toList(growable: false);
   }
@@ -352,15 +332,7 @@ extension ChatToolListMapper on List<Tool>? {
     final functionDeclarations = hasTools
         ? this!
               .map(
-                (tool) => f.FunctionDeclaration(
-                  tool.name,
-                  tool.description,
-                  parameters: <String, f.Schema>{
-                    'properties': Map<String, dynamic>.from(
-                      tool.inputSchema.value,
-                    ).toSchema(),
-                  },
-                ),
+                (tool) => _toolToFunctionDeclaration(tool),
               )
               .toList(growable: false)
         : null;
@@ -370,6 +342,32 @@ extension ChatToolListMapper on List<Tool>? {
       return null;
     }
     return <f.Tool>[f.Tool.functionDeclarations(functionDeclarations ?? [])];
+  }
+
+  static f.FunctionDeclaration _toolToFunctionDeclaration(Tool tool) {
+    final schema = Map<String, dynamic>.from(tool.inputSchema.value);
+    final rawProperties = schema['properties'] as Map<String, dynamic>?;
+    final requiredList =
+        (schema['required'] as List?)?.cast<String>() ?? const <String>[];
+
+    final parameters = <String, f.Schema>{};
+    if (rawProperties != null) {
+      for (final entry in rawProperties.entries) {
+        parameters[entry.key] =
+            Map<String, dynamic>.from(entry.value as Map).toSchema();
+      }
+    }
+
+    final allPropertyNames = parameters.keys.toSet();
+    final optionalParameters =
+        allPropertyNames.difference(requiredList.toSet()).toList();
+
+    return f.FunctionDeclaration(
+      tool.name,
+      tool.description,
+      parameters: parameters,
+      optionalParameters: optionalParameters,
+    );
   }
 }
 
@@ -440,9 +438,14 @@ extension SchemaMapper on Map<String, dynamic> {
           _logger.fine(
             'Converting object schema with ${properties.length} properties',
           );
+          final allKeys = propertiesSchema.keys.toSet();
+          final requiredSet = requiredProperties?.toSet() ?? const <String>{};
+          final optionalProperties =
+              allKeys.difference(requiredSet).toList();
           return f.Schema.object(
             properties: propertiesSchema,
-            optionalProperties: requiredProperties,
+            optionalProperties:
+                optionalProperties.isEmpty ? null : optionalProperties,
             description: description,
             nullable: nullable,
           );

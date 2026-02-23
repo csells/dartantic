@@ -29,14 +29,7 @@ class FirebaseAIProvider
           FirebaseAIEmbeddingsModelOptions,
           FirebaseAIMediaGenerationModelOptions
         > {
-  // IMPORTANT: Logger must be private (_logger not log) and static final
   static final Logger _logger = Logger('dartantic.chat.providers.firebase_ai');
-
-  /// Default base URL for Firebase AI.
-  /// Note: Firebase AI uses Firebase SDK, not direct REST API calls.
-  static final defaultBaseUrl = Uri.parse(
-    'https://firebaseai.googleapis.com/v1',
-  );
 
   /// Creates a new Firebase AI provider instance.
   ///
@@ -49,7 +42,6 @@ class FirebaseAIProvider
   // ignore: sort_constructors_first
   FirebaseAIProvider({
     this.backend = FirebaseAIBackend.googleAI,
-    super.baseUrl, // Use super.baseUrl, don't provide defaults here
     super.headers,
   }) : super(
          apiKey: null,
@@ -70,11 +62,6 @@ class FirebaseAIProvider
   /// The backend type this provider instance uses.
   final FirebaseAIBackend backend;
 
-  /// Validates Firebase AI model name format.
-  bool _isValidModelName(String modelName) =>
-      // Firebase AI uses Gemini models with format: gemini-<version>-<variant>
-      RegExp(r'^gemini-\d+(\.\d+)?(-\w+)?$').hasMatch(modelName);
-
   @override
   ChatModel<FirebaseAIChatModelOptions> createChatModel({
     String? name,
@@ -85,18 +72,9 @@ class FirebaseAIProvider
   }) {
     final modelName = name ?? defaultModelNames[ModelKind.chat]!;
 
-    // Validate temperature range
     if (temperature != null && (temperature < 0.0 || temperature > 2.0)) {
       throw ArgumentError(
         'Temperature must be between 0.0 and 2.0, got: $temperature',
-      );
-    }
-
-    // Validate model name format
-    if (!_isValidModelName(modelName)) {
-      throw ArgumentError(
-        'Invalid Firebase AI model name: $modelName. '
-        'Expected format: gemini-<version>-<variant> (e.g., gemini-2.0-flash)',
       );
     }
 
@@ -109,7 +87,6 @@ class FirebaseAIProvider
 
     return FirebaseAIChatModel(
       name: modelName,
-      baseUrl: baseUrl ?? defaultBaseUrl,
       tools: tools,
       temperature: temperature,
       backend: backend,
@@ -169,8 +146,13 @@ class FirebaseAIProvider
 
   @override
   Stream<ModelInfo> listModels() async* {
-    // Firebase AI uses the same models as Google Gemini
-    // We can yield the commonly available models
+    yield ModelInfo(
+      name: 'gemini-2.5-flash',
+      providerName: name,
+      kinds: {ModelKind.chat},
+      displayName: 'Gemini 2.5 Flash',
+      description: 'Fast and versatile next-generation model',
+    );
     yield ModelInfo(
       name: 'gemini-2.0-flash',
       providerName: name,
@@ -180,20 +162,11 @@ class FirebaseAIProvider
           'Fast and versatile performance across a diverse variety of tasks',
     );
     yield ModelInfo(
-      name: 'gemini-1.5-flash',
+      name: 'gemini-2.5-flash-image',
       providerName: name,
-      kinds: {ModelKind.chat},
-      displayName: 'Gemini 1.5 Flash',
-      description:
-          'Fast and versatile multimodal model for scaling across '
-          'diverse tasks',
-    );
-    yield ModelInfo(
-      name: 'gemini-1.5-pro',
-      providerName: name,
-      kinds: {ModelKind.chat},
-      displayName: 'Gemini 1.5 Pro',
-      description: 'Complex reasoning tasks requiring more intelligence',
+      kinds: {ModelKind.media},
+      displayName: 'Gemini 2.5 Flash Image',
+      description: 'Image generation via Gemini multimodal model',
     );
   }
 }

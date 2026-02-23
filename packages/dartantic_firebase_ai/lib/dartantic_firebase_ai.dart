@@ -10,8 +10,5 @@ export 'src/firebase_ai_embeddings_model.dart';
 export 'src/firebase_ai_embeddings_options.dart';
 export 'src/firebase_ai_media_generation_model.dart';
 export 'src/firebase_ai_media_generation_options.dart';
-export 'src/firebase_ai_multimodal_utils.dart';
 export 'src/firebase_ai_provider.dart';
 export 'src/firebase_ai_safety_options.dart';
-export 'src/firebase_ai_streaming_accumulator.dart';
-export 'src/firebase_ai_thinking_utils.dart';

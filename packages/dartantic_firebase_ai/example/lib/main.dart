@@ -55,7 +55,7 @@ class _DemoScreenState extends State<DemoScreen> {
         _logs.add('✅ FirebaseAIProvider registered successfully');
         _logs.add('✅ Vertex AI provider available as: firebase-vertex');
         _logs.add('✅ Google AI provider available as: firebase-google');
-        _logs.add('✅ Supports model: gemini-2.0-flash-exp');
+        _logs.add('✅ Supports model: gemini-2.5-flash');
         _logs.add('✅ Capabilities: chatVision');
         _providerReady = true;
       });
@@ -72,11 +72,11 @@ class _DemoScreenState extends State<DemoScreen> {
   void _testAgentCreation() {
     try {
       // Create agent with Firebase AI (using Vertex AI backend)
-      final agent = Agent('firebase-vertex:gemini-2.0-flash-exp');
+      final agent = Agent('firebase-vertex:gemini-2.5-flash');
 
       setState(() {
         _logs.add('🎯 Agent created successfully!');
-        _logs.add('✅ Model: firebase-vertex:gemini-2.0-flash-exp');
+        _logs.add('✅ Model: firebase-vertex:gemini-2.5-flash');
         _logs.add('✅ Ready for chat operations');
         _logs.add('✅ Agent instance: ${agent.runtimeType}');
         _logs.add('');

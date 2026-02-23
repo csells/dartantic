@@ -28,9 +28,9 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  dartantic_interface: ^1.0.3
+  dartantic_interface: ^3.0.0
   dartantic_firebase_ai: ^0.1.0
-  firebase_core: ^3.12.0
+  firebase_core: ^4.4.0
 ```
 
 ## Setup Requirements
@@ -135,9 +135,9 @@ final result = await agent.send('What\'s the weather in San Francisco?');
 
 ## Configuration Options
 
-The `FirebaseAIChatOptions` class supports:
+The `FirebaseAIChatModelOptions` class supports:
 
-- `temperature` - Sampling temperature (0.0 to 1.0)
+- `temperature` - Sampling temperature (0.0 to 2.0)
 - `topP` - Nucleus sampling threshold
 - `topK` - Top-K sampling
 - `maxOutputTokens` - Maximum tokens to generate

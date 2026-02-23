@@ -3,7 +3,7 @@ import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:test/test.dart';
 
 import 'mock_firebase.dart';
-import 'test_helpers/run_provider_test.dart';
+import 'test_helpers/run_provider_test_helper.dart';
 
 void main() {
   group('FirebaseAIProvider', () {
@@ -29,13 +29,6 @@ void main() {
       final model = provider.createChatModel(name: 'gemini-2.5-flash');
       expect(model, isA<FirebaseAIChatModel>());
       expect(model.name, 'gemini-2.5-flash');
-    }, requiredCaps: {ProviderTestCaps.chat});
-
-    runProviderTest('rejects invalid model names', (provider) async {
-      expect(
-        () => provider.createChatModel(name: 'gpt-4o'),
-        throwsArgumentError,
-      );
     }, requiredCaps: {ProviderTestCaps.chat});
 
     runProviderTest('rejects out-of-range temperature', (provider) async {
@@ -122,10 +115,11 @@ void main() {
     },
     );
 
-    runProviderTest('lists chat models', (provider) async {
+    runProviderTest('lists chat and media models', (provider) async {
       final models = await provider.listModels().toList();
       expect(models, isNotEmpty);
       expect(models.any((m) => m.kinds.contains(ModelKind.chat)), isTrue);
+      expect(models.any((m) => m.kinds.contains(ModelKind.media)), isTrue);
       expect(models.every((m) => m.providerName == 'firebase_ai'), isTrue);
     }, requiredCaps: {ProviderTestCaps.chat});
   });

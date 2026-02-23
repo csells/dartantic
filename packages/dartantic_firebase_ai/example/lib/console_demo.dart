@@ -18,15 +18,15 @@ void main() async {
 
     // Step 2: Create Agent (using Vertex AI backend)
     logger.info('\n📝 Step 2: Creating Agent...');
-    final agent = Agent('firebase-vertex:gemini-2.0-flash-exp');
+    final agent = Agent('firebase-vertex:gemini-2.5-flash');
     logger.info('✅ Agent created: ${agent.runtimeType}');
-    logger.info('✅ Model: firebase:gemini-2.0-flash-exp');
+    logger.info('✅ Model: firebase:gemini-2.5-flash');
 
     // Step 3: Show provider details
     logger.info('\n📋 Provider Integration Status:');
     logger.info('• Provider Name: firebase');
     logger.info('• Provider Type: FirebaseAIProvider');
-    logger.info('• Model Support: gemini-2.0-flash-exp');
+    logger.info('• Model Support: gemini-2.5-flash');
     logger.info('• Capabilities: chatVision');
     logger.info('• Agent Ready: ✅');
 

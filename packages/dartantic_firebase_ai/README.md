@@ -8,9 +8,10 @@ Provides access to Google's Gemini models through Firebase with flexible backend
 
 - 🔥 **Dual Backend Support** - Google AI (development) and Vertex AI (production)
 - 🔒 **Enhanced Security** - App Check and Firebase Auth support (Vertex AI)
-- 🎯 **Full Gemini Capabilities** - Chat, function calling, structured output, vision
+- 🎯 **Full Gemini Capabilities** - Chat, embeddings, media generation, structured output, vision
 - 🚀 **Streaming Responses** - Real-time token generation
 - 🛠️ **Tool Calling** - Function execution during generation
+- 🧠 **Extended Thinking** - Model reasoning with configurable token budgets
 - 🔄 **Easy Migration** - Switch backends without code changes
 
 ## Platform Support
@@ -28,7 +29,15 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  dartantic_interface: ^3.0.0
+  dartantic_firebase_ai: ^0.1.0
+  firebase_core: ^4.4.0
+```
+
+To use with the `Agent` orchestration layer, also add `dartantic_ai`:
+
+```yaml
+dependencies:
+  dartantic_ai: ^3.0.0
   dartantic_firebase_ai: ^0.1.0
   firebase_core: ^4.4.0
 ```
@@ -74,18 +83,35 @@ Firebase AI supports two backends with different API endpoints but similar setup
 ### Basic Setup
 
 ```dart
-import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_firebase_ai/dartantic_firebase_ai.dart';
+import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 // Initialize Firebase (required for both backends)
 await Firebase.initializeApp();
 
-// Option 1: Vertex AI (production-ready, requires Firebase project)
+// Create a provider
+final provider = FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
+
+// Create a chat model
+final chatModel = provider.createChatModel(name: 'gemini-2.5-flash');
+
+// Stream a response
+final messages = [ChatMessage.user('Explain quantum computing')];
+await for (final chunk in chatModel.sendStream(messages)) {
+  print(chunk.output.text);
+}
+```
+
+### With Agent (requires `dartantic_ai`)
+
+```dart
+import 'package:dartantic_ai/dartantic_ai.dart';
+import 'package:dartantic_firebase_ai/dartantic_firebase_ai.dart';
+
+// Register provider factories
 Agent.providerFactories['firebase-vertex'] = () =>
     FirebaseAIProvider(backend: FirebaseAIBackend.vertexAI);
-
-// Option 2: Google AI (development, minimal Firebase setup)
 Agent.providerFactories['firebase-google'] = () =>
     FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
 
@@ -96,38 +122,11 @@ final devAgent = Agent('firebase-google:gemini-2.0-flash');
 // Send a message
 final result = await prodAgent.send('Explain quantum computing');
 print(result.output);
-```
 
-### With Streaming
-
-```dart
-await for (final chunk in agent.sendStream('Tell me a story')) {
+// Stream a response
+await for (final chunk in devAgent.sendStream('Tell me a story')) {
   print(chunk.output);
 }
-```
-
-### With Tools
-
-```dart
-final weatherTool = Tool<Map<String, dynamic>>(
-  name: 'get_weather',
-  description: 'Get current weather for a location',
-  inputSchema: Schema.fromMap({
-    'type': 'object',
-    'properties': {
-      'location': {'type': 'string'},
-    },
-    'required': ['location'],
-  }),
-  onCall: (args) => {'temp': 72, 'condition': 'sunny'},
-);
-
-final agent = Agent.forProvider(
-  FirebaseAIProvider(),
-  tools: [weatherTool],
-);
-
-final result = await agent.send('What\'s the weather in San Francisco?');
 ```
 
 ## Configuration Options
@@ -137,9 +136,15 @@ The `FirebaseAIChatModelOptions` class supports:
 - `temperature` - Sampling temperature (0.0 to 2.0)
 - `topP` - Nucleus sampling threshold
 - `topK` - Top-K sampling
+- `candidateCount` - Number of generated responses to return
 - `maxOutputTokens` - Maximum tokens to generate
 - `stopSequences` - Stop generation sequences
+- `responseMimeType` - Output response MIME type (e.g., `application/json`)
+- `responseSchema` - Output response schema for structured output
 - `safetySettings` - Content safety configuration
+- `enableCodeExecution` - Enable code execution in the model
+- `enableThinking` - Enable model reasoning/thinking content
+- `thinkingBudgetTokens` - Token budget for thinking (-1 for dynamic)
 
 ## Security Best Practices
 
@@ -165,6 +170,8 @@ For pure Dart projects, consider using the `dartantic_google` provider instead.
 | Setup | API key only | Firebase project + API key |
 | Security | API key only | App Check + Auth |
 | Platforms | All Dart platforms | Flutter only |
+| Embeddings | Yes | Yes |
+| Media Generation | Yes | Yes |
 | On-Device | No | No (web only) |
 | Cost Control | Manual | Firebase quotas |
 | Dependencies | HTTP client only | Full Firebase SDK |

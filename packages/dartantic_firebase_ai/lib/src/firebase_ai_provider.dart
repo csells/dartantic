@@ -47,6 +47,7 @@ class FirebaseAIProvider
             : 'Firebase AI (Vertex AI)',
         defaultModelNames: const {
           ModelKind.chat: 'gemini-2.5-flash',
+          ModelKind.embeddings: 'text-embedding-004',
           ModelKind.media: 'gemini-2.5-flash-image',
         },
         aliases: backend == FirebaseAIBackend.googleAI
@@ -110,7 +111,7 @@ class FirebaseAIProvider
     String? name,
     FirebaseAIEmbeddingsModelOptions? options,
   }) {
-    final modelName = name ?? 'text-embedding-004';
+    final modelName = name ?? defaultModelNames[ModelKind.embeddings]!;
 
     _logger.info('Creating Firebase AI embeddings model: $modelName');
 
@@ -159,6 +160,13 @@ class FirebaseAIProvider
       displayName: 'Gemini 2.0 Flash',
       description:
           'Fast and versatile performance across a diverse variety of tasks',
+    );
+    yield ModelInfo(
+      name: 'text-embedding-004',
+      providerName: name,
+      kinds: {ModelKind.embeddings},
+      displayName: 'Text Embedding 004',
+      description: 'Text embedding model for semantic search and retrieval',
     );
     yield ModelInfo(
       name: 'gemini-2.5-flash-image',

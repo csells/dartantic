@@ -1,218 +1,185 @@
-import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_firebase_ai/dartantic_firebase_ai.dart';
+import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:firebase_ai_example/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
+/// Simple chat example using the Firebase AI ChatModel directly.
+///
+/// Demonstrates low-level streaming without the Agent orchestration layer.
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  runApp(const SimpleChatApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+/// Root widget for the simple chat example.
+class SimpleChatApp extends StatelessWidget {
+  /// Creates the simple chat app.
+  const SimpleChatApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Firebase AI Provider Demo',
+      title: 'Firebase AI Simple Chat',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
         useMaterial3: true,
       ),
-      home: const DemoScreen(),
+      home: const SimpleChatScreen(),
     );
   }
 }
 
-class DemoScreen extends StatefulWidget {
-  const DemoScreen({super.key});
+/// A minimal chat screen that streams responses from the ChatModel.
+class SimpleChatScreen extends StatefulWidget {
+  /// Creates the simple chat screen.
+  const SimpleChatScreen({super.key});
 
   @override
-  State<DemoScreen> createState() => _DemoScreenState();
+  State<SimpleChatScreen> createState() => _SimpleChatScreenState();
 }
 
-class _DemoScreenState extends State<DemoScreen> {
-  final List<String> _logs = [];
-  bool _providerReady = false;
+class _SimpleChatScreenState extends State<SimpleChatScreen> {
+  final _controller = TextEditingController();
+  final _scrollController = ScrollController();
+  final _messages = <ChatMessage>[];
+  final _provider = FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
+  late final FirebaseAIChatModel _chatModel;
+
+  String _streamingText = '';
+  bool _isStreaming = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeProvider();
+    _chatModel = _provider.createChatModel(
+      name: 'gemini-2.5-flash',
+    ) as FirebaseAIChatModel;
   }
 
-  void _initializeProvider() async {
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    _chatModel.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty || _isStreaming) return;
+
+    _controller.clear();
     setState(() {
-      _logs.add('🚀 Initializing Firebase AI Provider...');
+      _messages.add(ChatMessage.user(text));
+      _streamingText = '';
+      _isStreaming = true;
     });
+    _scrollToBottom();
 
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      // Register Firebase AI providers with new naming
-      Agent.providerFactories['firebase-vertex'] = () =>
-          FirebaseAIProvider(backend: FirebaseAIBackend.vertexAI);
-      Agent.providerFactories['firebase-google'] = () =>
-          FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
-
-      setState(() {
-        _logs.add('✅ FirebaseAIProvider registered successfully');
-        _logs.add('✅ Vertex AI provider available as: firebase-vertex');
-        _logs.add('✅ Google AI provider available as: firebase-google');
-        _logs.add('✅ Supports model: gemini-2.5-flash');
-        _logs.add('✅ Capabilities: chatVision');
-        _providerReady = true;
-      });
-
-      // Test agent creation
-      _testAgentCreation();
-    } catch (e) {
-      setState(() {
-        _logs.add('❌ Provider registration failed: $e');
-      });
+    final buffer = StringBuffer();
+    await for (final chunk in _chatModel.sendStream(_messages)) {
+      final delta = chunk.output.text;
+      buffer.write(delta);
+      setState(() => _streamingText = buffer.toString());
+      _scrollToBottom();
     }
+
+    setState(() {
+      _messages.add(ChatMessage.model(buffer.toString()));
+      _streamingText = '';
+      _isStreaming = false;
+    });
   }
 
-  void _testAgentCreation() {
-    try {
-      // Create agent with Firebase AI (using Vertex AI backend)
-      final agent = Agent('firebase-vertex:gemini-2.5-flash');
-
-      setState(() {
-        _logs.add('🎯 Agent created successfully!');
-        _logs.add('✅ Model: firebase-vertex:gemini-2.5-flash');
-        _logs.add('✅ Ready for chat operations');
-        _logs.add('✅ Agent instance: ${agent.runtimeType}');
-        _logs.add('');
-        _logs.add('📋 Provider Integration Status:');
-        _logs.add('• Provider: ✅ Registered');
-        _logs.add('• Agent: ✅ Created');
-        _logs.add('• Configuration: ✅ Complete');
-        _logs.add('');
-        _logs.add('💡 In a real app with Firebase configured,');
-        _logs.add('   you would call agent.sendStream(prompt)');
-        _logs.add('   to get AI responses!');
-      });
-    } catch (e) {
-      setState(() {
-        _logs.add('❌ Agent creation failed: $e');
-      });
-    }
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Firebase AI Provider Demo'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Card(
-              color: _providerReady ? Colors.green[50] : Colors.orange[50],
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          _providerReady
-                              ? Icons.check_circle
-                              : Icons.hourglass_empty,
-                          color: _providerReady ? Colors.green : Colors.orange,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Provider Status',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _providerReady
-                          ? 'Firebase AI Provider is ready!'
-                          : 'Initializing...',
-                      style: TextStyle(
-                        color: _providerReady
-                            ? Colors.green[700]
-                            : Colors.orange[700],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      appBar: AppBar(title: const Text('Firebase AI Simple Chat')),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(16),
+              itemCount: _messages.length + (_streamingText.isNotEmpty ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index < _messages.length) {
+                  return _MessageBubble(message: _messages[index]);
+                }
+                return _MessageBubble(
+                  message: ChatMessage.model(_streamingText),
+                  isStreaming: true,
+                );
+              },
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Initialization Log:',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: Card(
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16.0),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: _logs
-                          .map(
-                            (log) => Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 2.0,
-                              ),
-                              child: Text(
-                                log,
-                                style: const TextStyle(
-                                  fontFamily: 'monospace',
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          )
-                          .toList(),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      hintText: 'Type a message...',
+                      border: OutlineInputBorder(),
                     ),
+                    onSubmitted: (_) => _sendMessage(),
+                    enabled: !_isStreaming,
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Card(
-              color: Colors.blue[50],
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Next Steps:',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text('1. Configure Firebase in your project'),
-                    const Text('2. Add Firebase credentials'),
-                    const Text(
-                      '3. Call agent.sendStream(prompt) for AI responses',
-                    ),
-                    const Text('4. Handle streaming responses in your UI'),
-                  ],
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: _isStreaming ? null : _sendMessage,
+                  icon: const Icon(Icons.send),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MessageBubble extends StatelessWidget {
+  const _MessageBubble({required this.message, this.isStreaming = false});
+
+  final ChatMessage message;
+  final bool isStreaming;
+
+  @override
+  Widget build(BuildContext context) {
+    final isUser = message.role == ChatMessageRole.user;
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.all(12),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
+        decoration: BoxDecoration(
+          color: isUser
+              ? Theme.of(context).colorScheme.primaryContainer
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(message.parts.text),
       ),
     );
   }

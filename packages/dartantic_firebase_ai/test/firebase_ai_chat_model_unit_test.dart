@@ -79,10 +79,7 @@ void main() {
       final schema = Schema.fromMap({'type': 'object'});
 
       expect(
-        () => model.sendStream(
-          [ChatMessage.user('run')],
-          outputSchema: schema,
-        ),
+        () => model.sendStream([ChatMessage.user('run')], outputSchema: schema),
         throwsArgumentError,
       );
     });
@@ -144,26 +141,24 @@ void main() {
 
   group('FirebaseAIProvider', () {
     test('createChatModel passes enableThinking to model', () {
-      final provider = FirebaseAIProvider();
+      final provider = FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
       final model = provider.createChatModel(enableThinking: true);
 
       expect(model, isA<FirebaseAIChatModel>());
     });
 
     test('createChatModel passes thinking budget via options', () {
-      final provider = FirebaseAIProvider();
+      final provider = FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
       final model = provider.createChatModel(
         enableThinking: true,
-        options: const FirebaseAIChatModelOptions(
-          thinkingBudgetTokens: 2048,
-        ),
+        options: const FirebaseAIChatModelOptions(thinkingBudgetTokens: 2048),
       );
 
       expect(model.defaultOptions.thinkingBudgetTokens, 2048);
     });
 
     test('createChatModel passes enableThinking via options', () {
-      final provider = FirebaseAIProvider();
+      final provider = FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
       final model = provider.createChatModel(
         options: const FirebaseAIChatModelOptions(enableThinking: true),
       );
@@ -172,7 +167,7 @@ void main() {
     });
 
     test('createChatModel validates temperature range', () {
-      final provider = FirebaseAIProvider();
+      final provider = FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
 
       expect(
         () => provider.createChatModel(temperature: 3),
@@ -185,14 +180,14 @@ void main() {
     });
 
     test('createChatModel uses default model name', () {
-      final provider = FirebaseAIProvider();
+      final provider = FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
       final model = provider.createChatModel();
 
       expect(model.name, 'gemini-2.5-flash');
     });
 
     test('createChatModel accepts custom model name', () {
-      final provider = FirebaseAIProvider();
+      final provider = FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
       final model = provider.createChatModel(name: 'gemini-2.0-flash');
 
       expect(model.name, 'gemini-2.0-flash');

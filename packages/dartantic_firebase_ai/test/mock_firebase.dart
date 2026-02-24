@@ -71,7 +71,8 @@ class _TestFirebasePlatform extends FirebasePlatform {
   FirebaseAppPlatform app([String name = defaultFirebaseAppName]) =>
       _TestFirebaseApp(
         name: _name ?? name,
-        options: _options ??
+        options:
+            _options ??
             const FirebaseOptions(
               apiKey: 'mock-api-key',
               appId: 'mock-app-id',

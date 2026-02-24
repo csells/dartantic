@@ -1,5 +1,5 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:firebase_ai/firebase_ai.dart' as f;
+import 'package:firebase_ai/firebase_ai.dart' as fai;
 import 'package:logging/logging.dart';
 import 'package:uuid/uuid.dart';
 
@@ -11,16 +11,16 @@ const _uuid = Uuid();
 
 /// Extension on [List<ChatMessage>] to convert messages to Firebase AI content.
 extension MessageListMapper on List<ChatMessage> {
-  /// Converts this list of [ChatMessage]s to a list of [f.Content]s.
+  /// Converts this list of [ChatMessage]s to a list of [fai.Content]s.
   ///
   /// System messages are filtered out (handled separately via
   /// `systemInstruction`). Consecutive tool result messages are grouped into a
-  /// single [f.Content.functionResponses] as required by Firebase AI's API.
-  List<f.Content> toContentList() {
+  /// single [fai.Content.functionResponses] as required by Firebase AI's API.
+  List<fai.Content> toContentList() {
     final nonSystemMessages = where(
       (message) => message.role != ChatMessageRole.system,
     ).toList();
-    final result = <f.Content>[];
+    final result = <fai.Content>[];
 
     for (var i = 0; i < nonSystemMessages.length; i++) {
       final message = nonSystemMessages[i];
@@ -55,7 +55,7 @@ extension MessageListMapper on List<ChatMessage> {
     return result;
   }
 
-  f.Content _mapMessage(ChatMessage message) {
+  fai.Content _mapMessage(ChatMessage message) {
     switch (message.role) {
       case ChatMessageRole.system:
         throw AssertionError('System messages should be filtered out');
@@ -66,18 +66,21 @@ extension MessageListMapper on List<ChatMessage> {
     }
   }
 
-  f.Content _mapUserMessage(ChatMessage message) {
-    final contentParts = <f.Part>[];
+  fai.Content _mapUserMessage(ChatMessage message) {
+    final contentParts = <fai.Part>[];
 
     for (final part in message.parts) {
       switch (part) {
         case TextPart(:final text):
-          contentParts.add(f.TextPart(text));
+          contentParts.add(fai.TextPart(text));
         case DataPart(:final bytes, :final mimeType):
-          contentParts.add(f.InlineDataPart(mimeType, bytes));
+          contentParts.add(fai.InlineDataPart(mimeType, bytes));
         case LinkPart(:final url, :final mimeType):
           contentParts.add(
-            f.FileData(mimeType ?? 'application/octet-stream', url.toString()),
+            fai.FileData(
+              mimeType ?? 'application/octet-stream',
+              url.toString(),
+            ),
           );
         case ToolPart():
           break;
@@ -88,25 +91,25 @@ extension MessageListMapper on List<ChatMessage> {
       }
     }
 
-    return f.Content.multi(contentParts);
+    return fai.Content.multi(contentParts);
   }
 
-  f.Content _mapModelMessage(ChatMessage message) {
-    final contentParts = <f.Part>[];
+  fai.Content _mapModelMessage(ChatMessage message) {
+    final contentParts = <fai.Part>[];
 
     for (final part in message.parts) {
       switch (part) {
         case TextPart(:final text):
           if (text.isNotEmpty) {
-            contentParts.add(f.TextPart(text));
+            contentParts.add(fai.TextPart(text));
           }
         case ThinkingPart(:final text):
           if (text.isNotEmpty) {
-            contentParts.add(f.TextPart(text, isThought: true));
+            contentParts.add(fai.TextPart(text, isThought: true));
           }
         case ToolPart() when part.kind == ToolPartKind.call:
           contentParts.add(
-            f.FunctionCall(
+            fai.FunctionCall(
               part.toolName,
               part.arguments ?? {},
               id: part.callId.isNotEmpty ? part.callId : null,
@@ -117,15 +120,15 @@ extension MessageListMapper on List<ChatMessage> {
       }
     }
 
-    return f.Content.model(contentParts);
+    return fai.Content.model(contentParts);
   }
 
   /// Maps multiple tool result messages to a single
-  /// [f.Content.functionResponses].
+  /// [fai.Content.functionResponses].
   ///
   /// Firebase AI requires all function responses to be grouped together.
-  f.Content _mapToolResultMessages(List<ChatMessage> messages) {
-    final functionResponses = <f.FunctionResponse>[];
+  fai.Content _mapToolResultMessages(List<ChatMessage> messages) {
+    final functionResponses = <fai.FunctionResponse>[];
 
     for (final message in messages) {
       for (final part in message.parts) {
@@ -137,7 +140,7 @@ extension MessageListMapper on List<ChatMessage> {
           };
 
           functionResponses.add(
-            f.FunctionResponse(
+            fai.FunctionResponse(
               part.toolName,
               response,
               id: part.callId.isNotEmpty ? part.callId : null,
@@ -147,13 +150,13 @@ extension MessageListMapper on List<ChatMessage> {
       }
     }
 
-    return f.Content.functionResponses(functionResponses);
+    return fai.Content.functionResponses(functionResponses);
   }
 }
 
-/// Extension on [f.GenerateContentResponse] to convert to [ChatResult].
-extension GenerateContentResponseMapper on f.GenerateContentResponse {
-  /// Converts this [f.GenerateContentResponse] to a streaming [ChatResult].
+/// Extension on [fai.GenerateContentResponse] to convert to [ChatResult].
+extension GenerateContentResponseMapper on fai.GenerateContentResponse {
+  /// Converts this [fai.GenerateContentResponse] to a streaming [ChatResult].
   ///
   /// Each streaming chunk sets `messages: const []`. The caller is responsible
   /// for accumulating parts and producing the final consolidated message.
@@ -164,7 +167,7 @@ extension GenerateContentResponseMapper on f.GenerateContentResponse {
 
     for (final part in candidate.content.parts) {
       switch (part) {
-        case f.TextPart(:final text):
+        case fai.TextPart(:final text):
           if (text.isEmpty) break;
           if (part.isThought ?? false) {
             parts.add(ThinkingPart(text));
@@ -172,18 +175,18 @@ extension GenerateContentResponseMapper on f.GenerateContentResponse {
           } else {
             parts.add(TextPart(text));
           }
-        case f.InlineDataPart(:final mimeType, :final bytes):
+        case fai.InlineDataPart(:final mimeType, :final bytes):
           parts.add(DataPart(bytes, mimeType: mimeType));
-        case f.FunctionCall(:final name, :final args, :final id):
+        case fai.FunctionCall(:final name, :final args, :final id):
           final callId = (id != null && id.isNotEmpty) ? id : _uuid.v4();
           parts.add(
             ToolPart.call(callId: callId, toolName: name, arguments: args),
           );
-        case f.FunctionResponse():
-        case f.FileData():
-        case f.ExecutableCodePart():
-        case f.CodeExecutionResultPart():
-        case f.UnknownPart():
+        case fai.FunctionResponse():
+        case fai.FileData():
+        case fai.ExecutableCodePart():
+        case fai.CodeExecutionResultPart():
+        case fai.UnknownPart():
           break;
       }
     }
@@ -194,7 +197,7 @@ extension GenerateContentResponseMapper on f.GenerateContentResponse {
       output: message,
       messages: const [],
       thinking: thinkingDelta,
-      finishReason: _mapFinishReason(candidate.finishReason),
+      finishReason: mapFinishReason(candidate.finishReason),
       metadata: <String, Object?>{
         'model': model,
         'block_reason': promptFeedback?.blockReason?.name,
@@ -217,45 +220,46 @@ extension GenerateContentResponseMapper on f.GenerateContentResponse {
       ),
     );
   }
-
-  FinishReason _mapFinishReason(f.FinishReason? reason) => switch (reason) {
-    f.FinishReason.stop => FinishReason.stop,
-    f.FinishReason.maxTokens => FinishReason.length,
-    f.FinishReason.safety => FinishReason.contentFilter,
-    f.FinishReason.recitation => FinishReason.recitation,
-    f.FinishReason.malformedFunctionCall => FinishReason.unspecified,
-    f.FinishReason.other => FinishReason.unspecified,
-    f.FinishReason.unknown => FinishReason.unspecified,
-    null => FinishReason.unspecified,
-  };
 }
+
+/// Maps a Firebase AI [fai.FinishReason] to a Dartantic [FinishReason].
+FinishReason mapFinishReason(fai.FinishReason? reason) => switch (reason) {
+  fai.FinishReason.stop => FinishReason.stop,
+  fai.FinishReason.maxTokens => FinishReason.length,
+  fai.FinishReason.safety => FinishReason.contentFilter,
+  fai.FinishReason.recitation => FinishReason.recitation,
+  fai.FinishReason.malformedFunctionCall => FinishReason.unspecified,
+  fai.FinishReason.other => FinishReason.unspecified,
+  fai.FinishReason.unknown => FinishReason.unspecified,
+  null => FinishReason.unspecified,
+};
 
 /// Extension on [List<FirebaseAISafetySetting>] to convert to Firebase SDK
 /// safety settings.
 extension SafetySettingsMapper on List<FirebaseAISafetySetting> {
   /// Converts this list of [FirebaseAISafetySetting]s to a list of
-  /// [f.SafetySetting]s.
-  List<f.SafetySetting> toSafetySettings() => map(
-    (setting) => f.SafetySetting(
+  /// [fai.SafetySetting]s.
+  List<fai.SafetySetting> toSafetySettings() => map(
+    (setting) => fai.SafetySetting(
       switch (setting.category) {
         FirebaseAISafetySettingCategory.harassment =>
-          f.HarmCategory.harassment,
+          fai.HarmCategory.harassment,
         FirebaseAISafetySettingCategory.hateSpeech =>
-          f.HarmCategory.hateSpeech,
+          fai.HarmCategory.hateSpeech,
         FirebaseAISafetySettingCategory.sexuallyExplicit =>
-          f.HarmCategory.sexuallyExplicit,
+          fai.HarmCategory.sexuallyExplicit,
         FirebaseAISafetySettingCategory.dangerousContent =>
-          f.HarmCategory.dangerousContent,
+          fai.HarmCategory.dangerousContent,
       },
       switch (setting.threshold) {
         FirebaseAISafetySettingThreshold.blockLowAndAbove =>
-          f.HarmBlockThreshold.low,
+          fai.HarmBlockThreshold.low,
         FirebaseAISafetySettingThreshold.blockMediumAndAbove =>
-          f.HarmBlockThreshold.medium,
+          fai.HarmBlockThreshold.medium,
         FirebaseAISafetySettingThreshold.blockOnlyHigh =>
-          f.HarmBlockThreshold.high,
+          fai.HarmBlockThreshold.high,
         FirebaseAISafetySettingThreshold.blockNone =>
-          f.HarmBlockThreshold.none,
+          fai.HarmBlockThreshold.none,
       },
       null,
     ),
@@ -264,9 +268,9 @@ extension SafetySettingsMapper on List<FirebaseAISafetySetting> {
 
 /// Extension on [List<Tool>?] to convert to Firebase SDK tool list.
 extension ChatToolListMapper on List<Tool>? {
-  /// Converts this list of [Tool]s to a list of [f.Tool]s, optionally
+  /// Converts this list of [Tool]s to a list of [fai.Tool]s, optionally
   /// enabling code execution.
-  List<f.Tool>? toToolList({required bool enableCodeExecution}) {
+  List<fai.Tool>? toToolList({required bool enableCodeExecution}) {
     final hasTools = this != null && this!.isNotEmpty;
     if (!hasTools && !enableCodeExecution) {
       return null;
@@ -274,33 +278,39 @@ extension ChatToolListMapper on List<Tool>? {
     final functionDeclarations = hasTools
         ? this!.map(_toolToFunctionDeclaration).toList(growable: false)
         : null;
-    final codeExecution = enableCodeExecution ? const f.CodeExecution() : null;
+    final codeExecution = enableCodeExecution
+        ? const fai.CodeExecution()
+        : null;
     if ((functionDeclarations == null || functionDeclarations.isEmpty) &&
         codeExecution == null) {
       return null;
     }
-    return <f.Tool>[f.Tool.functionDeclarations(functionDeclarations ?? [])];
+    return <fai.Tool>[
+      fai.Tool.functionDeclarations(functionDeclarations ?? []),
+    ];
   }
 
-  static f.FunctionDeclaration _toolToFunctionDeclaration(Tool tool) {
+  static fai.FunctionDeclaration _toolToFunctionDeclaration(Tool tool) {
     final schema = Map<String, dynamic>.from(tool.inputSchema.value);
     final rawProperties = schema['properties'] as Map<String, dynamic>?;
     final requiredList =
         (schema['required'] as List?)?.cast<String>() ?? const <String>[];
 
-    final parameters = <String, f.Schema>{};
+    final parameters = <String, fai.Schema>{};
     if (rawProperties != null) {
       for (final entry in rawProperties.entries) {
-        parameters[entry.key] =
-            Map<String, dynamic>.from(entry.value as Map).toSchema();
+        parameters[entry.key] = Map<String, dynamic>.from(
+          entry.value as Map,
+        ).toSchema();
       }
     }
 
     final allPropertyNames = parameters.keys.toSet();
-    final optionalParameters =
-        allPropertyNames.difference(requiredList.toSet()).toList();
+    final optionalParameters = allPropertyNames
+        .difference(requiredList.toSet())
+        .toList();
 
-    return f.FunctionDeclaration(
+    return fai.FunctionDeclaration(
       tool.name,
       tool.description,
       parameters: parameters,
@@ -311,8 +321,8 @@ extension ChatToolListMapper on List<Tool>? {
 
 /// Extension on [Map<String, dynamic>] to convert to Firebase SDK schema.
 extension SchemaMapper on Map<String, dynamic> {
-  /// Converts this map to a [f.Schema].
-  f.Schema toSchema() {
+  /// Converts this map to a [fai.Schema].
+  fai.Schema toSchema() {
     final jsonSchema = this;
     final type = jsonSchema['type'] as String;
     final description = jsonSchema['description'] as String?;
@@ -331,31 +341,34 @@ extension SchemaMapper on Map<String, dynamic> {
     switch (type) {
       case 'string':
         if (enumValues != null) {
-          return f.Schema.enumString(
+          return fai.Schema.enumString(
             enumValues: enumValues,
             description: description,
             nullable: nullable,
           );
         } else {
-          return f.Schema.string(description: description, nullable: nullable);
+          return fai.Schema.string(
+            description: description,
+            nullable: nullable,
+          );
         }
       case 'number':
-        return f.Schema.number(
+        return fai.Schema.number(
           description: description,
           nullable: nullable,
           format: format,
         );
       case 'integer':
-        return f.Schema.integer(
+        return fai.Schema.integer(
           description: description,
           nullable: nullable,
           format: format,
         );
       case 'boolean':
-        return f.Schema.boolean(description: description, nullable: nullable);
+        return fai.Schema.boolean(description: description, nullable: nullable);
       case 'array':
         if (items != null) {
-          return f.Schema.array(
+          return fai.Schema.array(
             items: items.toSchema(),
             description: description,
             nullable: nullable,
@@ -372,12 +385,12 @@ extension SchemaMapper on Map<String, dynamic> {
           );
           final allKeys = propertiesSchema.keys.toSet();
           final requiredSet = requiredProperties?.toSet() ?? const <String>{};
-          final optionalProperties =
-              allKeys.difference(requiredSet).toList();
-          return f.Schema.object(
+          final optionalProperties = allKeys.difference(requiredSet).toList();
+          return fai.Schema.object(
             properties: propertiesSchema,
-            optionalProperties:
-                optionalProperties.isEmpty ? null : optionalProperties,
+            optionalProperties: optionalProperties.isEmpty
+                ? null
+                : optionalProperties,
             description: description,
             nullable: nullable,
           );

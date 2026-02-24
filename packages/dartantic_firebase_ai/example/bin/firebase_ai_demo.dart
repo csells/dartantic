@@ -4,7 +4,8 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_firebase_ai/dartantic_firebase_ai.dart';
 
 void main() async {
-  Agent.providerFactories['firebase-vertex'] = FirebaseAIProvider.new;
+  Agent.providerFactories['firebase-vertex'] = () =>
+      FirebaseAIProvider(backend: FirebaseAIBackend.vertexAI);
   Agent.providerFactories['firebase-google'] = () =>
       FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
 

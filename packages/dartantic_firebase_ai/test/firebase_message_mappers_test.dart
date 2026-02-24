@@ -3,16 +3,15 @@ import 'dart:typed_data';
 import 'package:dartantic_firebase_ai/src/firebase_ai_safety_options.dart';
 import 'package:dartantic_firebase_ai/src/firebase_message_mappers.dart';
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:firebase_ai/firebase_ai.dart' as f;
+import 'package:firebase_ai/firebase_ai.dart' as fai;
 import 'package:test/test.dart';
 
-f.GenerateContentResponse _makeResponse(
-  List<f.Part> parts, {
-  f.FinishReason? finishReason,
-}) => f.GenerateContentResponse(
-      [f.Candidate(f.Content('model', parts), null, null, finishReason, null)],
-      null,
-    );
+fai.GenerateContentResponse _makeResponse(
+  List<fai.Part> parts, {
+  fai.FinishReason? finishReason,
+}) => fai.GenerateContentResponse([
+  fai.Candidate(fai.Content('model', parts), null, null, finishReason, null),
+], null);
 
 void main() {
   group('request mappers', () {
@@ -23,8 +22,8 @@ void main() {
       ].toContentList();
 
       expect(content, hasLength(2));
-      expect(content.first.parts.first, isA<f.TextPart>());
-      expect(content.last.parts.first, isA<f.TextPart>());
+      expect(content.first.parts.first, isA<fai.TextPart>());
+      expect(content.last.parts.first, isA<fai.TextPart>());
     });
 
     test('maps multimodal user message', () {
@@ -40,7 +39,7 @@ void main() {
 
       expect(list, hasLength(1));
       expect(list.first.parts.length, 2);
-      expect(list.first.parts[1], isA<f.InlineDataPart>());
+      expect(list.first.parts[1], isA<fai.InlineDataPart>());
     });
 
     test('maps tool call + tool result preserving IDs', () {
@@ -69,11 +68,11 @@ void main() {
 
       expect(list, hasLength(2));
 
-      final functionCall = list.first.parts.single as f.FunctionCall;
+      final functionCall = list.first.parts.single as fai.FunctionCall;
       expect(functionCall.id, 'call_1');
       expect(functionCall.name, 'lookup');
 
-      final functionResponse = list.last.parts.single as f.FunctionResponse;
+      final functionResponse = list.last.parts.single as fai.FunctionResponse;
       expect(functionResponse.id, 'call_1');
       expect(functionResponse.name, 'lookup');
     });
@@ -93,11 +92,11 @@ void main() {
       final parts = list.single.parts;
       expect(parts, hasLength(2));
 
-      final thinkingPart = parts[0] as f.TextPart;
+      final thinkingPart = parts[0] as fai.TextPart;
       expect(thinkingPart.text, 'Let me think...');
       expect(thinkingPart.isThought, isTrue);
 
-      final textPart = parts[1] as f.TextPart;
+      final textPart = parts[1] as fai.TextPart;
       expect(textPart.text, 'The answer is 42.');
       expect(textPart.isThought, isNot(isTrue));
     });
@@ -128,8 +127,8 @@ void main() {
 
       expect(list, hasLength(1));
       expect(list.single.parts.length, 2);
-      expect(list.single.parts.first, isA<f.FunctionResponse>());
-      expect(list.single.parts.last, isA<f.FunctionResponse>());
+      expect(list.single.parts.first, isA<fai.FunctionResponse>());
+      expect(list.single.parts.last, isA<fai.FunctionResponse>());
     });
 
     test('maps LinkPart to FileData', () {
@@ -147,8 +146,8 @@ void main() {
 
       expect(list, hasLength(1));
       final part = list.single.parts.single;
-      expect(part, isA<f.FileData>());
-      final fileData = part as f.FileData;
+      expect(part, isA<fai.FileData>());
+      final fileData = part as fai.FileData;
       expect(fileData.fileUri, 'gs://bucket/file.pdf');
       expect(fileData.mimeType, 'application/pdf');
     });
@@ -189,11 +188,9 @@ void main() {
     group('tool call IDs', () {
       test('uses SDK-provided FunctionCall.id when present', () {
         final response = _makeResponse([
-          const f.FunctionCall(
-            'get_weather',
-            {'city': 'NYC'},
-            id: 'sdk-id-123',
-          ),
+          const fai.FunctionCall('get_weather', {
+            'city': 'NYC',
+          }, id: 'sdk-id-123'),
         ]);
 
         final result = response.toChatResult('gemini-2.5-flash');
@@ -206,7 +203,7 @@ void main() {
 
       test('generates UUID when FunctionCall.id is null', () {
         final response = _makeResponse([
-          const f.FunctionCall('search', {'q': 'dart'}),
+          const fai.FunctionCall('search', {'q': 'dart'}),
         ]);
 
         final result = response.toChatResult('gemini-2.5-flash');
@@ -220,7 +217,7 @@ void main() {
 
       test('generates UUID when FunctionCall.id is empty', () {
         final response = _makeResponse([
-          const f.FunctionCall('search', {'q': 'dart'}, id: ''),
+          const fai.FunctionCall('search', {'q': 'dart'}, id: ''),
         ]);
 
         final result = response.toChatResult('gemini-2.5-flash');
@@ -232,8 +229,8 @@ void main() {
 
       test('generates unique IDs for multiple tool calls', () {
         final response = _makeResponse([
-          const f.FunctionCall('tool_a', {}),
-          const f.FunctionCall('tool_b', {}),
+          const fai.FunctionCall('tool_a', {}),
+          const fai.FunctionCall('tool_b', {}),
         ]);
 
         final result = response.toChatResult('gemini-2.5-flash');
@@ -247,8 +244,8 @@ void main() {
     group('thinking support', () {
       test('maps isThought TextPart to ThinkingPart', () {
         final response = _makeResponse([
-          const f.TextPart('I need to reason...', isThought: true),
-          const f.TextPart('The answer is 42.'),
+          const fai.TextPart('I need to reason...', isThought: true),
+          const fai.TextPart('The answer is 42.'),
         ]);
 
         final result = response.toChatResult('gemini-2.5-flash');
@@ -263,7 +260,7 @@ void main() {
 
       test('sets thinking delta on ChatResult', () {
         final response = _makeResponse([
-          const f.TextPart('thinking content', isThought: true),
+          const fai.TextPart('thinking content', isThought: true),
         ]);
 
         final result = response.toChatResult('gemini-2.5-flash');
@@ -272,9 +269,7 @@ void main() {
       });
 
       test('thinking is null when no thinking parts exist', () {
-        final response = _makeResponse([
-          const f.TextPart('Hello!'),
-        ]);
+        final response = _makeResponse([const fai.TextPart('Hello!')]);
 
         final result = response.toChatResult('gemini-2.5-flash');
 
@@ -283,7 +278,7 @@ void main() {
 
       test('non-thought TextPart is not treated as thinking', () {
         final response = _makeResponse([
-          const f.TextPart('regular text', isThought: false),
+          const fai.TextPart('regular text', isThought: false),
         ]);
 
         final result = response.toChatResult('gemini-2.5-flash');
@@ -295,9 +290,7 @@ void main() {
 
     group('streaming messages contract', () {
       test('streaming chunk has messages: const []', () {
-        final response = _makeResponse([
-          const f.TextPart('Hello world'),
-        ]);
+        final response = _makeResponse([const fai.TextPart('Hello world')]);
 
         final result = response.toChatResult('gemini-2.5-flash');
 
@@ -306,9 +299,7 @@ void main() {
       });
 
       test('output contains the chunk content', () {
-        final response = _makeResponse([
-          const f.TextPart('chunk text'),
-        ]);
+        final response = _makeResponse([const fai.TextPart('chunk text')]);
 
         final result = response.toChatResult('gemini-2.5-flash');
         final text = result.output.parts.whereType<TextPart>().single.text;
@@ -320,43 +311,38 @@ void main() {
 
     group('finish reason mapping', () {
       test('maps stop', () {
-        final result =
-            _makeResponse(
-              [const f.TextPart('done')],
-              finishReason: f.FinishReason.stop,
-            ).toChatResult('m');
+        final result = _makeResponse([
+          const fai.TextPart('done'),
+        ], finishReason: fai.FinishReason.stop).toChatResult('m');
         expect(result.finishReason, FinishReason.stop);
       });
 
       test('maps maxTokens to length', () {
-        final result =
-            _makeResponse(
-              [const f.TextPart('...')],
-              finishReason: f.FinishReason.maxTokens,
-            ).toChatResult('m');
+        final result = _makeResponse([
+          const fai.TextPart('...'),
+        ], finishReason: fai.FinishReason.maxTokens).toChatResult('m');
         expect(result.finishReason, FinishReason.length);
       });
 
       test('maps safety to contentFilter', () {
-        final result =
-            _makeResponse(
-              [const f.TextPart('')],
-              finishReason: f.FinishReason.safety,
-            ).toChatResult('m');
+        final result = _makeResponse([
+          const fai.TextPart(''),
+        ], finishReason: fai.FinishReason.safety).toChatResult('m');
         expect(result.finishReason, FinishReason.contentFilter);
       });
 
       test('maps null to unspecified', () {
-        final result =
-            _makeResponse([const f.TextPart('hi')]).toChatResult('m');
+        final result = _makeResponse([
+          const fai.TextPart('hi'),
+        ]).toChatResult('m');
         expect(result.finishReason, FinishReason.unspecified);
       });
     });
 
     test('skips empty text parts', () {
       final response = _makeResponse([
-        const f.TextPart(''),
-        const f.TextPart('real'),
+        const fai.TextPart(''),
+        const fai.TextPart('real'),
       ]);
 
       final result = response.toChatResult('m');

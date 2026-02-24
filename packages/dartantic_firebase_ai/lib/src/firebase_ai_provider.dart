@@ -37,24 +37,22 @@ class FirebaseAIProvider
   ///
   /// Note: Firebase AI doesn't use traditional API keys. Authentication is
   /// handled through Firebase configuration and App Check.
-  FirebaseAIProvider({
-    this.backend = FirebaseAIBackend.googleAI,
-    super.headers,
-  }) : super(
-         apiKey: null,
-         apiKeyName: null,
-         name: 'firebase_ai',
-         displayName: backend == FirebaseAIBackend.googleAI
-             ? 'Firebase AI (Google AI)'
-             : 'Firebase AI (Vertex AI)',
-         defaultModelNames: const {
-           ModelKind.chat: 'gemini-2.5-flash',
-           ModelKind.media: 'gemini-2.5-flash-image',
-         },
-         aliases: backend == FirebaseAIBackend.googleAI
-             ? const ['firebase-google']
-             : const ['firebase-vertex'],
-       );
+  FirebaseAIProvider({required this.backend, super.headers})
+    : super(
+        apiKey: null,
+        apiKeyName: null,
+        name: 'firebase_ai',
+        displayName: backend == FirebaseAIBackend.googleAI
+            ? 'Firebase AI (Google AI)'
+            : 'Firebase AI (Vertex AI)',
+        defaultModelNames: const {
+          ModelKind.chat: 'gemini-2.5-flash',
+          ModelKind.media: 'gemini-2.5-flash-image',
+        },
+        aliases: backend == FirebaseAIBackend.googleAI
+            ? const ['firebase-google']
+            : const ['firebase-vertex'],
+      );
 
   static final Logger _logger = Logger('dartantic.chat.providers.firebase_ai');
 

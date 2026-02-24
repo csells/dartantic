@@ -11,7 +11,7 @@ void main() {
     });
 
     test('defaults to GoogleAI backend', () {
-      final provider = FirebaseAIProvider();
+      final provider = FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
       expect(provider.backend, FirebaseAIBackend.googleAI);
       expect(provider.displayName, 'Firebase AI (Google AI)');
     });
@@ -24,7 +24,7 @@ void main() {
     });
 
     test('model defaults are exposed on provider', () {
-      final provider = FirebaseAIProvider();
+      final provider = FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
       expect(provider.defaultModelNames[ModelKind.chat], 'gemini-2.5-flash');
       expect(
         provider.defaultModelNames[ModelKind.media],

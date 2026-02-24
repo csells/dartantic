@@ -33,10 +33,7 @@ class FirebaseAIMediaGenerationModel
 
   static final Logger _logger = Logger('dartantic.media.firebase_ai');
 
-  static const _supportedImageMimeTypes = <String>{
-    'image/png',
-    'image/jpeg',
-  };
+  static const _supportedImageMimeTypes = <String>{'image/png', 'image/jpeg'};
 
   final FirebaseAIBackend _backend;
   final fai.FirebaseAI _firebaseAI;
@@ -245,7 +242,7 @@ class FirebaseAIMediaGenerationModel
                 parts: List<Part>.from(textParts),
               ),
             ],
-      finishReason: _mapGeminiFinishReason(candidate.finishReason),
+      finishReason: mapFinishReason(candidate.finishReason),
       isComplete: true,
       usage: LanguageModelUsage(
         promptTokens: response.usageMetadata?.promptTokenCount,
@@ -271,10 +268,10 @@ class FirebaseAIMediaGenerationModel
   fai.ImagenGenerationConfig _buildImagenGenerationConfig(
     FirebaseAIImagenMediaGenerationModelOptions options,
   ) => fai.ImagenGenerationConfig(
-      numberOfImages: options.imageSampleCount,
-      aspectRatio: _mapAspectRatio(options.aspectRatio),
-      imageFormat: _mapImageFormat(options.responseMimeType),
-    );
+    numberOfImages: options.imageSampleCount,
+    aspectRatio: _mapAspectRatio(options.aspectRatio),
+    imageFormat: _mapImageFormat(options.responseMimeType),
+  );
 
   fai.ImagenSafetySettings? _buildImagenSafetySettings(
     FirebaseAIImagenSafetySettings? settings,
@@ -289,51 +286,51 @@ class FirebaseAIMediaGenerationModel
   fai.ImagenSafetyFilterLevel? _mapImagenSafetyFilterLevel(
     FirebaseAIImagenSafetyFilterLevel? level,
   ) => switch (level) {
-      null => null,
-      FirebaseAIImagenSafetyFilterLevel.blockLowAndAbove =>
-        fai.ImagenSafetyFilterLevel.blockLowAndAbove,
-      FirebaseAIImagenSafetyFilterLevel.blockMediumAndAbove =>
-        fai.ImagenSafetyFilterLevel.blockMediumAndAbove,
-      FirebaseAIImagenSafetyFilterLevel.blockOnlyHigh =>
-        fai.ImagenSafetyFilterLevel.blockOnlyHigh,
-      FirebaseAIImagenSafetyFilterLevel.blockNone =>
-        fai.ImagenSafetyFilterLevel.blockNone,
-    };
+    null => null,
+    FirebaseAIImagenSafetyFilterLevel.blockLowAndAbove =>
+      fai.ImagenSafetyFilterLevel.blockLowAndAbove,
+    FirebaseAIImagenSafetyFilterLevel.blockMediumAndAbove =>
+      fai.ImagenSafetyFilterLevel.blockMediumAndAbove,
+    FirebaseAIImagenSafetyFilterLevel.blockOnlyHigh =>
+      fai.ImagenSafetyFilterLevel.blockOnlyHigh,
+    FirebaseAIImagenSafetyFilterLevel.blockNone =>
+      fai.ImagenSafetyFilterLevel.blockNone,
+  };
 
   fai.ImagenPersonFilterLevel? _mapImagenPersonFilterLevel(
     FirebaseAIImagenPersonFilterLevel? level,
   ) => switch (level) {
-      null => null,
-      FirebaseAIImagenPersonFilterLevel.blockAll =>
-        fai.ImagenPersonFilterLevel.blockAll,
-      FirebaseAIImagenPersonFilterLevel.allowAdult =>
-        fai.ImagenPersonFilterLevel.allowAdult,
-      FirebaseAIImagenPersonFilterLevel.allowAll =>
-        fai.ImagenPersonFilterLevel.allowAll,
-    };
+    null => null,
+    FirebaseAIImagenPersonFilterLevel.blockAll =>
+      fai.ImagenPersonFilterLevel.blockAll,
+    FirebaseAIImagenPersonFilterLevel.allowAdult =>
+      fai.ImagenPersonFilterLevel.allowAdult,
+    FirebaseAIImagenPersonFilterLevel.allowAll =>
+      fai.ImagenPersonFilterLevel.allowAll,
+  };
 
   fai.ImagenAspectRatio? _mapAspectRatio(String? value) => switch (value) {
-      null => null,
-      '1:1' => fai.ImagenAspectRatio.square1x1,
-      '9:16' => fai.ImagenAspectRatio.portrait9x16,
-      '16:9' => fai.ImagenAspectRatio.landscape16x9,
-      '3:4' => fai.ImagenAspectRatio.portrait3x4,
-      '4:3' => fai.ImagenAspectRatio.landscape4x3,
-      _ => throw UnsupportedError(
-        'Unsupported Firebase AI aspect ratio "$value". '
-        'Allowed: 1:1, 9:16, 16:9, 3:4, 4:3.',
-      ),
-    };
+    null => null,
+    '1:1' => fai.ImagenAspectRatio.square1x1,
+    '9:16' => fai.ImagenAspectRatio.portrait9x16,
+    '16:9' => fai.ImagenAspectRatio.landscape16x9,
+    '3:4' => fai.ImagenAspectRatio.portrait3x4,
+    '4:3' => fai.ImagenAspectRatio.landscape4x3,
+    _ => throw UnsupportedError(
+      'Unsupported Firebase AI aspect ratio "$value". '
+      'Allowed: 1:1, 9:16, 16:9, 3:4, 4:3.',
+    ),
+  };
 
   fai.ImagenFormat? _mapImageFormat(String? mimeType) => switch (mimeType) {
-      null => null,
-      'image/png' => fai.ImagenFormat.png(),
-      'image/jpeg' => fai.ImagenFormat.jpeg(),
-      _ => throw UnsupportedError(
-        'Unsupported Firebase AI response MIME type "$mimeType". '
-        'Supported values: image/png, image/jpeg.',
-      ),
-    };
+    null => null,
+    'image/png' => fai.ImagenFormat.png(),
+    'image/jpeg' => fai.ImagenFormat.jpeg(),
+    _ => throw UnsupportedError(
+      'Unsupported Firebase AI response MIME type "$mimeType". '
+      'Supported values: image/png, image/jpeg.',
+    ),
+  };
 
   String _resolveMimeType(List<String> requested, String? overrideMimeType) {
     if (overrideMimeType != null &&
@@ -366,18 +363,6 @@ class FirebaseAIMediaGenerationModel
     final suffix = extension == null ? '' : '.$extension';
     return 'image_$assetsIndex$suffix';
   }
-
-  FinishReason _mapGeminiFinishReason(fai.FinishReason? reason) =>
-      switch (reason) {
-        fai.FinishReason.stop => FinishReason.stop,
-        fai.FinishReason.maxTokens => FinishReason.length,
-        fai.FinishReason.safety => FinishReason.contentFilter,
-        fai.FinishReason.recitation => FinishReason.recitation,
-        fai.FinishReason.malformedFunctionCall => FinishReason.unspecified,
-        fai.FinishReason.other => FinishReason.unspecified,
-        fai.FinishReason.unknown => FinishReason.unspecified,
-        null => FinishReason.unspecified,
-      };
 
   @override
   void dispose() {}

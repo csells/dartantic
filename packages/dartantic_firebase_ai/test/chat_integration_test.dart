@@ -15,13 +15,12 @@ void main() {
         'single turn chat returns a response',
         (provider) async {
           final model = provider.createChatModel();
-          final results = await model
-              .sendStream([ChatMessage.user('Say "hello" and nothing else')])
-              .toList();
+          final results = await model.sendStream([
+            ChatMessage.user('Say "hello" and nothing else'),
+          ]).toList();
 
           expect(results, isNotEmpty);
-          final text =
-              results.map((r) => r.output.text).nonNulls.join();
+          final text = results.map((r) => r.output.text).nonNulls.join();
           expect(text.toLowerCase(), contains('hello'));
         },
         integration: true,
@@ -33,11 +32,9 @@ void main() {
         'streaming yields multiple chunks',
         (provider) async {
           final model = provider.createChatModel();
-          final results = await model
-              .sendStream([
-                ChatMessage.user('Count from 1 to 5, one number per line'),
-              ])
-              .toList();
+          final results = await model.sendStream([
+            ChatMessage.user('Count from 1 to 5, one number per line'),
+          ]).toList();
 
           expect(results, isNotEmpty);
         },
@@ -50,16 +47,13 @@ void main() {
         'system instruction is respected',
         (provider) async {
           final model = provider.createChatModel();
-          final results = await model
-              .sendStream([
-                ChatMessage.system('Always respond with exactly one word.'),
-                ChatMessage.user('What is the capital of France?'),
-              ])
-              .toList();
+          final results = await model.sendStream([
+            ChatMessage.system('Always respond with exactly one word.'),
+            ChatMessage.user('What is the capital of France?'),
+          ]).toList();
 
           expect(results, isNotEmpty);
-          final text =
-              results.map((r) => r.output.text).nonNulls.join();
+          final text = results.map((r) => r.output.text).nonNulls.join();
           expect(text.toLowerCase(), contains('paris'));
         },
         integration: true,
@@ -82,16 +76,12 @@ void main() {
             'required': ['name', 'population'],
           });
 
-          final results = await model
-              .sendStream(
-                [ChatMessage.user('What is the capital of France?')],
-                outputSchema: schema,
-              )
-              .toList();
+          final results = await model.sendStream([
+            ChatMessage.user('What is the capital of France?'),
+          ], outputSchema: schema).toList();
 
           expect(results, isNotEmpty);
-          final text =
-              results.map((r) => r.output.text).nonNulls.join();
+          final text = results.map((r) => r.output.text).nonNulls.join();
           expect(text, contains('Paris'));
         },
         integration: true,
@@ -110,10 +100,7 @@ void main() {
             inputSchema: Schema.fromMap({
               'type': 'object',
               'properties': {
-                'city': {
-                  'type': 'string',
-                  'description': 'The city name',
-                },
+                'city': {'type': 'string', 'description': 'The city name'},
               },
               'required': ['city'],
             }),
@@ -121,11 +108,9 @@ void main() {
           );
 
           final model = provider.createChatModel(tools: [tool]);
-          final firstResults = await model
-              .sendStream([
-                ChatMessage.user("What's the weather in San Francisco?"),
-              ])
-              .toList();
+          final firstResults = await model.sendStream([
+            ChatMessage.user("What's the weather in San Francisco?"),
+          ]).toList();
 
           expect(firstResults, isNotEmpty);
           final lastResult = firstResults.last;
@@ -147,15 +132,15 @@ void main() {
         'reports token usage',
         (provider) async {
           final model = provider.createChatModel();
-          final results = await model
-              .sendStream([ChatMessage.user('Say "hi"')])
-              .toList();
+          final results = await model.sendStream([
+            ChatMessage.user('Say "hi"'),
+          ]).toList();
 
           expect(results, isNotEmpty);
           final lastResult = results.last;
           expect(lastResult.usage, isNotNull);
           expect(lastResult.usage!.totalTokens, isNotNull);
-          expect(lastResult.usage!.totalTokens!, greaterThan(0));
+          expect(lastResult.usage!.totalTokens, greaterThan(0));
         },
         integration: true,
         requiredCaps: {ProviderTestCaps.chat},

@@ -74,7 +74,7 @@ Firebase AI supports two backends with different API endpoints but similar setup
 ### Basic Setup
 
 ```dart
-import 'package:dartantic_interface/dartantic_interface.dart';
+import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_firebase_ai/dartantic_firebase_ai.dart';
 import 'package:firebase_core/firebase_core.dart';
 
@@ -82,12 +82,12 @@ import 'package:firebase_core/firebase_core.dart';
 await Firebase.initializeApp();
 
 // Option 1: Vertex AI (production-ready, requires Firebase project)
-Providers.providerMap['firebase-vertex'] = FirebaseAIProvider();
+Agent.providerFactories['firebase-vertex'] = () =>
+    FirebaseAIProvider(backend: FirebaseAIBackend.vertexAI);
 
 // Option 2: Google AI (development, minimal Firebase setup)
-Providers.providerMap['firebase-google'] = FirebaseAIProvider(
-  backend: FirebaseAIBackend.googleAI,
-);
+Agent.providerFactories['firebase-google'] = () =>
+    FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
 
 // Create agents
 final prodAgent = Agent('firebase-vertex:gemini-2.0-flash');
@@ -101,7 +101,7 @@ print(result.output);
 ### With Streaming
 
 ```dart
-await for (final chunk in agent.stream('Tell me a story')) {
+await for (final chunk in agent.sendStream('Tell me a story')) {
   print(chunk.output);
 }
 ```
@@ -109,20 +109,17 @@ await for (final chunk in agent.stream('Tell me a story')) {
 ### With Tools
 
 ```dart
-final weatherTool = Tool(
+final weatherTool = Tool<Map<String, dynamic>>(
   name: 'get_weather',
   description: 'Get current weather for a location',
-  inputSchema: JsonSchema.create({
+  inputSchema: Schema.fromMap({
     'type': 'object',
     'properties': {
       'location': {'type': 'string'},
     },
     'required': ['location'],
   }),
-  function: (args) async {
-    // Your weather API call here
-    return {'temp': 72, 'condition': 'sunny'};
-  },
+  onCall: (args) => {'temp': 72, 'condition': 'sunny'},
 );
 
 final agent = Agent.forProvider(

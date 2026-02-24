@@ -1,8 +1,11 @@
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_firebase_ai/dartantic_firebase_ai.dart';
+import 'package:firebase_ai_example/firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:logging/logging.dart';
 
 void main() async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final Logger logger = Logger('dartantic.examples.firebase_ai');
 
   logger.info('🚀 Firebase AI Provider Demo');
@@ -11,7 +14,8 @@ void main() async {
   try {
     // Step 1: Register Firebase AI providers with new naming
     logger.info('\n📝 Step 1: Registering Firebase AI Providers...');
-    Agent.providerFactories['firebase-vertex'] = FirebaseAIProvider.new;
+    Agent.providerFactories['firebase-vertex'] = () =>
+        FirebaseAIProvider(backend: FirebaseAIBackend.vertexAI);
     Agent.providerFactories['firebase-google'] = () =>
         FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
     logger.info('✅ Firebase AI Providers registered successfully');

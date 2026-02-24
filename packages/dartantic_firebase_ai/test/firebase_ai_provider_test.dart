@@ -11,9 +11,7 @@ void main() {
       await initializeMockFirebase();
     });
 
-    runProviderTest(
-      'has expected identity and defaults',
-      (provider) async {
+    runProviderTest('has expected identity and defaults', (provider) async {
       expect(provider.name, 'firebase_ai');
       expect(provider.defaultModelNames[ModelKind.chat], 'gemini-2.5-flash');
       expect(
@@ -21,9 +19,7 @@ void main() {
         'gemini-2.5-flash-image',
       );
       expect(provider.aliases, isNotEmpty);
-    },
-      requiredCaps: {ProviderTestCaps.chat},
-    );
+    }, requiredCaps: {ProviderTestCaps.chat});
 
     runProviderTest('creates chat model', (provider) async {
       final model = provider.createChatModel(name: 'gemini-2.5-flash');
@@ -42,78 +38,78 @@ void main() {
       );
     }, requiredCaps: {ProviderTestCaps.chat});
 
-    runProviderTest('creates embeddings and media models', (provider) async {
-      final embeddingsModel = provider.createEmbeddingsModel();
-      final mediaModel = provider.createMediaModel();
-
-      expect(embeddingsModel, isA<FirebaseAIEmbeddingsModel>());
-      expect(mediaModel, isA<FirebaseAIMediaGenerationModel>());
-    }, requiredCaps: {ProviderTestCaps.mediaGeneration});
-
     runProviderTest(
-      'supports Imagen and Gemini media option variants',
+      'creates embeddings and media models',
       (provider) async {
+        final embeddingsModel = provider.createEmbeddingsModel();
+        final mediaModel = provider.createMediaModel();
 
-      final imagenModel = provider.createMediaModel(
-        options: const FirebaseAIMediaGenerationModelOptions.imagen(
-          imageSampleCount: 2,
-          responseMimeType: 'image/png',
-          safetySettings: FirebaseAIImagenSafetySettings(
-            safetyFilterLevel:
-                FirebaseAIImagenSafetyFilterLevel.blockMediumAndAbove,
-            personFilterLevel: FirebaseAIImagenPersonFilterLevel.allowAdult,
-          ),
-        ),
-      );
-      expect(
-        imagenModel.defaultOptions,
-        isA<FirebaseAIImagenMediaGenerationModelOptions>(),
-      );
-      expect(
-        (imagenModel.defaultOptions
-                as FirebaseAIImagenMediaGenerationModelOptions)
-            .safetySettings?.safetyFilterLevel,
-        FirebaseAIImagenSafetyFilterLevel.blockMediumAndAbove,
-      );
-
-      final geminiModel = provider.createMediaModel(
-        name: 'gemini-2.5-flash',
-        options: const FirebaseAIMediaGenerationModelOptions.gemini(
-          imageSampleCount: 1,
-          responseMimeType: 'image/png',
-          safetySettings: [
-            FirebaseAISafetySetting(
-              category: FirebaseAISafetySettingCategory.harassment,
-              threshold: FirebaseAISafetySettingThreshold.blockOnlyHigh,
-            ),
-          ],
-        ),
-      );
-      expect(
-        geminiModel.defaultOptions,
-        isA<FirebaseAIGeminiMediaGenerationModelOptions>(),
-      );
-      expect(
-        (geminiModel.defaultOptions
-                as FirebaseAIGeminiMediaGenerationModelOptions)
-            .safetySettings,
-        hasLength(1),
-      );
-    },
+        expect(embeddingsModel, isA<FirebaseAIEmbeddingsModel>());
+        expect(mediaModel, isA<FirebaseAIMediaGenerationModel>());
+      },
       requiredCaps: {ProviderTestCaps.mediaGeneration},
     );
 
     runProviderTest(
-      'embeddings model reports unsupported operation on use',
+      'supports Imagen and Gemini media option variants',
       (provider) async {
+        final imagenModel = provider.createMediaModel(
+          options: const FirebaseAIMediaGenerationModelOptions.imagen(
+            imageSampleCount: 2,
+            responseMimeType: 'image/png',
+            safetySettings: FirebaseAIImagenSafetySettings(
+              safetyFilterLevel:
+                  FirebaseAIImagenSafetyFilterLevel.blockMediumAndAbove,
+              personFilterLevel: FirebaseAIImagenPersonFilterLevel.allowAdult,
+            ),
+          ),
+        );
+        expect(
+          imagenModel.defaultOptions,
+          isA<FirebaseAIImagenMediaGenerationModelOptions>(),
+        );
+        expect(
+          (imagenModel.defaultOptions
+                  as FirebaseAIImagenMediaGenerationModelOptions)
+              .safetySettings
+              ?.safetyFilterLevel,
+          FirebaseAIImagenSafetyFilterLevel.blockMediumAndAbove,
+        );
+
+        final geminiModel = provider.createMediaModel(
+          name: 'gemini-2.5-flash',
+          options: const FirebaseAIMediaGenerationModelOptions.gemini(
+            imageSampleCount: 1,
+            responseMimeType: 'image/png',
+            safetySettings: [
+              FirebaseAISafetySetting(
+                category: FirebaseAISafetySettingCategory.harassment,
+                threshold: FirebaseAISafetySettingThreshold.blockOnlyHigh,
+              ),
+            ],
+          ),
+        );
+        expect(
+          geminiModel.defaultOptions,
+          isA<FirebaseAIGeminiMediaGenerationModelOptions>(),
+        );
+        expect(
+          (geminiModel.defaultOptions
+                  as FirebaseAIGeminiMediaGenerationModelOptions)
+              .safetySettings,
+          hasLength(1),
+        );
+      },
+      requiredCaps: {ProviderTestCaps.mediaGeneration},
+    );
+
+    runProviderTest('embeddings model reports unsupported operation on use', (
+      provider,
+    ) async {
       final model = provider.createEmbeddingsModel();
 
-      expect(
-        () => model.embedQuery('hello'),
-        throwsA(isA<UnsupportedError>()),
-      );
-    },
-    );
+      expect(() => model.embedQuery('hello'), throwsA(isA<UnsupportedError>()));
+    });
 
     runProviderTest('lists chat and media models', (provider) async {
       final models = await provider.listModels().toList();

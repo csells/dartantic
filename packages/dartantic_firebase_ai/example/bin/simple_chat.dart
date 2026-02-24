@@ -11,7 +11,7 @@ import 'package:firebase_core/firebase_core.dart';
 void main() async {
   await Firebase.initializeApp();
 
-  final provider = FirebaseAIProvider();
+  final provider = FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
   final chatModel = provider.createChatModel(
     name: 'gemini-2.5-flash-lite',
     temperature: 0.7,
@@ -35,16 +35,18 @@ void main() async {
 
     stdout.write('AI: ');
 
-    ChatResult<ChatMessage>? finalResult;
+    // ChatModel.sendStream returns raw streaming chunks where each chunk's
+    // messages field is always empty. The caller must accumulate the text
+    // and build the model message for conversation history.
+    final buffer = StringBuffer();
     await for (final chunk in chatModel.sendStream(messages)) {
-      stdout.write(chunk.output.text);
-      finalResult = chunk;
+      final text = chunk.output.text;
+      stdout.write(text);
+      buffer.write(text);
     }
     stdout.writeln();
 
-    if (finalResult != null) {
-      messages.addAll(finalResult.messages);
-    }
+    messages.add(ChatMessage.model(buffer.toString()));
   }
 
   chatModel.dispose();

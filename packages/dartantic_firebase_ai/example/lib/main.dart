@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dartantic_firebase_ai/dartantic_firebase_ai.dart';
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:firebase_ai_example/firebase_options.dart';
@@ -46,9 +48,13 @@ class _SimpleChatScreenState extends State<SimpleChatScreen> {
   final _messages = <ChatMessage>[];
   final _provider = FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
   late final FirebaseAIChatModel _chatModel;
+  late final FirebaseAIMediaGenerationModel _imagenModel;
+  late final FirebaseAIMediaGenerationModel _geminiImageModel;
 
   String _streamingText = '';
   bool _isStreaming = false;
+  Uint8List? _generatedImage;
+  String? _imageCaption;
 
   @override
   void initState() {
@@ -56,6 +62,13 @@ class _SimpleChatScreenState extends State<SimpleChatScreen> {
     _chatModel = _provider.createChatModel(
       name: 'gemini-2.5-flash',
     ) as FirebaseAIChatModel;
+    _imagenModel = _provider.createMediaModel(
+      name: 'imagen-4.0-generate-001',
+    ) as FirebaseAIMediaGenerationModel;
+    _geminiImageModel = _provider.createMediaModel(
+      name: 'gemini-2.5-flash-image',
+      options: const FirebaseAIGeminiMediaGenerationModelOptions(),
+    ) as FirebaseAIMediaGenerationModel;
   }
 
   @override
@@ -63,7 +76,62 @@ class _SimpleChatScreenState extends State<SimpleChatScreen> {
     _controller.dispose();
     _scrollController.dispose();
     _chatModel.dispose();
+    _imagenModel.dispose();
+    _geminiImageModel.dispose();
     super.dispose();
+  }
+
+  Future<void> _generateViaImagen() async {
+    if (_isStreaming) return;
+
+    setState(() {
+      _isStreaming = true;
+      _generatedImage = null;
+      _imageCaption = null;
+    });
+
+    await for (final result in _imagenModel.generateMediaStream(
+      'A friendly robot mascot waving hello, pixel art style',
+      mimeTypes: ['image/png'],
+    )) {
+      for (final asset in result.assets) {
+        if (asset is DataPart) {
+          setState(() => _generatedImage = asset.bytes);
+        }
+      }
+    }
+
+    setState(() => _isStreaming = false);
+  }
+
+  Future<void> _generateViaGemini() async {
+    if (_isStreaming) return;
+
+    setState(() {
+      _isStreaming = true;
+      _generatedImage = null;
+      _imageCaption = null;
+    });
+
+    await for (final result in _geminiImageModel.generateMediaStream(
+      'Generate an image of a friendly robot mascot waving hello, '
+      'pixel art style',
+      mimeTypes: ['image/png'],
+    )) {
+      for (final asset in result.assets) {
+        if (asset is DataPart) {
+          setState(() => _generatedImage = asset.bytes);
+        }
+      }
+      for (final message in result.messages) {
+        final text = message.parts.text;
+        if (text.isNotEmpty) {
+          setState(() => _imageCaption = text);
+        }
+      }
+    }
+
+    setState(() => _isStreaming = false);
   }
 
   Future<void> _sendMessage() async {
@@ -108,9 +176,45 @@ class _SimpleChatScreenState extends State<SimpleChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Firebase AI Simple Chat')),
+      appBar: AppBar(
+        title: const Text('Firebase AI Simple Chat'),
+        actions: [
+          IconButton(
+            onPressed: _isStreaming ? null : _generateViaImagen,
+            icon: const Icon(Icons.image),
+            tooltip: 'Generate Image (Imagen)',
+          ),
+          IconButton(
+            onPressed: _isStreaming ? null : _generateViaGemini,
+            icon: const Icon(Icons.auto_awesome),
+            tooltip: 'Generate Image (Gemini)',
+          ),
+        ],
+      ),
       body: Column(
         children: [
+          if (_generatedImage != null || _imageCaption != null)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  if (_generatedImage != null)
+                    Image.memory(
+                      _generatedImage!,
+                      height: 200,
+                      fit: BoxFit.contain,
+                    ),
+                  if (_imageCaption != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        _imageCaption!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                ],
+              ),
+            ),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,

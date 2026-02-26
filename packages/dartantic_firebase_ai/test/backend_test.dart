@@ -28,7 +28,7 @@ void main() {
       expect(provider.defaultModelNames[ModelKind.chat], 'gemini-2.5-flash');
       expect(
         provider.defaultModelNames[ModelKind.media],
-        'gemini-2.5-flash-image',
+        'imagen-4.0-generate-001',
       );
     });
   });

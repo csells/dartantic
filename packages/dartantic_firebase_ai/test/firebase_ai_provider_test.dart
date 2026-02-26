@@ -16,7 +16,7 @@ void main() {
       expect(provider.defaultModelNames[ModelKind.chat], 'gemini-2.5-flash');
       expect(
         provider.defaultModelNames[ModelKind.media],
-        'gemini-2.5-flash-image',
+        'imagen-4.0-generate-001',
       );
       expect(provider.aliases, isNotEmpty);
     }, requiredCaps: {ProviderTestCaps.chat});
@@ -39,12 +39,10 @@ void main() {
     }, requiredCaps: {ProviderTestCaps.chat});
 
     runProviderTest(
-      'creates embeddings and media models',
+      'creates media model',
       (provider) async {
-        final embeddingsModel = provider.createEmbeddingsModel();
         final mediaModel = provider.createMediaModel();
 
-        expect(embeddingsModel, isA<FirebaseAIEmbeddingsModel>());
         expect(mediaModel, isA<FirebaseAIMediaGenerationModel>());
       },
       requiredCaps: {ProviderTestCaps.mediaGeneration},
@@ -103,12 +101,13 @@ void main() {
       requiredCaps: {ProviderTestCaps.mediaGeneration},
     );
 
-    runProviderTest('embeddings model reports unsupported operation on use', (
+    runProviderTest('createEmbeddingsModel throws UnsupportedError', (
       provider,
     ) async {
-      final model = provider.createEmbeddingsModel();
-
-      expect(() => model.embedQuery('hello'), throwsA(isA<UnsupportedError>()));
+      expect(
+        () => provider.createEmbeddingsModel(),
+        throwsA(isA<UnsupportedError>()),
+      );
     });
 
     runProviderTest('lists chat and media models', (provider) async {

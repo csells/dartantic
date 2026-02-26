@@ -158,8 +158,10 @@ class FirebaseAIMediaGenerationModel
         temperature: options.temperature,
         maxOutputTokens: options.maxOutputTokens,
         candidateCount: options.imageSampleCount,
-        responseMimeType: options.responseMimeType,
-        responseModalities: const [fai.ResponseModalities.image],
+        responseModalities: const [
+          fai.ResponseModalities.text,
+          fai.ResponseModalities.image,
+        ],
       ),
     );
 
@@ -167,64 +169,52 @@ class FirebaseAIMediaGenerationModel
       ...history,
       ChatMessage.user(prompt, parts: attachments),
     ];
-    final response = await model.generateContent(
-      requestMessages.toContentList(),
-    );
-    final candidate = response.candidates.firstOrNull;
-    if (candidate == null) {
-      yield MediaGenerationResult(
-        assets: const [],
-        messages: const [],
-        finishReason: FinishReason.unspecified,
-        isComplete: true,
-        metadata: {
-          'provider': 'firebase_ai',
-          'backend': _backend.name,
-          'engine': 'gemini',
-          'model': name,
-          'requested_mime_types': mimeTypes,
-          'resolved_mime_type': resolvedMimeType,
-          'block_reason': response.promptFeedback?.blockReason?.name,
-          'block_reason_message': response.promptFeedback?.blockReasonMessage,
-        },
-      );
-      return;
-    }
 
     final assets = <DataPart>[];
     final links = <LinkPart>[];
     final textParts = <TextPart>[];
+    fai.GenerateContentResponse? lastResponse;
 
-    for (var i = 0; i < candidate.content.parts.length; i++) {
-      final part = candidate.content.parts[i];
-      switch (part) {
-        case fai.InlineDataPart(:final mimeType, :final bytes):
-          assets.add(
-            DataPart(
-              bytes,
-              mimeType: mimeType,
-              name: _suggestName(mimeType, assetsIndex: i),
-            ),
-          );
-        case fai.FileData(:final mimeType, :final fileUri):
-          final uri = Uri.tryParse(fileUri);
-          if (uri != null) {
-            links.add(
-              LinkPart(
-                uri,
+    await for (final response in model.generateContentStream(
+      requestMessages.toContentList(),
+    )) {
+      lastResponse = response;
+      final candidate = response.candidates.firstOrNull;
+      if (candidate == null) continue;
+
+      for (var i = 0; i < candidate.content.parts.length; i++) {
+        final part = candidate.content.parts[i];
+        switch (part) {
+          case fai.InlineDataPart(:final mimeType, :final bytes):
+            assets.add(
+              DataPart(
+                bytes,
                 mimeType: mimeType,
-                name: uri.pathSegments.isNotEmpty
-                    ? uri.pathSegments.last
-                    : null,
+                name: _suggestName(mimeType, assetsIndex: assets.length),
               ),
             );
-          }
-        case fai.TextPart(:final text):
-          if (text.isNotEmpty) textParts.add(TextPart(text));
-        default:
-          break;
+          case fai.FileData(:final mimeType, :final fileUri):
+            final uri = Uri.tryParse(fileUri);
+            if (uri != null) {
+              links.add(
+                LinkPart(
+                  uri,
+                  mimeType: mimeType,
+                  name: uri.pathSegments.isNotEmpty
+                      ? uri.pathSegments.last
+                      : null,
+                ),
+              );
+            }
+          case fai.TextPart(:final text):
+            if (text.isNotEmpty) textParts.add(TextPart(text));
+          default:
+            break;
+        }
       }
     }
+
+    final candidate = lastResponse?.candidates.firstOrNull;
 
     _logger.info(
       'Firebase AI Gemini generated ${assets.length} image(s) and '
@@ -242,12 +232,14 @@ class FirebaseAIMediaGenerationModel
                 parts: List<Part>.from(textParts),
               ),
             ],
-      finishReason: mapFinishReason(candidate.finishReason),
+      finishReason: candidate != null
+          ? mapFinishReason(candidate.finishReason)
+          : FinishReason.unspecified,
       isComplete: true,
       usage: LanguageModelUsage(
-        promptTokens: response.usageMetadata?.promptTokenCount,
-        responseTokens: response.usageMetadata?.candidatesTokenCount,
-        totalTokens: response.usageMetadata?.totalTokenCount,
+        promptTokens: lastResponse?.usageMetadata?.promptTokenCount,
+        responseTokens: lastResponse?.usageMetadata?.candidatesTokenCount,
+        totalTokens: lastResponse?.usageMetadata?.totalTokenCount,
       ),
       metadata: {
         'provider': 'firebase_ai',
@@ -258,9 +250,10 @@ class FirebaseAIMediaGenerationModel
         'resolved_mime_type': resolvedMimeType,
         'history_messages': history.length,
         'attachment_count': attachments.length,
-        'finish_message': candidate.finishMessage,
-        'block_reason': response.promptFeedback?.blockReason?.name,
-        'block_reason_message': response.promptFeedback?.blockReasonMessage,
+        'finish_message': candidate?.finishMessage,
+        'block_reason': lastResponse?.promptFeedback?.blockReason?.name,
+        'block_reason_message':
+            lastResponse?.promptFeedback?.blockReasonMessage,
       },
     );
   }

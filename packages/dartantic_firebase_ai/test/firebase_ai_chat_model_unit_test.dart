@@ -84,22 +84,24 @@ void main() {
       );
     });
 
-    test('accepts enableThinking flag', () {
+    test('accepts enableThinking via defaultOptions', () {
       final model = FirebaseAIChatModel(
         name: 'gemini-2.5-flash',
         backend: FirebaseAIBackend.googleAI,
-        enableThinking: true,
+        defaultOptions: const FirebaseAIChatModelOptions(
+          enableThinking: true,
+        ),
       );
 
-      expect(model.name, 'gemini-2.5-flash');
+      expect(model.defaultOptions.enableThinking, isTrue);
     });
 
     test('accepts thinking budget via defaultOptions', () {
       final model = FirebaseAIChatModel(
         name: 'gemini-2.5-flash',
         backend: FirebaseAIBackend.googleAI,
-        enableThinking: true,
         defaultOptions: const FirebaseAIChatModelOptions(
+          enableThinking: true,
           thinkingBudgetTokens: 4096,
         ),
       );

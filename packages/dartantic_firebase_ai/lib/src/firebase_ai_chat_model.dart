@@ -14,10 +14,8 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
     required this.backend,
     List<Tool>? tools,
     super.temperature,
-    bool enableThinking = false,
     super.defaultOptions = const FirebaseAIChatModelOptions(),
-  }) : _enableThinking = enableThinking,
-       super(
+  }) : super(
          tools: tools?.where((t) => t.name != kReturnResultToolName).toList(),
        ) {
     _firebaseAiClient = _createFirebaseAiClient();
@@ -32,8 +30,6 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
 
   /// The Firebase AI backend this model uses.
   final FirebaseAIBackend backend;
-
-  final bool _enableThinking;
 
   late fai.GenerativeModel _firebaseAiClient;
   String? _currentSystemInstruction;
@@ -140,7 +136,8 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
   fai.ThinkingConfig? _buildThinkingConfig(
     FirebaseAIChatModelOptions? options,
   ) {
-    final enabled = _enableThinking || (options?.enableThinking ?? false);
+    final enabled =
+        options?.enableThinking ?? defaultOptions.enableThinking ?? false;
     if (!enabled) return null;
 
     final budget =

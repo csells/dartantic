@@ -3,8 +3,6 @@ import 'package:logging/logging.dart';
 
 import 'firebase_ai_chat_model.dart';
 import 'firebase_ai_chat_options.dart';
-import 'firebase_ai_embeddings_model.dart';
-import 'firebase_ai_embeddings_options.dart';
 import 'firebase_ai_media_generation_model.dart';
 import 'firebase_ai_media_generation_options.dart';
 
@@ -26,7 +24,7 @@ class FirebaseAIProvider
     extends
         Provider<
           FirebaseAIChatModelOptions,
-          FirebaseAIEmbeddingsModelOptions,
+          EmbeddingsModelOptions,
           FirebaseAIMediaGenerationModelOptions
         > {
   /// Creates a new Firebase AI provider instance.
@@ -47,8 +45,7 @@ class FirebaseAIProvider
             : 'Firebase AI (Vertex AI)',
         defaultModelNames: const {
           ModelKind.chat: 'gemini-2.5-flash',
-          ModelKind.embeddings: 'text-embedding-004',
-          ModelKind.media: 'gemini-2.5-flash-image',
+          ModelKind.media: 'imagen-4.0-generate-001',
         },
         aliases: backend == FirebaseAIBackend.googleAI
             ? const ['firebase-google']
@@ -88,7 +85,6 @@ class FirebaseAIProvider
       tools: tools,
       temperature: temperature,
       backend: backend,
-      enableThinking: enableThinking,
       defaultOptions: FirebaseAIChatModelOptions(
         topP: options?.topP,
         topK: options?.topK,
@@ -100,26 +96,20 @@ class FirebaseAIProvider
         responseSchema: options?.responseSchema,
         safetySettings: options?.safetySettings,
         enableCodeExecution: options?.enableCodeExecution,
-        enableThinking: options?.enableThinking,
+        enableThinking: enableThinking || (options?.enableThinking ?? false),
         thinkingBudgetTokens: options?.thinkingBudgetTokens,
       ),
     );
   }
 
   @override
-  EmbeddingsModel<FirebaseAIEmbeddingsModelOptions> createEmbeddingsModel({
+  EmbeddingsModel<EmbeddingsModelOptions> createEmbeddingsModel({
     String? name,
-    FirebaseAIEmbeddingsModelOptions? options,
+    EmbeddingsModelOptions? options,
   }) {
-    final modelName = name ?? defaultModelNames[ModelKind.embeddings]!;
-
-    _logger.info('Creating Firebase AI embeddings model: $modelName');
-
-    return FirebaseAIEmbeddingsModel(
-      name: modelName,
-      dimensions: options?.dimensions,
-      batchSize: options?.batchSize,
-      options: options,
+    throw UnsupportedError(
+      'Firebase AI does not support embeddings. '
+      'Use a different provider for embeddings.',
     );
   }
 
@@ -146,34 +136,110 @@ class FirebaseAIProvider
 
   @override
   Stream<ModelInfo> listModels() async* {
+    // General Use Models
+    yield ModelInfo(
+      name: 'gemini-3.1-pro-preview',
+      providerName: name,
+      kinds: {ModelKind.chat},
+      displayName: 'Gemini 3.1 Pro',
+      description:
+          'Our best model for multimodal understanding, and our most '
+          'powerful agentic and vibe-coding model yet, delivering richer '
+          'visuals and deeper interactivity, all built on a foundation of '
+          'state-of-the-art reasoning. (billing required)',
+    );
+    yield ModelInfo(
+      name: 'gemini-3-flash-preview',
+      providerName: name,
+      kinds: {ModelKind.chat},
+      displayName: 'Gemini 3.0 Flash',
+      description:
+          'Our most intelligent model built for speed, efficiency, '
+          'and cost. It enables everyday tasks with improved reasoning, while '
+          'still able to tackle the most complex agentic workflows. '
+          '(billing not required)',
+    );
+    yield ModelInfo(
+      name: 'gemini-2.5-pro',
+      providerName: name,
+      kinds: {ModelKind.chat},
+      displayName: 'Gemini 2.5 Pro',
+      description:
+          'Our state-of-the-art thinking model, capable of reasoning '
+          'over complex problems in code, math, and STEM, as well as analyzing '
+          'large datasets, codebases, and documents using long context. '
+          '(billing not required)',
+    );
     yield ModelInfo(
       name: 'gemini-2.5-flash',
       providerName: name,
       kinds: {ModelKind.chat},
       displayName: 'Gemini 2.5 Flash',
-      description: 'Fast and versatile next-generation model',
+      description:
+          'Our best model in terms of price-performance, offering '
+          'well-rounded capabilities. 2.5 Flash is best for large scale '
+          'processing, low-latency, high volume tasks that require thinking, '
+          'and agentic use cases. (billing not required)',
     );
     yield ModelInfo(
-      name: 'gemini-2.0-flash',
+      name: 'gemini-2.5-flash-lite',
       providerName: name,
       kinds: {ModelKind.chat},
-      displayName: 'Gemini 2.0 Flash',
+      displayName: 'Gemini 2.5 Flash Lite',
       description:
-          'Fast and versatile performance across a diverse variety of tasks',
+          'Our fastest flash model optimized for cost-efficiency and '
+          'high throughput. (billing not required)',
     );
+
+    // Image Generation Models
     yield ModelInfo(
-      name: 'text-embedding-004',
+      name: 'gemini-3-pro-image-preview',
       providerName: name,
-      kinds: {ModelKind.embeddings},
-      displayName: 'Text Embedding 004',
-      description: 'Text embedding model for semantic search and retrieval',
+      kinds: {ModelKind.media},
+      displayName: 'Gemini 3 Pro Image (aka nano banana pro)',
+      description:
+          'Designed for professional asset production and complex '
+          'instructions. It features real-world grounding using Google Search, '
+          'a default "Thinking" process that refines composition prior to '
+          'generation, and can generate images of up to 4K resolution. '
+          '(billing required)',
     );
     yield ModelInfo(
       name: 'gemini-2.5-flash-image',
       providerName: name,
       kinds: {ModelKind.media},
-      displayName: 'Gemini 2.5 Flash Image',
-      description: 'Image generation via Gemini multimodal model',
+      displayName: 'Gemini 2.5 Flash Image (aka nano banana)',
+      description:
+          "Designed for speed and efficiency. It's optimized for high-volume, "
+          'low-latency tasks and generates images at 1024px resolution. '
+          '(billing not required)',
+    );
+    yield ModelInfo(
+      name: 'imagen-4.0-generate-001',
+      providerName: name,
+      kinds: {ModelKind.media},
+      displayName: 'Imagen 4.0',
+      description:
+          'Generates realistic, high-quality images from natural language text '
+          'prompts. (billing required)',
+    );
+    yield ModelInfo(
+      name: 'imagen-4.0-fast-generate-001',
+      providerName: name,
+      kinds: {ModelKind.media},
+      displayName: 'Imagen 4.0 Fast',
+      description:
+          'Generates images for prototyping or low-latency use cases. '
+          '(billing required)',
+    );
+    yield ModelInfo(
+      name: 'imagen-4.0-ultra-generate-001',
+      providerName: name,
+      kinds: {ModelKind.media},
+      displayName: 'Imagen 4.0 Ultra',
+      description:
+          'Generates realistic, high-quality images from natural language text '
+          'prompts. (billing required)',
     );
   }
 }

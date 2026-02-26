@@ -8,7 +8,7 @@ Provides access to Google's Gemini models through Firebase with flexible backend
 
 - 🔥 **Dual Backend Support** - Google AI (development) and Vertex AI (production)
 - 🔒 **Enhanced Security** - App Check and Firebase Auth support (Vertex AI)
-- 🎯 **Full Gemini Capabilities** - Chat, embeddings, media generation, structured output, vision
+- 🎯 **Most Gemini Capabilities** - Chat, media generation, structured output, vision
 - 🚀 **Streaming Responses** - Real-time token generation
 - 🛠️ **Tool Calling** - Function execution during generation
 - 🧠 **Extended Thinking** - Model reasoning with configurable token budgets
@@ -170,7 +170,7 @@ For pure Dart projects, consider using the `dartantic_google` provider instead.
 | Setup | API key only | Firebase project + API key |
 | Security | API key only | App Check + Auth |
 | Platforms | All Dart platforms | Flutter only |
-| Embeddings | Yes | Yes |
+| Embeddings | Yes | No |
 | Media Generation | Yes | Yes |
 | On-Device | No | No (web only) |
 | Cost Control | Manual | Firebase quotas |

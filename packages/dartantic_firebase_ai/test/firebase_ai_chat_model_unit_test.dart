@@ -19,6 +19,7 @@ void main() {
       expect(model.name, 'gemini-2.5-flash');
       expect(model.backend, FirebaseAIBackend.googleAI);
       expect(model.defaultOptions, isA<FirebaseAIChatModelOptions>());
+      expect(model.app, isNull);
       expect(model.appCheck, isNull);
       expect(model.auth, isNull);
       expect(model.useLimitedUseAppCheckTokens, isNull);
@@ -201,6 +202,7 @@ void main() {
     test('appCheck defaults to null', () {
       final provider = FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
 
+      expect(provider.app, isNull);
       expect(provider.appCheck, isNull);
       expect(provider.auth, isNull);
       expect(provider.useLimitedUseAppCheckTokens, isNull);

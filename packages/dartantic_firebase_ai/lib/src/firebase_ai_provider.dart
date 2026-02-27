@@ -1,6 +1,7 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:logging/logging.dart';
 
 import 'firebase_ai_chat_model.dart';
@@ -45,8 +46,12 @@ class FirebaseAIProvider
   ///
   /// Pass [auth] to attach the current user's Firebase Auth token to every
   /// API call, enabling per-user access control and rate limiting.
+  ///
+  /// Pass [app] to use a specific [FirebaseApp] instance instead of the
+  /// default one.
   FirebaseAIProvider({
     required this.backend,
+    this.app,
     this.appCheck,
     this.auth,
     this.useLimitedUseAppCheckTokens,
@@ -71,6 +76,9 @@ class FirebaseAIProvider
 
   /// The backend type this provider instance uses.
   final FirebaseAIBackend backend;
+
+  /// Optional [FirebaseApp] instance to use instead of the default.
+  final FirebaseApp? app;
 
   /// Optional Firebase App Check instance for request verification.
   ///
@@ -119,6 +127,7 @@ class FirebaseAIProvider
       tools: tools,
       temperature: temperature,
       backend: backend,
+      app: app,
       appCheck: appCheck,
       auth: auth,
       useLimitedUseAppCheckTokens: useLimitedUseAppCheckTokens,
@@ -166,6 +175,7 @@ class FirebaseAIProvider
     return FirebaseAIMediaGenerationModel(
       name: modelName,
       backend: backend,
+      app: app,
       appCheck: appCheck,
       auth: auth,
       useLimitedUseAppCheckTokens: useLimitedUseAppCheckTokens,

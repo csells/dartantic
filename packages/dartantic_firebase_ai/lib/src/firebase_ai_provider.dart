@@ -1,4 +1,5 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:logging/logging.dart';
 
 import 'firebase_ai_chat_model.dart';
@@ -35,8 +36,17 @@ class FirebaseAIProvider
   ///
   /// Note: Firebase AI doesn't use traditional API keys. Authentication is
   /// handled through Firebase configuration and App Check.
-  FirebaseAIProvider({required this.backend, super.headers})
-    : super(
+  ///
+  /// Pass [appCheck] to enable Firebase App Check verification for all
+  /// requests. When provided, App Check tokens are automatically attached
+  /// to every API call. Set [useLimitedUseAppCheckTokens] to `true` to use
+  /// limited-use tokens for replay protection.
+  FirebaseAIProvider({
+    required this.backend,
+    this.appCheck,
+    this.useLimitedUseAppCheckTokens,
+    super.headers,
+  }) : super(
         apiKey: null,
         apiKeyName: null,
         name: 'firebase_ai',
@@ -56,6 +66,19 @@ class FirebaseAIProvider
 
   /// The backend type this provider instance uses.
   final FirebaseAIBackend backend;
+
+  /// Optional Firebase App Check instance for request verification.
+  ///
+  /// When provided, App Check tokens are automatically attached to every
+  /// API call made by models created from this provider.
+  final FirebaseAppCheck? appCheck;
+
+  /// Whether to use limited-use App Check tokens for replay protection.
+  ///
+  /// When `true`, each request uses a single-use token via
+  /// [FirebaseAppCheck.getLimitedUseToken]. When `false` or `null`,
+  /// standard tokens via [FirebaseAppCheck.getToken] are used.
+  final bool? useLimitedUseAppCheckTokens;
 
   @override
   ChatModel<FirebaseAIChatModelOptions> createChatModel({
@@ -85,6 +108,8 @@ class FirebaseAIProvider
       tools: tools,
       temperature: temperature,
       backend: backend,
+      appCheck: appCheck,
+      useLimitedUseAppCheckTokens: useLimitedUseAppCheckTokens,
       defaultOptions: FirebaseAIChatModelOptions(
         topP: options?.topP,
         topK: options?.topK,
@@ -129,6 +154,8 @@ class FirebaseAIProvider
     return FirebaseAIMediaGenerationModel(
       name: modelName,
       backend: backend,
+      appCheck: appCheck,
+      useLimitedUseAppCheckTokens: useLimitedUseAppCheckTokens,
       tools: tools,
       defaultOptions: options,
     );

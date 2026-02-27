@@ -1,5 +1,6 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:firebase_ai/firebase_ai.dart' as fai;
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:logging/logging.dart';
 
 import 'firebase_ai_media_generation_options.dart';
@@ -18,12 +19,20 @@ class FirebaseAIMediaGenerationModel
   FirebaseAIMediaGenerationModel({
     required super.name,
     required FirebaseAIBackend backend,
+    FirebaseAppCheck? appCheck,
+    bool? useLimitedUseAppCheckTokens,
     FirebaseAIMediaGenerationModelOptions? defaultOptions,
     super.tools,
   }) : _backend = backend,
        _firebaseAI = switch (backend) {
-         FirebaseAIBackend.googleAI => fai.FirebaseAI.googleAI(),
-         FirebaseAIBackend.vertexAI => fai.FirebaseAI.vertexAI(),
+         FirebaseAIBackend.googleAI => fai.FirebaseAI.googleAI(
+           appCheck: appCheck,
+           useLimitedUseAppCheckTokens: useLimitedUseAppCheckTokens,
+         ),
+         FirebaseAIBackend.vertexAI => fai.FirebaseAI.vertexAI(
+           appCheck: appCheck,
+           useLimitedUseAppCheckTokens: useLimitedUseAppCheckTokens,
+         ),
        },
        super(
          defaultOptions:

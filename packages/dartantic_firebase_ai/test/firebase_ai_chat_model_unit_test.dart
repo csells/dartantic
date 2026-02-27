@@ -19,6 +19,8 @@ void main() {
       expect(model.name, 'gemini-2.5-flash');
       expect(model.backend, FirebaseAIBackend.googleAI);
       expect(model.defaultOptions, isA<FirebaseAIChatModelOptions>());
+      expect(model.appCheck, isNull);
+      expect(model.useLimitedUseAppCheckTokens, isNull);
     });
 
     test('filters return_result tool', () {
@@ -193,6 +195,13 @@ void main() {
       final model = provider.createChatModel(name: 'gemini-2.0-flash');
 
       expect(model.name, 'gemini-2.0-flash');
+    });
+
+    test('appCheck defaults to null', () {
+      final provider = FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
+
+      expect(provider.appCheck, isNull);
+      expect(provider.useLimitedUseAppCheckTokens, isNull);
     });
   });
 }

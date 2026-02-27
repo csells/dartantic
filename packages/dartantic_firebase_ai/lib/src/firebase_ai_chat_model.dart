@@ -1,6 +1,7 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:firebase_ai/firebase_ai.dart' as fai;
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:logging/logging.dart';
 
 import 'firebase_ai_chat_options.dart';
@@ -14,6 +15,7 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
     required super.name,
     required this.backend,
     this.appCheck,
+    this.auth,
     this.useLimitedUseAppCheckTokens,
     List<Tool>? tools,
     super.temperature,
@@ -36,6 +38,9 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
 
   /// Optional Firebase App Check instance for request verification.
   final FirebaseAppCheck? appCheck;
+
+  /// Optional Firebase Auth instance for user authentication.
+  final FirebaseAuth? auth;
 
   /// Whether to use limited-use App Check tokens for replay protection.
   final bool? useLimitedUseAppCheckTokens;
@@ -167,10 +172,12 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
     final firebaseAI = switch (backend) {
       FirebaseAIBackend.googleAI => fai.FirebaseAI.googleAI(
         appCheck: appCheck,
+        auth: auth,
         useLimitedUseAppCheckTokens: useLimitedUseAppCheckTokens,
       ),
       FirebaseAIBackend.vertexAI => fai.FirebaseAI.vertexAI(
         appCheck: appCheck,
+        auth: auth,
         useLimitedUseAppCheckTokens: useLimitedUseAppCheckTokens,
       ),
     };

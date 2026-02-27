@@ -1,5 +1,6 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:logging/logging.dart';
 
 import 'firebase_ai_chat_model.dart';
@@ -41,9 +42,13 @@ class FirebaseAIProvider
   /// requests. When provided, App Check tokens are automatically attached
   /// to every API call. Set [useLimitedUseAppCheckTokens] to `true` to use
   /// limited-use tokens for replay protection.
+  ///
+  /// Pass [auth] to attach the current user's Firebase Auth token to every
+  /// API call, enabling per-user access control and rate limiting.
   FirebaseAIProvider({
     required this.backend,
     this.appCheck,
+    this.auth,
     this.useLimitedUseAppCheckTokens,
     super.headers,
   }) : super(
@@ -72,6 +77,12 @@ class FirebaseAIProvider
   /// When provided, App Check tokens are automatically attached to every
   /// API call made by models created from this provider.
   final FirebaseAppCheck? appCheck;
+
+  /// Optional Firebase Auth instance for user authentication.
+  ///
+  /// When provided, the current user's auth token is automatically attached
+  /// to every API call made by models created from this provider.
+  final FirebaseAuth? auth;
 
   /// Whether to use limited-use App Check tokens for replay protection.
   ///
@@ -109,6 +120,7 @@ class FirebaseAIProvider
       temperature: temperature,
       backend: backend,
       appCheck: appCheck,
+      auth: auth,
       useLimitedUseAppCheckTokens: useLimitedUseAppCheckTokens,
       defaultOptions: FirebaseAIChatModelOptions(
         topP: options?.topP,
@@ -155,6 +167,7 @@ class FirebaseAIProvider
       name: modelName,
       backend: backend,
       appCheck: appCheck,
+      auth: auth,
       useLimitedUseAppCheckTokens: useLimitedUseAppCheckTokens,
       tools: tools,
       defaultOptions: options,

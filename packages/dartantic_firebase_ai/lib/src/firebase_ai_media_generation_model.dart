@@ -1,6 +1,7 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:firebase_ai/firebase_ai.dart' as fai;
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:logging/logging.dart';
 
 import 'firebase_ai_media_generation_options.dart';
@@ -20,6 +21,7 @@ class FirebaseAIMediaGenerationModel
     required super.name,
     required FirebaseAIBackend backend,
     FirebaseAppCheck? appCheck,
+    FirebaseAuth? auth,
     bool? useLimitedUseAppCheckTokens,
     FirebaseAIMediaGenerationModelOptions? defaultOptions,
     super.tools,
@@ -27,10 +29,12 @@ class FirebaseAIMediaGenerationModel
        _firebaseAI = switch (backend) {
          FirebaseAIBackend.googleAI => fai.FirebaseAI.googleAI(
            appCheck: appCheck,
+           auth: auth,
            useLimitedUseAppCheckTokens: useLimitedUseAppCheckTokens,
          ),
          FirebaseAIBackend.vertexAI => fai.FirebaseAI.vertexAI(
            appCheck: appCheck,
+           auth: auth,
            useLimitedUseAppCheckTokens: useLimitedUseAppCheckTokens,
          ),
        },

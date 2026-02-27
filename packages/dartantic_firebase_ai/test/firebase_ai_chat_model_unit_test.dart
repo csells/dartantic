@@ -20,6 +20,7 @@ void main() {
       expect(model.backend, FirebaseAIBackend.googleAI);
       expect(model.defaultOptions, isA<FirebaseAIChatModelOptions>());
       expect(model.appCheck, isNull);
+      expect(model.auth, isNull);
       expect(model.useLimitedUseAppCheckTokens, isNull);
     });
 
@@ -201,6 +202,7 @@ void main() {
       final provider = FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
 
       expect(provider.appCheck, isNull);
+      expect(provider.auth, isNull);
       expect(provider.useLimitedUseAppCheckTokens, isNull);
     });
   });

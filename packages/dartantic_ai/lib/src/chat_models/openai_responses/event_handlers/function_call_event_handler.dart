@@ -1,6 +1,6 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import '../openai_responses_event_mapping_state.dart';
 import 'openai_responses_event_handler.dart';
@@ -15,24 +15,24 @@ class FunctionCallEventHandler implements OpenAIResponsesEventHandler {
   );
 
   @override
-  bool canHandle(openai.ResponseEvent event) =>
-      event is openai.ResponseFunctionCallArgumentsDelta ||
-      event is openai.ResponeFunctionCallArgumentsDone;
+  bool canHandle(openai.ResponseStreamEvent event) =>
+      event is openai.FunctionCallArgumentsDeltaEvent ||
+      event is openai.FunctionCallArgumentsDoneEvent;
 
   @override
   Stream<ChatResult<ChatMessage>> handle(
-    openai.ResponseEvent event,
+    openai.ResponseStreamEvent event,
     EventMappingState state,
   ) async* {
-    if (event is openai.ResponseFunctionCallArgumentsDelta) {
+    if (event is openai.FunctionCallArgumentsDeltaEvent) {
       _handleFunctionCallArgumentsDelta(event, state);
-    } else if (event is openai.ResponeFunctionCallArgumentsDone) {
+    } else if (event is openai.FunctionCallArgumentsDoneEvent) {
       _handleFunctionCallArgumentsDone(event, state);
     }
   }
 
   void _handleFunctionCallArgumentsDelta(
-    openai.ResponseFunctionCallArgumentsDelta event,
+    openai.FunctionCallArgumentsDeltaEvent event,
     EventMappingState state,
   ) {
     final call = state.functionCalls[event.outputIndex];
@@ -50,11 +50,11 @@ class FunctionCallEventHandler implements OpenAIResponsesEventHandler {
   }
 
   void _handleFunctionCallArgumentsDone(
-    openai.ResponeFunctionCallArgumentsDone event,
+    openai.FunctionCallArgumentsDoneEvent event,
     EventMappingState state,
   ) {
     _logger.fine(
-      'ResponeFunctionCallArgumentsDone for index ${event.outputIndex}',
+      'FunctionCallArgumentsDoneEvent for index ${event.outputIndex}',
     );
     final call = state.functionCalls[event.outputIndex];
     if (call != null) {

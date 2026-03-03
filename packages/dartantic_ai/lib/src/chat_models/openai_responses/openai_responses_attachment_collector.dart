@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
 import 'package:mime/mime.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import 'openai_responses_attachment_types.dart';
 
@@ -45,8 +45,8 @@ class AttachmentCollector {
   }
 
   /// Registers a completed image generation call.
-  void registerImageCall(openai.ImageGenerationCall call, int index) {
-    markImageGenerationCompleted(index: index, resultBase64: call.resultBase64);
+  void registerImageCall(openai.ImageGenerationCallOutputItem call, int index) {
+    markImageGenerationCompleted(index: index, resultBase64: call.result);
   }
 
   /// Tracks a container file citation for later download.

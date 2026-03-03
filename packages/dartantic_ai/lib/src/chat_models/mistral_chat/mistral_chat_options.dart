@@ -1,5 +1,7 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:meta/meta.dart';
+import 'package:mistralai_dart/mistralai_dart.dart'
+    show MistralPromptMode, Prediction;
 
 /// Options to pass into MistralAI.
 @immutable
@@ -10,6 +12,13 @@ class MistralChatModelOptions extends ChatModelOptions {
     this.maxTokens,
     this.safePrompt,
     this.randomSeed,
+    this.presencePenalty,
+    this.frequencyPenalty,
+    this.stop,
+    this.n,
+    this.parallelToolCalls,
+    this.prediction,
+    this.promptMode,
   });
 
   /// Nucleus sampling, where the model considers the results of the tokens
@@ -31,4 +40,29 @@ class MistralChatModelOptions extends ChatModelOptions {
   /// The seed to use for random sampling.
   /// If set, different calls will generate deterministic results.
   final int? randomSeed;
+
+  /// Presence penalty (-2.0 to 2.0). Positive values penalize new tokens
+  /// based on whether they appear in the text so far.
+  final double? presencePenalty;
+
+  /// Frequency penalty (-2.0 to 2.0). Positive values penalize new tokens
+  /// based on their existing frequency in the text so far.
+  final double? frequencyPenalty;
+
+  /// Stop sequences. Can be a single string or a list of strings.
+  final Object? stop;
+
+  /// Number of completions to generate.
+  final int? n;
+
+  /// Whether to allow parallel tool calls.
+  final bool? parallelToolCalls;
+
+  /// Prediction for speculative decoding.
+  ///
+  /// Supported by mistral-large-2411, codestral-latest.
+  final Prediction? prediction;
+
+  /// Prompt mode for reasoning models.
+  final MistralPromptMode? promptMode;
 }

@@ -18,7 +18,9 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:openai_core/openai_core.dart';
+import 'package:openai_dart/openai_dart.dart' hide ChatMessage;
+// ignore: deprecated_member_use
+import 'package:openai_dart/openai_dart_assistants.dart' as assistants;
 import 'package:test/test.dart';
 
 import '../test_utils.dart';
@@ -411,8 +413,8 @@ void main() {
   group('File Search Integration', () {
     test('searches vector store and returns relevant results', () async {
       // Create a test vector store with sample content
-      final client = OpenAIClient(
-        apiKey: Platform.environment['OPENAI_API_KEY'],
+      final client = OpenAIClient.withApiKey(
+        Platform.environment['OPENAI_API_KEY']!,
       );
 
       // Create a simple test file
@@ -430,31 +432,34 @@ of structured data alongside the main chat response.
 ''';
 
       // Upload the test file
-      final uploadedFile = await client.uploadFileBytes(
+      final uploadedFile = await client.files.upload(
         purpose: FilePurpose.assistants,
-        fileBytes: Uint8List.fromList(testContent.codeUnits),
+        bytes: Uint8List.fromList(testContent.codeUnits),
         filename: 'test_docs.md',
       );
 
       // Create vector store
-      final vectorStore = await client.createVectorStore(
-        name: 'Test Documentation',
-        fileIds: [uploadedFile.id],
+      final vectorStore = await client.beta.vectorStores.create(
+        assistants.CreateVectorStoreRequest(
+          name: 'Test Documentation',
+          fileIds: [uploadedFile.id],
+        ),
       );
 
       // Wait for processing
       var status = vectorStore.status;
       var attempts = 0;
-      while (status == VectorStoreStatus.inProgress && attempts < 30) {
+      while (status == assistants.VectorStoreStatus.inProgress &&
+          attempts < 30) {
         await Future<void>.delayed(const Duration(seconds: 2));
-        final updated = await client.retrieveVectorStore(vectorStore.id);
+        final updated = await client.beta.vectorStores.retrieve(vectorStore.id);
         status = updated.status;
         attempts++;
       }
 
       expect(
         status,
-        VectorStoreStatus.completed,
+        assistants.VectorStoreStatus.completed,
         reason: 'Vector store should be ready',
       );
 
@@ -499,8 +504,8 @@ of structured data alongside the main chat response.
       validateNoMetadataDuplicates(results);
 
       // Cleanup
-      await client.deleteVectorStore(vectorStore.id);
-      await client.deleteFile(uploadedFile.id);
+      await client.beta.vectorStores.delete(vectorStore.id);
+      await client.files.delete(uploadedFile.id);
       client.close();
     });
   });

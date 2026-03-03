@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import '../../retry_http_client.dart';
 import '../../shared/openai_utils.dart';
@@ -26,12 +26,13 @@ class OpenAIResponsesChatModel
     http.Client? httpClient,
     Map<String, String>? headers,
   }) : _client = openai.OpenAIClient(
-         apiKey: apiKey,
-         // openai_core requires non-nullable baseUrl, use Responses endpoint
-         // as default
-         baseUrl: baseUrl?.toString() ?? 'https://api.openai.com/v1/responses',
+         config: openai.OpenAIConfig(
+           authProvider: apiKey != null ? openai.ApiKeyProvider(apiKey) : null,
+           baseUrl: baseUrl?.toString() ?? 'https://api.openai.com/v1',
+           defaultHeaders: headers ?? const {},
+           retryPolicy: const openai.RetryPolicy(maxRetries: 0),
+         ),
          httpClient: RetryHttpClient(inner: httpClient ?? http.Client()),
-         headers: headers,
        );
 
   static final Logger _logger = Logger(
@@ -46,7 +47,7 @@ class OpenAIResponsesChatModel
   /// API key used for authentication.
   final String? apiKey;
 
-  List<openai.Tool> _buildFunctionTools() {
+  List<openai.ResponseTool> _buildFunctionTools() {
     final registeredTools = tools;
     if (registeredTools == null || registeredTools.isEmpty) {
       return const [];
@@ -76,7 +77,7 @@ class OpenAIResponsesChatModel
   }) async* {
     final invocation = _buildInvocation(messages, options, outputSchema);
     _validateInvocation(invocation);
-    final responseStream = await _sendRequest(invocation);
+    final responseStream = _sendRequest(invocation);
     final mapper = _createMapper(invocation);
     yield* _consumeResponseStream(responseStream, mapper);
   }
@@ -94,10 +95,13 @@ class OpenAIResponsesChatModel
   ) async {
     _logger.fine('Downloading container file: $fileId from $containerId');
 
-    final metadata = await _client.retrieveContainerFile(containerId, fileId);
+    final metadata = await _client.containers.files.retrieve(
+      containerId,
+      fileId,
+    );
     final fileName = _extractFileName(metadata.path);
 
-    final bytes = await _client.retrieveContainerFileContent(
+    final bytes = await _client.containers.files.retrieveContent(
       containerId,
       fileId,
     );
@@ -114,7 +118,9 @@ class OpenAIResponsesChatModel
     return fileName.isEmpty ? path : fileName;
   }
 
-  List<openai.Tool> _buildAllTools(OpenAIServerSideToolContext context) => [
+  List<openai.ResponseTool> _buildAllTools(
+    OpenAIServerSideToolContext context,
+  ) => [
     ..._buildFunctionTools(),
     ...OpenAIResponsesServerSideToolMapper.buildServerSideTools(
       serverSideTools: context.enabledTools,
@@ -147,29 +153,33 @@ class OpenAIResponsesChatModel
     }
   }
 
-  Future<openai.ResponseStream> _sendRequest(
+  Stream<openai.ResponseStreamEvent> _sendRequest(
     OpenAIResponsesInvocation invocation,
-  ) async {
+  ) {
     final allTools = _buildAllTools(invocation.serverSide);
+    final textFormat = invocation.parameters.textFormat;
 
-    return _client.streamResponse(
-      model: openai.ChatModel(name),
-      input: invocation.history.input,
-      instructions: invocation.history.instructions,
-      previousResponseId: invocation.history.previousResponseId,
-      store: invocation.store,
-      temperature: invocation.parameters.temperature ?? temperature,
-      topP: invocation.parameters.topP,
-      maxOutputTokens: invocation.parameters.maxOutputTokens,
-      reasoning: invocation.parameters.reasoning,
-      text: invocation.parameters.textFormat,
-      toolChoice: null,
-      tools: allTools.isEmpty ? null : allTools,
-      parallelToolCalls: invocation.parameters.parallelToolCalls,
-      metadata: invocation.parameters.metadata,
-      include: invocation.parameters.include,
-      truncation: invocation.parameters.truncation,
-      user: invocation.parameters.user,
+    return _client.responses.createStream(
+      openai.CreateResponseRequest(
+        model: name,
+        input: invocation.history.input ?? const openai.ResponseInputText(''),
+        instructions: invocation.history.instructions,
+        previousResponseId: invocation.history.previousResponseId,
+        store: invocation.store,
+        temperature: invocation.parameters.temperature ?? temperature,
+        topP: invocation.parameters.topP,
+        maxOutputTokens: invocation.parameters.maxOutputTokens,
+        reasoning: invocation.parameters.reasoning,
+        text: textFormat != null ? openai.TextConfig(format: textFormat) : null,
+        toolChoice: null,
+        tools: allTools.isEmpty ? null : allTools,
+        parallelToolCalls: invocation.parameters.parallelToolCalls,
+        metadata: invocation.parameters.metadata,
+        include: invocation.parameters.include
+            ?.map(openai.Include.fromJson)
+            .toList(),
+        truncation: invocation.parameters.truncation,
+      ),
     );
   }
 
@@ -181,11 +191,11 @@ class OpenAIResponsesChatModel
   );
 
   Stream<ChatResult<ChatMessage>> _consumeResponseStream(
-    openai.ResponseStream responseStream,
+    Stream<openai.ResponseStreamEvent> responseStream,
     OpenAIResponsesEventMapper mapper,
   ) async* {
     try {
-      await for (final event in responseStream.events) {
+      await for (final event in responseStream) {
         _logger.fine('Received event: ${event.runtimeType}');
         yield* mapper.handle(event);
       }

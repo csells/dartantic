@@ -1,7 +1,8 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
-import 'package:openai_dart/openai_dart.dart';
+import 'package:openai_dart/openai_dart.dart'
+    hide ChatMessage, FinishReason, Tool;
 
 import '../../retry_http_client.dart';
 import '../chunk_list.dart';
@@ -22,11 +23,13 @@ class OpenAIEmbeddingsModel
     String? user,
     OpenAIEmbeddingsModelOptions? options,
   }) : _client = OpenAIClient(
-         apiKey: apiKey,
-         organization: null,
-         baseUrl: baseUrl?.toString(),
-         headers: headers,
-         client: client != null
+         config: OpenAIConfig(
+           authProvider: apiKey != null ? ApiKeyProvider(apiKey) : null,
+           baseUrl: baseUrl?.toString() ?? 'https://api.openai.com/v1',
+           defaultHeaders: headers ?? const {},
+           retryPolicy: const RetryPolicy(maxRetries: 0),
+         ),
+         httpClient: client != null
              ? RetryHttpClient(inner: client)
              : RetryHttpClient(inner: http.Client()),
        ),
@@ -63,10 +66,10 @@ class OpenAIEmbeddingsModel
       '(length: $queryLength, dimensions: $effectiveDimensions)',
     );
 
-    final data = await _client.createEmbedding(
-      request: CreateEmbeddingRequest(
-        model: EmbeddingModel.modelId(name),
-        input: EmbeddingInput.listString([query]),
+    final data = await _client.embeddings.create(
+      EmbeddingRequest(
+        model: name,
+        input: EmbeddingInput.textList([query]),
         dimensions: effectiveDimensions,
         user: options?.user ?? _user,
       ),
@@ -78,7 +81,7 @@ class OpenAIEmbeddingsModel
     );
 
     final result = EmbeddingsResult(
-      output: data.data.first.embeddingVector,
+      output: data.data.first.embedding,
       finishReason: FinishReason.stop,
       metadata: {
         'model': name,
@@ -131,17 +134,17 @@ class OpenAIEmbeddingsModel
         '(${batch.length} texts, $batchCharacters chars)',
       );
 
-      final data = await _client.createEmbedding(
-        request: CreateEmbeddingRequest(
-          model: EmbeddingModel.modelId(name),
-          input: EmbeddingInput.listString(batch.toList(growable: false)),
+      final data = await _client.embeddings.create(
+        EmbeddingRequest(
+          model: name,
+          input: EmbeddingInput.textList(batch.toList(growable: false)),
           dimensions: effectiveDimensions,
           user: options?.user ?? _user,
         ),
       );
 
       // Extract embeddings
-      final batchEmbeddings = data.data.map((d) => d.embeddingVector).toList();
+      final batchEmbeddings = data.data.map((d) => d.embedding).toList();
       allEmbeddings.addAll(batchEmbeddings);
 
       // Accumulate usage
@@ -180,5 +183,5 @@ class OpenAIEmbeddingsModel
   }
 
   @override
-  void dispose() => _client.endSession();
+  void dispose() => _client.close();
 }

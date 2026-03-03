@@ -3,13 +3,15 @@ import 'package:logging/logging.dart';
 import 'package:ollama_dart/ollama_dart.dart' as o;
 
 import '../chat_models/ollama_chat/ollama_chat_model.dart';
+import '../embeddings_models/ollama_embeddings/ollama_embeddings_model.dart';
+import '../embeddings_models/ollama_embeddings/ollama_embeddings_model_options.dart';
 
 /// Provider for native Ollama API (local, not OpenAI-compatible).
 class OllamaProvider
     extends
         Provider<
           OllamaChatOptions,
-          EmbeddingsModelOptions,
+          OllamaEmbeddingsModelOptions,
           MediaGenerationModelOptions
         > {
   /// Creates a new Ollama provider instance.
@@ -20,12 +22,21 @@ class OllamaProvider
     super.baseUrl,
     super.apiKeyName,
     super.headers,
-  }) : super(defaultModelNames: {ModelKind.chat: 'qwen2.5:7b-instruct'});
+  }) : super(
+         defaultModelNames: {
+           /// Note: llama3.x models have a known issue with spurious content in
+           /// tool calling responses, generating unwanted JSON fragments like
+           /// '", "parameters": {}}' during streaming. qwen2.5:7b-instruct
+           /// provides cleaner tool calling behavior.
+           ModelKind.chat: 'qwen2.5:7b-instruct',
+           ModelKind.embeddings: 'nomic-embed-text',
+         },
+       );
 
   static final Logger _logger = Logger('dartantic.chat.providers.ollama');
 
   /// The default base URL to use unless another is specified.
-  static final defaultBaseUrl = Uri.parse('http://localhost:11434/api');
+  static final defaultBaseUrl = Uri.parse('http://localhost:11434');
 
   @override
   ChatModel<OllamaChatOptions> createChatModel({
@@ -35,19 +46,10 @@ class OllamaProvider
     bool enableThinking = false,
     OllamaChatOptions? options,
   }) {
-    if (enableThinking) {
-      throw UnsupportedError(
-        'Extended thinking is not supported by the $displayName provider. '
-        'Only OpenAI Responses, Anthropic, and Google providers support '
-        'thinking. Set enableThinking=false or use a provider that supports '
-        'this feature.',
-      );
-    }
-
     final modelName = name ?? defaultModelNames[ModelKind.chat]!;
     _logger.info(
       'Creating Ollama model: $modelName with ${tools?.length ?? 0} tools, '
-      'temp: $temperature',
+      'temp: $temperature, thinking: $enableThinking',
     );
 
     return OllamaChatModel(
@@ -56,6 +58,7 @@ class OllamaProvider
       temperature: temperature,
       baseUrl: baseUrl,
       headers: headers,
+      enableThinking: enableThinking,
       defaultOptions: OllamaChatOptions(
         format: options?.format,
         keepAlive: options?.keepAlive,
@@ -88,33 +91,55 @@ class OllamaProvider
         useMmap: options?.useMmap,
         useMlock: options?.useMlock,
         numThread: options?.numThread,
+        logprobs: options?.logprobs,
+        topLogprobs: options?.topLogprobs,
       ),
     );
   }
 
   @override
-  EmbeddingsModel<EmbeddingsModelOptions> createEmbeddingsModel({
+  EmbeddingsModel<OllamaEmbeddingsModelOptions> createEmbeddingsModel({
     String? name,
-    EmbeddingsModelOptions? options,
-  }) => throw Exception('Ollama does not support embeddings models');
+    OllamaEmbeddingsModelOptions? options,
+  }) {
+    final modelName = name ?? defaultModelNames[ModelKind.embeddings]!;
+    _logger.info('Creating Ollama embeddings model: $modelName');
+
+    return OllamaEmbeddingsModel(
+      name: modelName,
+      baseUrl: baseUrl,
+      headers: headers,
+      dimensions: options?.dimensions,
+      batchSize: options?.batchSize,
+      options: options != null
+          ? OllamaEmbeddingsModelOptions(
+              dimensions: options.dimensions,
+              batchSize: options.batchSize,
+              truncate: options.truncate,
+              keepAlive: options.keepAlive,
+            )
+          : null,
+    );
+  }
 
   @override
   Stream<ModelInfo> listModels() async* {
     _logger.info('Fetching models from Ollama API using SDK');
     final resolvedBaseUrl = baseUrl ?? defaultBaseUrl;
-    // SDK expects base URL with /api suffix (e.g., http://localhost:11434/api)
     final client = o.OllamaClient(
-      baseUrl: resolvedBaseUrl.toString(),
-      headers: headers,
+      config: o.OllamaConfig(
+        baseUrl: resolvedBaseUrl.toString(),
+        defaultHeaders: headers,
+      ),
     );
 
     try {
-      final response = await client.listModels();
+      final response = await client.models.list();
       final models = response.models ?? [];
       _logger.info('Successfully fetched ${models.length} models from Ollama');
 
       for (final m in models) {
-        final modelName = m.model ?? '';
+        final modelName = m.name ?? '';
         yield ModelInfo(
           name: modelName,
           providerName: name,
@@ -129,7 +154,7 @@ class OllamaProvider
         );
       }
     } finally {
-      client.endSession();
+      client.close();
     }
   }
 

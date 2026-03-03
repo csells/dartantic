@@ -1,5 +1,5 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import '../openai_responses_attachment_collector.dart';
 import '../openai_responses_event_mapping_state.dart';
@@ -22,30 +22,30 @@ class ToolEventHandler implements OpenAIResponsesEventHandler {
   final OpenAIResponsesToolEventRecorder toolRecorder;
 
   @override
-  bool canHandle(openai.ResponseEvent event) =>
-      event is openai.ResponseImageGenerationCallPartialImage ||
-      event is openai.ResponseImageGenerationCallCompleted ||
-      event is openai.ResponseCodeInterpreterCallCodeDelta ||
-      event is openai.ResponseCodeInterpreterCallCodeDone;
+  bool canHandle(openai.ResponseStreamEvent event) =>
+      event is openai.ResponseImageGenerationCallPartialImageEvent ||
+      event is openai.ResponseImageGenerationCallCompletedEvent ||
+      event is openai.ResponseCodeInterpreterCallCodeDeltaEvent ||
+      event is openai.ResponseCodeInterpreterCallCodeDoneEvent;
 
   @override
   Stream<ChatResult<ChatMessage>> handle(
-    openai.ResponseEvent event,
+    openai.ResponseStreamEvent event,
     EventMappingState state,
   ) async* {
-    if (event is openai.ResponseImageGenerationCallPartialImage) {
+    if (event is openai.ResponseImageGenerationCallPartialImageEvent) {
       yield* _handleImageGenerationPartial(event, state);
-    } else if (event is openai.ResponseImageGenerationCallCompleted) {
+    } else if (event is openai.ResponseImageGenerationCallCompletedEvent) {
       yield* _handleImageGenerationCompleted(event, state);
-    } else if (event is openai.ResponseCodeInterpreterCallCodeDelta) {
+    } else if (event is openai.ResponseCodeInterpreterCallCodeDeltaEvent) {
       yield* _handleCodeInterpreterCodeDelta(event, state);
-    } else if (event is openai.ResponseCodeInterpreterCallCodeDone) {
+    } else if (event is openai.ResponseCodeInterpreterCallCodeDoneEvent) {
       yield* _handleCodeInterpreterCodeDone(event, state);
     }
   }
 
   Stream<ChatResult<ChatMessage>> _handleImageGenerationPartial(
-    openai.ResponseImageGenerationCallPartialImage event,
+    openai.ResponseImageGenerationCallPartialImageEvent event,
     EventMappingState state,
   ) async* {
     attachments.recordPartialImage(
@@ -56,7 +56,7 @@ class ToolEventHandler implements OpenAIResponsesEventHandler {
   }
 
   Stream<ChatResult<ChatMessage>> _handleImageGenerationCompleted(
-    openai.ResponseImageGenerationCallCompleted event,
+    openai.ResponseImageGenerationCallCompletedEvent event,
     EventMappingState state,
   ) async* {
     attachments.markImageGenerationCompleted(index: event.outputIndex);
@@ -64,7 +64,7 @@ class ToolEventHandler implements OpenAIResponsesEventHandler {
   }
 
   Stream<ChatResult<ChatMessage>> _handleCodeInterpreterCodeDelta(
-    openai.ResponseCodeInterpreterCallCodeDelta event,
+    openai.ResponseCodeInterpreterCallCodeDeltaEvent event,
     EventMappingState state,
   ) async* {
     final itemId = event.itemId;
@@ -76,7 +76,7 @@ class ToolEventHandler implements OpenAIResponsesEventHandler {
   }
 
   Stream<ChatResult<ChatMessage>> _handleCodeInterpreterCodeDone(
-    openai.ResponseCodeInterpreterCallCodeDone event,
+    openai.ResponseCodeInterpreterCallCodeDoneEvent event,
     EventMappingState state,
   ) async* {
     final itemId = event.itemId;

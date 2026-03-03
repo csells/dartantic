@@ -1,25 +1,27 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:openai_dart/openai_dart.dart';
+import 'package:openai_dart/openai_dart.dart'
+    hide ChatMessage, FinishReason, Tool;
+import 'package:openai_dart/openai_dart.dart' as oai show FinishReason, Tool;
 
 import '../../shared/openai_utils.dart';
 import 'openai_chat_options.dart';
 import 'openai_message_mappers.dart';
 
 /// Maps OpenAI finish reason to our FinishReason enum
-FinishReason mapFinishReason(ChatCompletionFinishReason? reason) {
+FinishReason mapFinishReason(oai.FinishReason? reason) {
   if (reason == null) return FinishReason.unspecified;
 
   return switch (reason) {
-    ChatCompletionFinishReason.stop => FinishReason.stop,
-    ChatCompletionFinishReason.length => FinishReason.length,
-    ChatCompletionFinishReason.toolCalls => FinishReason.toolCalls,
-    ChatCompletionFinishReason.contentFilter => FinishReason.contentFilter,
-    ChatCompletionFinishReason.functionCall => FinishReason.toolCalls,
+    oai.FinishReason.stop => FinishReason.stop,
+    oai.FinishReason.length => FinishReason.length,
+    oai.FinishReason.toolCalls => FinishReason.toolCalls,
+    oai.FinishReason.contentFilter => FinishReason.contentFilter,
+    oai.FinishReason.functionCall => FinishReason.toolCalls,
   };
 }
 
 /// Maps OpenAI usage to our LanguageModelUsage
-LanguageModelUsage mapUsage(CompletionUsage? usage) {
+LanguageModelUsage mapUsage(Usage? usage) {
   if (usage == null) return const LanguageModelUsage();
 
   return LanguageModelUsage(
@@ -37,20 +39,18 @@ ResponseFormat? _createResponseFormat(
   if (outputSchema == null) return null;
 
   return ResponseFormat.jsonSchema(
-    jsonSchema: JsonSchemaObject(
-      name: 'output_schema',
-      description: 'Generated response following the provided schema',
-      schema: OpenAIUtils.prepareSchemaForOpenAI(
-        Map<String, dynamic>.from(outputSchema.value),
-        strict: strictSchema,
-      ),
+    name: 'output_schema',
+    description: 'Generated response following the provided schema',
+    schema: OpenAIUtils.prepareSchemaForOpenAI(
+      Map<String, dynamic>.from(outputSchema.value),
       strict: strictSchema,
     ),
+    strict: strictSchema,
   );
 }
 
 /// Creates a ChatCompletionRequest from the given input
-CreateChatCompletionRequest createChatCompletionRequest(
+ChatCompletionCreateRequest createChatCompletionRequest(
   List<ChatMessage> messages, {
   required String modelName,
   required OpenAIChatOptions defaultOptions,
@@ -59,22 +59,18 @@ CreateChatCompletionRequest createChatCompletionRequest(
   OpenAIChatOptions? options,
   Schema? outputSchema,
   bool strictSchema = true,
-}) => CreateChatCompletionRequest(
-  model: ChatCompletionModel.modelId(modelName),
+}) => ChatCompletionCreateRequest(
+  model: modelName,
   messages: messages.toOpenAIMessages(),
   tools: tools
       ?.map(
-        (tool) => ChatCompletionTool(
-          type: ChatCompletionToolType.function,
-          function: FunctionObject(
-            name: tool.name,
-            description: tool.description,
-            // OpenAI requires 'properties' field on object schemas, even if
-            // empty
-            parameters: OpenAIUtils.prepareSchemaForOpenAI(
-              Map<String, dynamic>.from(tool.inputSchema.value),
-            ),
-            strict: null, // Explicitly pass null to override any defaults
+        (tool) => oai.Tool.function(
+          name: tool.name,
+          description: tool.description,
+          // OpenAI requires 'properties' field on object schemas, even if
+          // empty
+          parameters: OpenAIUtils.prepareSchemaForOpenAI(
+            Map<String, dynamic>.from(tool.inputSchema.value),
           ),
         ),
       )
@@ -84,15 +80,12 @@ CreateChatCompletionRequest createChatCompletionRequest(
       _createResponseFormat(outputSchema, strictSchema: strictSchema) ??
       options?.responseFormat ??
       defaultOptions.responseFormat,
-  maxTokens: options?.maxTokens ?? defaultOptions.maxTokens,
+  maxCompletionTokens: options?.maxTokens ?? defaultOptions.maxTokens,
   n: options?.n ?? defaultOptions.n,
   temperature:
       temperature ?? options?.temperature ?? defaultOptions.temperature,
   topP: options?.topP ?? defaultOptions.topP,
-  stop: (options?.stop ?? defaultOptions.stop) != null
-      ? ChatCompletionStop.listString(options?.stop ?? defaultOptions.stop!)
-      : null,
-  stream: true,
+  stop: options?.stop ?? defaultOptions.stop,
   streamOptions: options?.streamOptions ?? defaultOptions.streamOptions,
   user: options?.user ?? defaultOptions.user,
   frequencyPenalty:

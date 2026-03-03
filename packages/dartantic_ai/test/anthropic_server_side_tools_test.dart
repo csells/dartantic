@@ -4,8 +4,7 @@
 
 import 'dart:convert';
 
-import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart'
-    show AnthropicClientException;
+import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart' show ApiException;
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_ai/src/chat_models/anthropic_chat/anthropic_server_side_tool_types.dart';
 import 'package:dartantic_ai/src/media_gen_models/anthropic/anthropic_files_client.dart';
@@ -107,10 +106,8 @@ void main() {
                 mimeTypes: const ['application/pdf'],
               )
               .toList();
-        } on AnthropicClientException catch (error) {
-          final message = _anthropicErrorMessage(error);
-          if (message != null &&
-              message.contains('credit balance is too low')) {
+        } on ApiException catch (error) {
+          if (error.message.contains('credit balance is too low')) {
             return;
           }
           rethrow;
@@ -172,10 +169,8 @@ void main() {
             pdfPrompt,
             mimeTypes: const ['application/pdf'],
           );
-        } on AnthropicClientException catch (error) {
-          final message = _anthropicErrorMessage(error);
-          if (message != null &&
-              message.contains('credit balance is too low')) {
+        } on ApiException catch (error) {
+          if (error.message.contains('credit balance is too low')) {
             return;
           }
           rethrow;
@@ -277,30 +272,4 @@ void main() {
       expect(dataPart.bytes.isNotEmpty, isTrue);
     });
   });
-}
-
-String? _anthropicErrorMessage(AnthropicClientException error) {
-  final body = error.body;
-  if (body is Map) {
-    final inner = body['error'];
-    if (inner is Map) {
-      final message = inner['message'];
-      if (message is String) return message;
-    }
-  }
-  if (body is String) {
-    try {
-      final decoded = jsonDecode(body);
-      if (decoded is Map) {
-        final inner = decoded['error'];
-        if (inner is Map) {
-          final message = inner['message'];
-          if (message is String) return message;
-        }
-      }
-    } on FormatException {
-      // Ignore JSON parse errors; fall back to exception message.
-    }
-  }
-  return error.message;
 }

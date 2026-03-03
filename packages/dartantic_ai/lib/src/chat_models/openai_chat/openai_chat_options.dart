@@ -1,6 +1,6 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:meta/meta.dart';
-import 'package:openai_dart/openai_dart.dart' show ChatCompletionStreamOptions;
+import 'package:openai_dart/openai_dart.dart' show StreamOptions;
 
 /// Generation options to pass into the Chat Model.
 @immutable
@@ -34,8 +34,8 @@ class OpenAIChatOptions extends ChatModelOptions {
   /// Example:
   ///   - For Cohere: `streamOptions` is always null.
   ///   - For OpenAI: `streamOptions` can be set to
-  ///     ChatCompletionStreamOptions(...).
-  final ChatCompletionStreamOptions? streamOptions;
+  ///     StreamOptions(...).
+  final StreamOptions? streamOptions;
 
   /// Number between -2.0 and 2.0. Positive values penalize new tokens based on
   /// their existing frequency in the text so far, decreasing the model's

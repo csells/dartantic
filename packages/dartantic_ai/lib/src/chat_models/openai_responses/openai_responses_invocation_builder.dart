@@ -1,5 +1,5 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import 'openai_responses_chat_options.dart';
 import 'openai_responses_message_mapper.dart';
@@ -70,7 +70,7 @@ class OpenAIRequestParameters {
   final Map<String, dynamic>? metadata;
 
   /// Reasoning configuration for thinking models.
-  final openai.ReasoningOptions? reasoning;
+  final openai.ReasoningConfig? reasoning;
 
   /// Truncation configuration.
   final openai.Truncation? truncation;

@@ -1,6 +1,6 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import '../openai_responses_event_mapping_state.dart';
 import 'openai_responses_event_handler.dart';
@@ -15,29 +15,29 @@ class ReasoningEventHandler implements OpenAIResponsesEventHandler {
   );
 
   @override
-  bool canHandle(openai.ResponseEvent event) =>
-      event is openai.ResponseReasoningSummaryTextDelta ||
-      event is openai.ResponseReasoningSummaryTextDone ||
-      event is openai.ResponseReasoningSummaryPartAdded ||
-      event is openai.ResponseReasoningSummaryPartDone ||
-      event is openai.ResponseReasoningDelta ||
-      event is openai.ResponseReasoningDone;
+  bool canHandle(openai.ResponseStreamEvent event) =>
+      event is openai.ReasoningSummaryTextDeltaEvent ||
+      event is openai.ReasoningSummaryTextDoneEvent ||
+      event is openai.ReasoningSummaryPartAddedEvent ||
+      event is openai.ReasoningSummaryPartDoneEvent ||
+      event is openai.ReasoningTextDeltaEvent ||
+      event is openai.ReasoningTextDoneEvent;
 
   @override
   Stream<ChatResult<ChatMessage>> handle(
-    openai.ResponseEvent event,
+    openai.ResponseStreamEvent event,
     EventMappingState state,
   ) async* {
-    if (event is openai.ResponseReasoningSummaryTextDelta) {
+    if (event is openai.ReasoningSummaryTextDeltaEvent) {
       yield* _handleReasoningSummaryDelta(event, state);
-    } else if (event is openai.ResponseReasoningSummaryTextDone) {
+    } else if (event is openai.ReasoningSummaryTextDoneEvent) {
       yield* _handleReasoningSummaryDone(event, state);
     }
     // Other reasoning events require no action
   }
 
   Stream<ChatResult<ChatMessage>> _handleReasoningSummaryDelta(
-    openai.ResponseReasoningSummaryTextDelta event,
+    openai.ReasoningSummaryTextDeltaEvent event,
     EventMappingState state,
   ) async* {
     final newThinking = _appendThinking(state, event.delta);
@@ -49,7 +49,7 @@ class ReasoningEventHandler implements OpenAIResponsesEventHandler {
   }
 
   Stream<ChatResult<ChatMessage>> _handleReasoningSummaryDone(
-    openai.ResponseReasoningSummaryTextDone event,
+    openai.ReasoningSummaryTextDoneEvent event,
     EventMappingState state,
   ) async* {
     final newThinking = _appendThinking(state, event.text);

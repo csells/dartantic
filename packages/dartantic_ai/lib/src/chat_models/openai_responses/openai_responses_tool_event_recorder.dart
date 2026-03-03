@@ -1,6 +1,6 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import 'openai_responses_event_mapping_state.dart';
 import 'openai_responses_tool_types.dart';
@@ -19,13 +19,13 @@ class OpenAIResponsesToolEventRecorder {
 
   /// Records tool events based on the event type and yields metadata chunks.
   Stream<ChatResult<ChatMessage>> recordToolEventIfNeeded(
-    openai.ResponseEvent event,
+    openai.ResponseStreamEvent event,
     EventMappingState state,
   ) async* {
-    if (event is openai.ResponseImageGenerationCallPartialImage ||
-        event is openai.ResponseImageGenerationCallInProgress ||
-        event is openai.ResponseImageGenerationCallGenerating ||
-        event is openai.ResponseImageGenerationCallCompleted) {
+    if (event is openai.ResponseImageGenerationCallPartialImageEvent ||
+        event is openai.ResponseImageGenerationCallInProgressEvent ||
+        event is openai.ResponseImageGenerationCallGeneratingEvent ||
+        event is openai.ResponseImageGenerationCallCompletedEvent) {
       recordToolEvent(OpenAIResponsesToolTypes.imageGeneration, event, state);
       yield* yieldToolMetadataChunk(
         OpenAIResponsesToolTypes.imageGeneration,
@@ -34,9 +34,9 @@ class OpenAIResponsesToolEventRecorder {
       return;
     }
 
-    if (event is openai.ResponseWebSearchCallInProgress ||
-        event is openai.ResponseWebSearchCallSearching ||
-        event is openai.ResponseWebSearchCallCompleted) {
+    if (event is openai.ResponseWebSearchCallInProgressEvent ||
+        event is openai.ResponseWebSearchCallSearchingEvent ||
+        event is openai.ResponseWebSearchCallCompletedEvent) {
       yield* handleStandardToolEvent(
         OpenAIResponsesToolTypes.webSearch,
         event,
@@ -45,9 +45,9 @@ class OpenAIResponsesToolEventRecorder {
       return;
     }
 
-    if (event is openai.ResponseFileSearchCallInProgress ||
-        event is openai.ResponseFileSearchCallSearching ||
-        event is openai.ResponseFileSearchCallCompleted) {
+    if (event is openai.ResponseFileSearchCallInProgressEvent ||
+        event is openai.ResponseFileSearchCallSearchingEvent ||
+        event is openai.ResponseFileSearchCallCompletedEvent) {
       yield* handleStandardToolEvent(
         OpenAIResponsesToolTypes.fileSearch,
         event,
@@ -56,14 +56,14 @@ class OpenAIResponsesToolEventRecorder {
       return;
     }
 
-    if (event is openai.ResponseMcpCallArgumentsDelta ||
-        event is openai.ResponseMcpCallArgumentsDone ||
-        event is openai.ResponseMcpCallInProgress ||
-        event is openai.ResponseMcpCallCompleted ||
-        event is openai.ResponseMcpCallFailed ||
-        event is openai.ResponseMcpListToolsInProgress ||
-        event is openai.ResponseMcpListToolsCompleted ||
-        event is openai.ResponseMcpListToolsFailed) {
+    if (event is openai.ResponseMcpCallArgumentsDeltaEvent ||
+        event is openai.ResponseMcpCallArgumentsDoneEvent ||
+        event is openai.ResponseMcpCallInProgressEvent ||
+        event is openai.ResponseMcpCallCompletedEvent ||
+        event is openai.ResponseMcpCallFailedEvent ||
+        event is openai.ResponseMcpListToolsInProgressEvent ||
+        event is openai.ResponseMcpListToolsCompletedEvent ||
+        event is openai.ResponseMcpListToolsFailedEvent) {
       yield* handleStandardToolEvent(
         OpenAIResponsesToolTypes.mcp,
         event,
@@ -72,9 +72,9 @@ class OpenAIResponsesToolEventRecorder {
       return;
     }
 
-    if (event is openai.ResponseCodeInterpreterCallInProgress ||
-        event is openai.ResponseCodeInterpreterCallCompleted ||
-        event is openai.ResponseCodeInterpreterCallInterpreting) {
+    if (event is openai.ResponseCodeInterpreterCallInProgressEvent ||
+        event is openai.ResponseCodeInterpreterCallCompletedEvent ||
+        event is openai.ResponseCodeInterpreterCallInterpretingEvent) {
       yield* handleStandardToolEvent(
         OpenAIResponsesToolTypes.codeInterpreter,
         event,
@@ -91,7 +91,7 @@ class OpenAIResponsesToolEventRecorder {
   /// Records a tool event in the state's tool event log.
   void recordToolEvent(
     String toolType,
-    openai.ResponseEvent event,
+    openai.ResponseStreamEvent event,
     EventMappingState state,
   ) {
     state.recordToolEvent(toolType, event.toJson());
@@ -107,7 +107,7 @@ class OpenAIResponsesToolEventRecorder {
   ) async* {
     // Convert to JSON - handle both event objects and maps
     final Map<String, Object?> eventJson;
-    if (eventOrMap is openai.ResponseEvent) {
+    if (eventOrMap is openai.ResponseStreamEvent) {
       eventJson = eventOrMap.toJson();
     } else if (eventOrMap is Map<String, Object?>) {
       eventJson = eventOrMap;
@@ -135,7 +135,7 @@ class OpenAIResponsesToolEventRecorder {
   /// Helper to record and yield tool events for standard tool types.
   Stream<ChatResult<ChatMessage>> handleStandardToolEvent(
     String toolKey,
-    openai.ResponseEvent event,
+    openai.ResponseStreamEvent event,
     EventMappingState state,
   ) async* {
     recordToolEvent(toolKey, event, state);

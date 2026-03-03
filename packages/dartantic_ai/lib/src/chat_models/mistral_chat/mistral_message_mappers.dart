@@ -15,31 +15,24 @@ extension ToolListMapper on List<Tool> {
   List<mistral.Tool> toMistralTools() {
     _logger.fine('Converting $length tools to Mistral format');
     return map(
-      (tool) => mistral.Tool(
-        type: mistral.ToolType.function,
-        function: mistral.FunctionDefinition(
-          name: tool.name,
-          description: tool.description,
-          parameters: tool.inputSchema.value as Map<String, dynamic>,
-        ),
+      (tool) => mistral.Tool.function(
+        name: tool.name,
+        description: tool.description,
+        parameters: Map<String, dynamic>.from(tool.inputSchema.value),
       ),
     ).toList(growable: false);
   }
 }
 
-/// Extension on [List<Message>] to convert messages to Mistral SDK
-/// messages.
+/// Extension on [List<Message>] to convert messages to Mistral SDK messages.
 extension MessageListMapper on List<ChatMessage> {
   /// Converts this list of [ChatMessage]s to a list of Mistral SDK
-  /// [mistral.ChatCompletionMessage]s.
-  ///
-  /// ThinkingPart is implicitly filtered out since only TextPart content
-  /// is extracted for the message text.
-  List<mistral.ChatCompletionMessage> toChatCompletionMessages() {
+  /// [mistral.ChatMessage]s.
+  List<mistral.ChatMessage> toChatMessages() {
     _logger.fine('Converting $length messages to Mistral format');
 
     // Expand messages to handle multiple tool results
-    final expandedMessages = <mistral.ChatCompletionMessage>[];
+    final expandedMessages = <mistral.ChatMessage>[];
     for (final message in this) {
       if (message.role == ChatMessageRole.user) {
         // Check if this is a tool result message with multiple results
@@ -49,10 +42,9 @@ extension MessageListMapper on List<ChatMessage> {
           for (final toolResult in toolResults) {
             final content = ToolResultHelpers.serialize(toolResult.result);
             expandedMessages.add(
-              mistral.ChatCompletionMessage(
-                role: mistral.ChatCompletionMessageRole.tool,
-                content: content,
+              mistral.ChatMessage.tool(
                 toolCallId: toolResult.callId,
+                content: content,
               ),
             );
           }
@@ -69,16 +61,13 @@ extension MessageListMapper on List<ChatMessage> {
     return expandedMessages;
   }
 
-  mistral.ChatCompletionMessage _mapMessage(ChatMessage message) {
+  mistral.ChatMessage _mapMessage(ChatMessage message) {
     _logger.fine(
       'Mapping ${message.role.name} message with ${message.parts.length} parts',
     );
     switch (message.role) {
       case ChatMessageRole.system:
-        return mistral.ChatCompletionMessage(
-          role: mistral.ChatCompletionMessageRole.system,
-          content: _extractTextContent(message),
-        );
+        return mistral.ChatMessage.system(_extractTextContent(message));
       case ChatMessageRole.user:
         // Check if this is a tool result message
         final toolResults = message.parts.toolResults;
@@ -89,17 +78,45 @@ extension MessageListMapper on List<ChatMessage> {
           // the first
           final toolResult = toolResults.first;
           final content = ToolResultHelpers.serialize(toolResult.result);
-          return mistral.ChatCompletionMessage(
-            role: mistral.ChatCompletionMessageRole.tool,
-            content: content,
+          return mistral.ChatMessage.tool(
             toolCallId: toolResult.callId,
+            content: content,
           );
         }
 
-        return mistral.ChatCompletionMessage(
-          role: mistral.ChatCompletionMessageRole.user,
-          content: _extractTextContent(message),
+        // Check if message has images
+        final hasImages = message.parts.any(
+          (p) =>
+              (p is DataPart && p.mimeType.startsWith('image/')) ||
+              (p is LinkPart && (p.mimeType?.startsWith('image/') ?? false)),
         );
+
+        if (hasImages) {
+          // Build multimodal content parts
+          final contentParts = <mistral.ContentPart>[];
+          for (final part in message.parts) {
+            switch (part) {
+              case TextPart(:final text):
+                contentParts.add(mistral.ContentPart.text(text));
+              case DataPart(:final bytes, :final mimeType)
+                  when mimeType.startsWith('image/'):
+                // Convert bytes to base64 data URL
+                final base64Data = base64Encode(bytes);
+                final dataUrl = 'data:$mimeType;base64,$base64Data';
+                contentParts.add(mistral.ContentPart.imageUrl(dataUrl));
+              case LinkPart(:final url, :final mimeType)
+                  when mimeType?.startsWith('image/') ?? false:
+                contentParts.add(mistral.ContentPart.imageUrl(url.toString()));
+              default:
+                // Skip non-text/non-image parts
+                break;
+            }
+          }
+          return mistral.ChatMessage.userMultimodal(contentParts);
+        } else {
+          // Text-only message
+          return mistral.ChatMessage.user(_extractTextContent(message));
+        }
       case ChatMessageRole.model:
         // Extract text content
         final textContent = _extractTextContent(message);
@@ -109,7 +126,6 @@ extension MessageListMapper on List<ChatMessage> {
             .map(
               (p) => mistral.ToolCall(
                 id: p.callId,
-                type: mistral.ToolCallType.function,
                 function: mistral.FunctionCall(
                   name: p.toolName,
                   arguments: json.encode(p.arguments ?? {}),
@@ -118,9 +134,8 @@ extension MessageListMapper on List<ChatMessage> {
             )
             .toList();
 
-        return mistral.ChatCompletionMessage(
-          role: mistral.ChatCompletionMessageRole.assistant,
-          content: textContent.isEmpty ? null : textContent,
+        return mistral.ChatMessage.assistant(
+          textContent.isEmpty ? null : textContent,
           toolCalls: toolCalls.isEmpty ? null : toolCalls,
         );
     }
@@ -151,14 +166,12 @@ extension ChatResultMapper on mistral.ChatCompletionResponse {
     // Extract tool calls from the response
     final toolCallParts =
         choice.message.toolCalls
-            ?.where((tc) => tc.id != null && tc.function?.name != null)
-            .map(
+            ?.map(
               (tc) => ToolPart.call(
-                callId: tc.id!,
-                toolName: tc.function!.name!,
-                arguments: tc.function!.arguments != null
-                    ? json.decode(tc.function!.arguments!)
-                          as Map<String, dynamic>
+                callId: tc.id,
+                toolName: tc.function.name,
+                arguments: tc.function.arguments.isNotEmpty
+                    ? json.decode(tc.function.arguments) as Map<String, dynamic>
                     : {},
               ),
             )
@@ -172,17 +185,18 @@ extension ChatResultMapper on mistral.ChatCompletionResponse {
 
     final message = ChatMessage(role: ChatMessageRole.model, parts: parts);
 
+    final responseUsage = usage;
     return ChatResult<ChatMessage>(
       id: id,
       output: message,
       messages: [message],
       finishReason: _mapFinishReason(choice.finishReason),
       metadata: {'model': model, 'created': created},
-      usage: _mapUsage(usage),
+      usage: responseUsage != null ? _mapUsage(responseUsage) : null,
     );
   }
 
-  LanguageModelUsage _mapUsage(mistral.ChatCompletionUsage usage) {
+  LanguageModelUsage _mapUsage(mistral.UsageInfo usage) {
     _logger.fine(
       'Mapping usage: prompt=${usage.promptTokens}, '
       'response=${usage.completionTokens}, total=${usage.totalTokens}',
@@ -211,17 +225,15 @@ extension CreateChatCompletionStreamResponseMapper
     // Note: Mistral sends complete tool calls, not incremental deltas
     final toolCallParts =
         choice.delta.toolCalls
-            ?.where((tc) => tc.id != null && tc.function?.name != null)
-            .map((tc) {
-              final args = tc.function?.arguments;
-              return ToolPart.call(
-                callId: tc.id!,
-                toolName: tc.function!.name!,
-                arguments: args != null && args.isNotEmpty
-                    ? json.decode(args) as Map<String, dynamic>
+            ?.map(
+              (tc) => ToolPart.call(
+                callId: tc.id,
+                toolName: tc.function.name,
+                arguments: tc.function.arguments.isNotEmpty
+                    ? json.decode(tc.function.arguments) as Map<String, dynamic>
                     : {},
-              );
-            })
+              ),
+            )
             .toList() ??
         [];
 
@@ -232,17 +244,18 @@ extension CreateChatCompletionStreamResponseMapper
 
     final message = ChatMessage(role: ChatMessageRole.model, parts: parts);
 
+    final streamUsage = usage;
     return ChatResult<ChatMessage>(
       id: id,
       output: message,
       messages: [message],
       finishReason: _mapFinishReason(choice.finishReason),
       metadata: {'model': model, 'created': created},
-      usage: usage != null ? _mapUsage(usage!) : null,
+      usage: streamUsage != null ? _mapStreamUsage(streamUsage) : null,
     );
   }
 
-  LanguageModelUsage _mapUsage(mistral.ChatCompletionUsage usage) {
+  LanguageModelUsage _mapStreamUsage(mistral.UsageInfo usage) {
     _logger.fine(
       'Mapping stream usage: prompt=${usage.promptTokens}, '
       'response=${usage.completionTokens}, total=${usage.totalTokens}',
@@ -255,13 +268,14 @@ extension CreateChatCompletionStreamResponseMapper
   }
 }
 
-FinishReason _mapFinishReason(mistral.ChatCompletionFinishReason? reason) {
+FinishReason _mapFinishReason(mistral.FinishReason? reason) {
   final mapped = switch (reason) {
-    mistral.ChatCompletionFinishReason.stop => FinishReason.stop,
-    mistral.ChatCompletionFinishReason.length => FinishReason.length,
-    mistral.ChatCompletionFinishReason.modelLength => FinishReason.length,
-    mistral.ChatCompletionFinishReason.error => FinishReason.unspecified,
-    mistral.ChatCompletionFinishReason.toolCalls => FinishReason.toolCalls,
+    mistral.FinishReason.stop => FinishReason.stop,
+    mistral.FinishReason.length => FinishReason.length,
+    mistral.FinishReason.modelLength => FinishReason.length,
+    mistral.FinishReason.error => FinishReason.unspecified,
+    mistral.FinishReason.toolCalls => FinishReason.toolCalls,
+    mistral.FinishReason.unknown => FinishReason.unspecified,
     null => FinishReason.unspecified,
   };
   _logger.fine('Mapped finish reason: $reason -> $mapped');

@@ -1,7 +1,8 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
-import 'package:mistralai_dart/mistralai_dart.dart' hide Tool;
+import 'package:mistralai_dart/mistralai_dart.dart'
+    hide ChatMessage, FinishReason, Tool;
 
 import 'mistral_chat_options.dart';
 import 'mistral_message_mappers.dart';
@@ -18,11 +19,13 @@ class MistralChatModel extends ChatModel<MistralChatModelOptions> {
     Uri? baseUrl,
     http.Client? client,
     Map<String, String>? headers,
-  }) : _client = MistralAIClient(
-         apiKey: apiKey,
-         baseUrl: baseUrl?.toString(),
-         client: client,
-         headers: headers,
+  }) : _client = MistralClient(
+         config: MistralConfig(
+           authProvider: ApiKeyProvider(apiKey),
+           baseUrl: baseUrl?.toString() ?? 'https://api.mistral.ai',
+           defaultHeaders: headers ?? const {},
+         ),
+         httpClient: client,
        ),
        super(
          name: name,
@@ -36,7 +39,7 @@ class MistralChatModel extends ChatModel<MistralChatModelOptions> {
 
   static final Logger _logger = Logger('dartantic.chat.models.mistral');
 
-  final MistralAIClient _client;
+  final MistralClient _client;
 
   @override
   Stream<ChatResult<ChatMessage>> sendStream(
@@ -50,12 +53,6 @@ class MistralChatModel extends ChatModel<MistralChatModelOptions> {
     );
     var chunkCount = 0;
 
-    if (outputSchema != null) {
-      throw UnsupportedError(
-        'JSON schema support is not yet implemented for Mistral.',
-      );
-    }
-
     final request = createChatCompletionRequest(
       messages,
       modelName: name,
@@ -63,11 +60,10 @@ class MistralChatModel extends ChatModel<MistralChatModelOptions> {
       temperature: temperature,
       options: options,
       defaultOptions: defaultOptions,
+      outputSchema: outputSchema,
     );
 
-    return _client.createChatCompletionStream(request: request).map((
-      completion,
-    ) {
+    return _client.chat.createStream(request: request).map((completion) {
       chunkCount++;
       _logger.fine('Received Mistral stream chunk $chunkCount');
       final result = completion.toChatResult();
@@ -90,9 +86,10 @@ class MistralChatModel extends ChatModel<MistralChatModelOptions> {
     List<Tool>? tools,
     double? temperature,
     MistralChatModelOptions? options,
+    Schema? outputSchema,
   }) => ChatCompletionRequest(
-    model: ChatCompletionModel.modelId(modelName),
-    messages: messages.toChatCompletionMessages(),
+    model: modelName,
+    messages: messages.toChatMessages(),
     temperature: temperature,
     topP: options?.topP ?? defaultOptions.topP,
     maxTokens: options?.maxTokens ?? defaultOptions.maxTokens,
@@ -100,8 +97,24 @@ class MistralChatModel extends ChatModel<MistralChatModelOptions> {
     randomSeed: options?.randomSeed ?? defaultOptions.randomSeed,
     tools: tools?.toMistralTools(),
     stream: true,
+    presencePenalty: options?.presencePenalty ?? defaultOptions.presencePenalty,
+    frequencyPenalty:
+        options?.frequencyPenalty ?? defaultOptions.frequencyPenalty,
+    stop: options?.stop ?? defaultOptions.stop,
+    n: options?.n ?? defaultOptions.n,
+    parallelToolCalls:
+        options?.parallelToolCalls ?? defaultOptions.parallelToolCalls,
+    prediction: options?.prediction ?? defaultOptions.prediction,
+    promptMode: options?.promptMode ?? defaultOptions.promptMode,
+    responseFormat: outputSchema != null
+        ? ResponseFormat.jsonSchema(
+            name: 'output',
+            schema: Map<String, dynamic>.from(outputSchema.value),
+            strict: true,
+          )
+        : null,
   );
 
   @override
-  void dispose() => _client.endSession();
+  void dispose() => _client.close();
 }

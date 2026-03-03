@@ -1,5 +1,6 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:meta/meta.dart';
+import 'package:ollama_dart/ollama_dart.dart' show ResponseFormat;
 
 /// Options to pass into Ollama.
 @immutable
@@ -37,10 +38,15 @@ class OllamaChatOptions extends ChatModelOptions {
     this.useMmap,
     this.useMlock,
     this.numThread,
+    this.logprobs,
+    this.topLogprobs,
   });
 
-  /// The format of the response (e.g., 'json', 'text').
-  final dynamic format;
+  /// The format of the response.
+  ///
+  /// Use [ResponseFormat.json] for JSON mode or [ResponseFormat.schema] for
+  /// structured output with a specific JSON schema.
+  final ResponseFormat? format;
 
   /// How long to keep the model loaded in memory (seconds).
   final int? keepAlive;
@@ -131,4 +137,11 @@ class OllamaChatOptions extends ChatModelOptions {
 
   /// Number of CPU threads to use.
   final int? numThread;
+
+  /// Whether to return log probabilities of output tokens.
+  final bool? logprobs;
+
+  /// Number of most likely tokens to return at each position (requires
+  /// logprobs=true).
+  final int? topLogprobs;
 }

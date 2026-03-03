@@ -1,6 +1,7 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:meta/meta.dart';
-import 'package:openai_core/openai_core.dart';
+import 'package:openai_dart/openai_dart.dart'
+    hide ChatMessage, FinishReason, Tool;
 
 import 'openai_responses_server_side_tools.dart';
 

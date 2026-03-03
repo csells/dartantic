@@ -102,9 +102,11 @@ class OpenAIResponsesPartMapper {
   ) {
     final parts = <Part>[];
     for (final entry in content) {
-      _logger.info('Processing OutputContent: ${entry.runtimeType}');
+      _logger.fine('Processing OutputContent: ${entry.runtimeType}');
       if (entry is openai.OutputTextContent) {
-        _logger.info('OutputTextContent text: "${entry.text}"');
+        _logger.fine(
+          'OutputTextContent received (length=${entry.text.length})',
+        );
         parts.add(TextPart(entry.text));
 
         // Extract file citations from annotations
@@ -125,7 +127,7 @@ class OpenAIResponsesPartMapper {
         );
       } else {
         final json = entry.toJson();
-        _logger.info('OtherOutputContent: $json');
+        _logger.fine('OtherOutputContent type=${entry.runtimeType}');
         parts.add(TextPart(jsonEncode(json)));
       }
     }
@@ -140,24 +142,28 @@ class OpenAIResponsesPartMapper {
     final outputs = item.outputs;
     if (outputs == null) return;
     for (final output in outputs) {
-      final type = output['type'] as String?;
-      if (type == null) {
+      final typeValue = output['type'];
+      if (typeValue is! String) {
         _logger.warning(
           'Code interpreter output missing "type" key: '
           '${output.keys.join(', ')}',
         );
         continue;
       }
-      if (type != 'files') continue;
-      final files = output['files'] as List<dynamic>?;
-      if (files == null) {
+      if (typeValue != 'files') continue;
+      final filesValue = output['files'];
+      if (filesValue is! List) {
         _logger.warning('Code interpreter "files" output missing "files" key');
         continue;
       }
-      for (final file in files) {
+      for (final file in filesValue) {
         if (file is Map<String, dynamic>) {
-          final fileId = (file['file_id'] ?? file['id']) as String?;
-          final containerId = output['container_id'] as String?;
+          final fileIdValue = file['file_id'] ?? file['id'];
+          final containerIdValue = output['container_id'];
+          final fileId = fileIdValue is String ? fileIdValue : null;
+          final containerId = containerIdValue is String
+              ? containerIdValue
+              : null;
           if (fileId != null && containerId != null) {
             _logger.info(
               'Found code interpreter file output: '

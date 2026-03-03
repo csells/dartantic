@@ -9,6 +9,23 @@ import '../helpers/message_part_helpers.dart';
 /// Logger for Mistral message mapping operations.
 final Logger _logger = Logger('dartantic.chat.mappers.mistral');
 
+/// Decodes tool call arguments from a JSON string, validating the result is a
+/// JSON object.
+Map<String, dynamic> _decodeToolArguments(
+  String rawArguments, {
+  required String callId,
+}) {
+  final decoded = json.decode(rawArguments);
+  if (decoded is! Map<String, dynamic>) {
+    throw FormatException(
+      'Tool call `$callId` arguments must decode to a JSON object, '
+      'got ${decoded.runtimeType}.',
+      rawArguments,
+    );
+  }
+  return decoded;
+}
+
 /// Extension on [List<Tool>] to convert to Mistral tools.
 extension ToolListMapper on List<Tool> {
   /// Converts this list of [Tool]s to a list of Mistral [Tool]s.
@@ -172,7 +189,7 @@ extension ChatResultMapper on mistral.ChatCompletionResponse {
                 callId: tc.id,
                 toolName: tc.function.name,
                 arguments: tc.function.arguments.isNotEmpty
-                    ? json.decode(tc.function.arguments) as Map<String, dynamic>
+                    ? _decodeToolArguments(tc.function.arguments, callId: tc.id)
                     : {},
               ),
             )
@@ -231,7 +248,7 @@ extension CreateChatCompletionStreamResponseMapper
                 callId: tc.id,
                 toolName: tc.function.name,
                 arguments: tc.function.arguments.isNotEmpty
-                    ? json.decode(tc.function.arguments) as Map<String, dynamic>
+                    ? _decodeToolArguments(tc.function.arguments, callId: tc.id)
                     : {},
               ),
             )

@@ -99,21 +99,25 @@ class OutputItemEventHandler implements OpenAIResponsesEventHandler {
       // Extract file outputs from code interpreter results
       if (item.outputs != null) {
         for (final output in item.outputs!) {
-          final type = output['type'] as String?;
-          if (type == null) {
+          final typeValue = output['type'];
+          if (typeValue is! String) {
             _logger.warning(
               'Code interpreter output missing "type" key: '
               '${output.keys.join(', ')}',
             );
             continue;
           }
-          if (type == 'files') {
-            final files = output['files'] as List<dynamic>?;
-            if (files != null) {
-              for (final file in files) {
+          if (typeValue == 'files') {
+            final filesValue = output['files'];
+            if (filesValue is List) {
+              for (final file in filesValue) {
                 if (file is Map<String, dynamic>) {
-                  final fileId = (file['file_id'] ?? file['id']) as String?;
-                  final containerId = output['container_id'] as String?;
+                  final fileIdValue = file['file_id'] ?? file['id'];
+                  final containerIdValue = output['container_id'];
+                  final fileId = fileIdValue is String ? fileIdValue : null;
+                  final containerId = containerIdValue is String
+                      ? containerIdValue
+                      : null;
                   if (fileId != null && containerId != null) {
                     _logger.info(
                       'Found code interpreter file output: '

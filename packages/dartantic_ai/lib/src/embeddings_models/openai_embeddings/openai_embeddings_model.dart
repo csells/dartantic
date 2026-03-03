@@ -112,7 +112,12 @@ class OpenAIEmbeddingsModel
       return BatchEmbeddingsResult(
         output: const [],
         finishReason: FinishReason.stop,
-        metadata: const {'model': '', 'provider': 'openai'},
+        metadata: {
+          'model': name,
+          'dimensions': options?.dimensions ?? dimensions,
+          'batch_count': 0,
+          'total_texts': 0,
+        },
         usage: const LanguageModelUsage(),
       );
     }

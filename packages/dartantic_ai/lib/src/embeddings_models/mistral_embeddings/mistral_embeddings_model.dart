@@ -77,7 +77,7 @@ class MistralEmbeddingsModel
       return BatchEmbeddingsResult(
         output: const [],
         finishReason: FinishReason.stop,
-        metadata: const {'model': '', 'provider': 'mistral'},
+        metadata: {'model': name, 'provider': 'mistral'},
         usage: const LanguageModelUsage(),
       );
     }

@@ -75,7 +75,7 @@ class OllamaEmbeddingsModel
       return BatchEmbeddingsResult(
         output: const [],
         finishReason: FinishReason.stop,
-        metadata: const {'model': '', 'provider': 'ollama'},
+        metadata: {'model': name, 'provider': 'ollama'},
         usage: const LanguageModelUsage(),
       );
     }

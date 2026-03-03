@@ -24,7 +24,8 @@ extension ToolListMapper on List<Tool> {
   }
 }
 
-/// Extension on [List<Message>] to convert messages to Mistral SDK messages.
+/// Extension on [List<ChatMessage>] to convert messages to Mistral SDK
+/// messages.
 extension MessageListMapper on List<ChatMessage> {
   /// Converts this list of [ChatMessage]s to a list of Mistral SDK
   /// [mistral.ChatMessage]s.

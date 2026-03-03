@@ -160,8 +160,12 @@ extension MessageListToOpenAI on List<ChatMessage> {
               ),
             );
           }
-        case LinkPart(:final url):
-          contentParts.add(ContentPart.imageUrl(url.toString()));
+        case LinkPart(:final url, :final mimeType):
+          if (mimeType?.startsWith('image/') ?? false) {
+            contentParts.add(ContentPart.imageUrl(url.toString()));
+          } else {
+            contentParts.add(ContentPart.text(url.toString()));
+          }
         case ToolPart():
           // Skip tool parts in user messages (handled above)
           break;

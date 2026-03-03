@@ -108,11 +108,20 @@ class OpenAIEmbeddingsModel
     List<String> texts, {
     OpenAIEmbeddingsModelOptions? options,
   }) async {
+    if (texts.isEmpty) {
+      return BatchEmbeddingsResult(
+        output: const [],
+        finishReason: FinishReason.stop,
+        metadata: const {'model': '', 'provider': 'openai'},
+        usage: const LanguageModelUsage(),
+      );
+    }
+
     final effectiveBatchSize = options?.batchSize ?? batchSize ?? 512;
     final effectiveDimensions = options?.dimensions ?? dimensions;
     final batches = chunkList(texts, chunkSize: effectiveBatchSize);
     final totalTexts = texts.length;
-    final totalCharacters = texts.map((t) => t.length).reduce((a, b) => a + b);
+    final totalCharacters = texts.map((t) => t.length).fold(0, (a, b) => a + b);
 
     _logger.info(
       'Embedding $totalTexts documents with OpenAI model "$name" '
@@ -127,7 +136,7 @@ class OpenAIEmbeddingsModel
       final batch = batches[i];
       final batchCharacters = batch
           .map((t) => t.length)
-          .reduce((a, b) => a + b);
+          .fold(0, (a, b) => a + b);
 
       _logger.fine(
         'Processing batch ${i + 1}/${batches.length} '

@@ -107,6 +107,9 @@ class AnthropicProvider
   @override
   Stream<ModelInfo> listModels() async* {
     _logger.info('Fetching models from Anthropic API using SDK');
+    if (apiKeyName != null && (apiKey == null || apiKey!.isEmpty)) {
+      throw ArgumentError('$apiKeyName is required for $displayName provider');
+    }
     final client = a.AnthropicClient(
       config: a.AnthropicConfig(
         authProvider: a.ApiKeyProvider(apiKey ?? ''),

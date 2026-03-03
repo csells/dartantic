@@ -111,14 +111,7 @@ class OllamaProvider
       headers: headers,
       dimensions: options?.dimensions,
       batchSize: options?.batchSize,
-      options: options != null
-          ? OllamaEmbeddingsModelOptions(
-              dimensions: options.dimensions,
-              batchSize: options.batchSize,
-              truncate: options.truncate,
-              keepAlive: options.keepAlive,
-            )
-          : null,
+      options: options,
     );
   }
 

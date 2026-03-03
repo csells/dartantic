@@ -100,6 +100,13 @@ class OutputItemEventHandler implements OpenAIResponsesEventHandler {
       if (item.outputs != null) {
         for (final output in item.outputs!) {
           final type = output['type'] as String?;
+          if (type == null) {
+            _logger.warning(
+              'Code interpreter output missing "type" key: '
+              '${output.keys.join(', ')}',
+            );
+            continue;
+          }
           if (type == 'files') {
             final files = output['files'] as List<dynamic>?;
             if (files != null) {

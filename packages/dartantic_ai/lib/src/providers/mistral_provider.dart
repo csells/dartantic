@@ -115,6 +115,9 @@ class MistralProvider
   @override
   Stream<ModelInfo> listModels() async* {
     _logger.info('Fetching models from Mistral API using SDK');
+    if (apiKeyName != null && (apiKey == null || apiKey!.isEmpty)) {
+      throw ArgumentError('$apiKeyName is required for $displayName provider');
+    }
     final client = m.MistralClient(
       config: m.MistralConfig(
         authProvider: m.ApiKeyProvider(apiKey ?? ''),

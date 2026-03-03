@@ -113,7 +113,7 @@ class OpenAIResponsesToolEventRecorder {
       eventJson = eventOrMap;
     } else {
       throw ArgumentError(
-        'Expected ResponseEvent or Map, got ${eventOrMap.runtimeType}',
+        'Expected ResponseStreamEvent or Map, got ${eventOrMap.runtimeType}',
       );
     }
 

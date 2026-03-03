@@ -73,9 +73,18 @@ class MistralEmbeddingsModel
     List<String> texts, {
     MistralEmbeddingsModelOptions? options,
   }) async {
+    if (texts.isEmpty) {
+      return BatchEmbeddingsResult(
+        output: const [],
+        finishReason: FinishReason.stop,
+        metadata: const {'model': '', 'provider': 'mistral'},
+        usage: const LanguageModelUsage(),
+      );
+    }
+
     final actualBatchSize = options?.batchSize ?? batchSize ?? 100;
     final totalTexts = texts.length;
-    final totalCharacters = texts.map((t) => t.length).reduce((a, b) => a + b);
+    final totalCharacters = texts.map((t) => t.length).fold(0, (a, b) => a + b);
     final chunks = chunkList(texts, chunkSize: actualBatchSize);
 
     _logger.info(
@@ -93,7 +102,7 @@ class MistralEmbeddingsModel
       final chunk = chunks[i];
       final chunkCharacters = chunk
           .map((t) => t.length)
-          .reduce((a, b) => a + b);
+          .fold(0, (a, b) => a + b);
 
       _logger.fine(
         'Processing batch ${i + 1}/${chunks.length} '

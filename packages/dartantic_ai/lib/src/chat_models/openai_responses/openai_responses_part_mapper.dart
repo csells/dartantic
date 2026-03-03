@@ -140,9 +140,20 @@ class OpenAIResponsesPartMapper {
     final outputs = item.outputs;
     if (outputs == null) return;
     for (final output in outputs) {
-      if (output['type'] != 'files') continue;
+      final type = output['type'] as String?;
+      if (type == null) {
+        _logger.warning(
+          'Code interpreter output missing "type" key: '
+          '${output.keys.join(', ')}',
+        );
+        continue;
+      }
+      if (type != 'files') continue;
       final files = output['files'] as List<dynamic>?;
-      if (files == null) continue;
+      if (files == null) {
+        _logger.warning('Code interpreter "files" output missing "files" key');
+        continue;
+      }
       for (final file in files) {
         if (file is Map<String, dynamic>) {
           final fileId = (file['file_id'] ?? file['id']) as String?;

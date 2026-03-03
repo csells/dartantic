@@ -105,7 +105,9 @@ class OpenAIResponsesServerSideToolMapper {
       case WebSearchContextSize.high:
         return 'high';
       case WebSearchContextSize.other:
-        return null;
+        throw UnsupportedError(
+          'WebSearchContextSize.other is not supported by the OpenAI API.',
+        );
       case null:
         return null;
     }
@@ -118,6 +120,7 @@ class OpenAIResponsesServerSideToolMapper {
       if (location.city != null) location.city!,
       if (location.region != null) location.region!,
       if (location.country != null) location.country!,
+      if (location.timezone != null) location.timezone!,
     ];
     return parts.isEmpty ? null : parts.join(', ');
   }

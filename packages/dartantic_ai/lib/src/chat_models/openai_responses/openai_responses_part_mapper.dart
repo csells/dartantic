@@ -42,7 +42,7 @@ class OpenAIResponsesPartMapper {
         );
         for (final part in messageParts) {
           if (part is TextPart) {
-            _logger.info('Adding TextPart with text: "${part.text}"');
+            _logger.finer('Adding TextPart (length=${part.text.length})');
           }
         }
         parts.addAll(messageParts);

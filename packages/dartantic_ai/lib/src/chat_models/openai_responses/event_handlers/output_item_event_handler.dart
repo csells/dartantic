@@ -102,6 +102,11 @@ class OutputItemEventHandler implements OpenAIResponsesEventHandler {
             _logger.fine('Code interpreter logs: ${output.logs.length} chars');
           } else if (output is openai.CodeInterpreterImageOutput) {
             _logger.fine('Code interpreter image: ${output.url}');
+          } else {
+            _logger.warning(
+              'Unhandled code interpreter output type: '
+              '${output.runtimeType}',
+            );
           }
         }
       }

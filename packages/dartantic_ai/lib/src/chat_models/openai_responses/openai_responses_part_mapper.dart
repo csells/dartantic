@@ -110,12 +110,13 @@ class OpenAIResponsesPartMapper {
         );
         parts.add(TextPart(entry.text));
 
-        // Extract file citations from annotations
+        // Log file citations from annotations (citations flow through
+        // attachments via the event handler pipeline, not here).
         final annotations = entry.annotations;
         if (annotations != null) {
           for (final annotation in annotations) {
             if (annotation is openai.FileCitation) {
-              _logger.info('Found file citation: file_id=${annotation.fileId}');
+              _logger.fine('Found file citation: file_id=${annotation.fileId}');
             }
           }
         }

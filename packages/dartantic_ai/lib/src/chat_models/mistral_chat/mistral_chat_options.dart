@@ -1,7 +1,7 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:meta/meta.dart';
 import 'package:mistralai_dart/mistralai_dart.dart'
-    show MistralPromptMode, Prediction;
+    show MistralPromptMode, Prediction, StopSequence;
 
 /// Options to pass into MistralAI.
 @immutable
@@ -49,8 +49,8 @@ class MistralChatModelOptions extends ChatModelOptions {
   /// based on their existing frequency in the text so far.
   final double? frequencyPenalty;
 
-  /// Stop sequences. Can be a single string or a list of strings.
-  final Object? stop;
+  /// Stop sequences.
+  final StopSequence? stop;
 
   /// Number of completions to generate.
   final int? n;

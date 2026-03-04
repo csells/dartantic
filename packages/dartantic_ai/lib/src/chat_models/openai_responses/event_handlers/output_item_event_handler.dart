@@ -96,41 +96,12 @@ class OutputItemEventHandler implements OpenAIResponsesEventHandler {
         'outputs=${item.outputs?.length ?? 0}, status=${item.status}',
       );
 
-      // Extract file outputs from code interpreter results
       if (item.outputs != null) {
         for (final output in item.outputs!) {
-          final typeValue = output['type'];
-          if (typeValue is! String) {
-            _logger.warning(
-              'Code interpreter output missing "type" key: '
-              '${output.keys.join(', ')}',
-            );
-            continue;
-          }
-          if (typeValue == 'files') {
-            final filesValue = output['files'];
-            if (filesValue is List) {
-              for (final file in filesValue) {
-                if (file is Map<String, dynamic>) {
-                  final fileIdValue = file['file_id'] ?? file['id'];
-                  final containerIdValue = output['container_id'];
-                  final fileId = fileIdValue is String ? fileIdValue : null;
-                  final containerId = containerIdValue is String
-                      ? containerIdValue
-                      : null;
-                  if (fileId != null && containerId != null) {
-                    _logger.info(
-                      'Found code interpreter file output: '
-                      'container_id=$containerId, file_id=$fileId',
-                    );
-                    attachments.trackContainerCitation(
-                      containerId: containerId,
-                      fileId: fileId,
-                    );
-                  }
-                }
-              }
-            }
+          if (output is openai.CodeInterpreterLogsOutput) {
+            _logger.fine('Code interpreter logs: ${output.logs.length} chars');
+          } else if (output is openai.CodeInterpreterImageOutput) {
+            _logger.fine('Code interpreter image: ${output.url}');
           }
         }
       }

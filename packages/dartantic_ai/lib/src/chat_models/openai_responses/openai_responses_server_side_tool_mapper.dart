@@ -61,11 +61,17 @@ class OpenAIResponsesServerSideToolMapper {
             );
           }
 
+          openai.FileSearchFilter? parsedFilter;
+          if (config.filters != null && config.filters!.isNotEmpty) {
+            parsedFilter = openai.FileSearchFilter.fromJson(config.filters!);
+          }
+
           tools.add(
             openai.FileSearchTool(
               vectorStoreIds: config.vectorStoreIds,
               maxNumResults: config.maxResults,
               rankingOptions: rankingOptions,
+              filters: parsedFilter,
             ),
           );
           continue;
@@ -113,16 +119,16 @@ class OpenAIResponsesServerSideToolMapper {
     }
   }
 
-  static String? _mapUserLocation(WebSearchLocation? location) {
+  static openai.ApproximateLocation? _mapUserLocation(
+    WebSearchLocation? location,
+  ) {
     if (location == null || location.isEmpty) return null;
-    // Encode location as a string representation
-    final parts = <String>[
-      if (location.city != null) location.city!,
-      if (location.region != null) location.region!,
-      if (location.country != null) location.country!,
-      if (location.timezone != null) location.timezone!,
-    ];
-    return parts.isEmpty ? null : parts.join(', ');
+    return openai.ApproximateLocation(
+      city: location.city,
+      region: location.region,
+      country: location.country,
+      timezone: location.timezone,
+    );
   }
 
   static String _mapImageQuality(ImageGenerationQuality quality) =>

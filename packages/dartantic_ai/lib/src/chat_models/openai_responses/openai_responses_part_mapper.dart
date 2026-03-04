@@ -71,7 +71,8 @@ class OpenAIResponsesPartMapper {
       }
 
       if (item is openai.CodeInterpreterCallOutputItem) {
-        _extractContainerFiles(item, attachments);
+        // Code interpreter outputs are logged but container file citations
+        // flow through text annotations (FileCitation, FilePathAnnotation).
         continue;
       }
 
@@ -132,51 +133,6 @@ class OpenAIResponsesPartMapper {
       }
     }
     return parts;
-  }
-
-  /// Extracts container file references from code interpreter outputs.
-  void _extractContainerFiles(
-    openai.CodeInterpreterCallOutputItem item,
-    AttachmentCollector attachments,
-  ) {
-    final outputs = item.outputs;
-    if (outputs == null) return;
-    for (final output in outputs) {
-      final typeValue = output['type'];
-      if (typeValue is! String) {
-        _logger.warning(
-          'Code interpreter output missing "type" key: '
-          '${output.keys.join(', ')}',
-        );
-        continue;
-      }
-      if (typeValue != 'files') continue;
-      final filesValue = output['files'];
-      if (filesValue is! List) {
-        _logger.warning('Code interpreter "files" output missing "files" key');
-        continue;
-      }
-      for (final file in filesValue) {
-        if (file is Map<String, dynamic>) {
-          final fileIdValue = file['file_id'] ?? file['id'];
-          final containerIdValue = output['container_id'];
-          final fileId = fileIdValue is String ? fileIdValue : null;
-          final containerId = containerIdValue is String
-              ? containerIdValue
-              : null;
-          if (fileId != null && containerId != null) {
-            _logger.info(
-              'Found code interpreter file output: '
-              'container_id=$containerId, file_id=$fileId',
-            );
-            attachments.trackContainerCitation(
-              containerId: containerId,
-              fileId: fileId,
-            );
-          }
-        }
-      }
-    }
   }
 
   /// Decodes function call result from JSON string.

@@ -79,7 +79,9 @@ class OpenAIResponsesServerSideToolMapper {
           final config = imageGenerationConfig ?? const ImageGenerationConfig();
           tools.add(
             openai.ImageGenerationTool(
-              partialImages: config.partialImages > 0,
+              partialImages: config.partialImages > 0
+                  ? config.partialImages
+                  : null,
               quality: _mapImageQuality(config.quality),
               size: _mapImageSize(config.size),
             ),
@@ -90,9 +92,10 @@ class OpenAIResponsesServerSideToolMapper {
           tools.add(
             openai.CodeInterpreterTool(
               container: config?.shouldReuseContainer ?? false
-                  ? config!.containerId
-                  : null,
-              fileIds: config?.fileIds,
+                  ? openai.CodeInterpreterContainer.id(config!.containerId!)
+                  : openai.CodeInterpreterContainer.auto(
+                      fileIds: config?.fileIds,
+                    ),
             ),
           );
           continue;

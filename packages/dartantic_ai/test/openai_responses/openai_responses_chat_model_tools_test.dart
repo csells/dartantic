@@ -59,7 +59,18 @@ void main() {
 
       expect(tools, hasLength(1));
       final tool = tools.single as openai.CodeInterpreterTool;
-      expect(tool.container, equals('ctr_abc'));
+      final container = tool.container as openai.CodeInterpreterContainerId;
+      expect(container.id, equals('ctr_abc'));
+    });
+
+    test('builds code interpreter tool without config', () {
+      final tools = OpenAIResponsesServerSideToolMapper.buildServerSideTools(
+        serverSideTools: const {OpenAIServerSideTool.codeInterpreter},
+      );
+
+      expect(tools, hasLength(1));
+      final tool = tools.single as openai.CodeInterpreterTool;
+      expect(tool.container, isA<openai.CodeInterpreterContainerAuto>());
     });
 
     test('builds image generation tool', () {

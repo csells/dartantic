@@ -30,6 +30,13 @@ class EventMappingState {
     OpenAIResponsesToolTypes.codeInterpreter: <Map<String, Object?>>[],
   };
 
+  /// Container ID extracted from raw SSE JSON for code interpreter calls.
+  ///
+  /// The SDK's typed CodeInterpreterCallOutputItem drops this field during
+  /// parsing, so the chat model layer extracts it from the raw JSON and
+  /// stores it here for the terminal event handler to use.
+  String? containerId;
+
   /// Set of output indices that contain reasoning text.
   final Set<int> reasoningOutputIndices = {};
 

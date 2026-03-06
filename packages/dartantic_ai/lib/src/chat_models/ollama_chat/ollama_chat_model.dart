@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
-import 'package:ollama_dart/ollama_dart.dart' show OllamaClient, OllamaConfig;
+import 'package:ollama_dart/ollama_dart.dart'
+    show ChatResponse, OllamaClient, OllamaConfig;
 
 import 'ollama_chat_options.dart';
 import 'ollama_message_mappers.dart' as ollama_mappers;
@@ -30,6 +32,10 @@ class OllamaChatModel extends ChatModel<OllamaChatOptions> {
          ),
          httpClient: client,
        ),
+       _baseUrl = baseUrl ?? Uri.parse('http://localhost:11434'),
+       _httpClient = client ?? http.Client(),
+       _ownsHttpClient = client == null,
+       _headers = headers ?? const {},
        super(
          name: name,
          defaultOptions: defaultOptions ?? const OllamaChatOptions(),
@@ -44,6 +50,10 @@ class OllamaChatModel extends ChatModel<OllamaChatOptions> {
   static final Logger _logger = Logger('dartantic.chat.models.ollama');
 
   final OllamaClient _client;
+  final Uri _baseUrl;
+  final http.Client _httpClient;
+  final bool _ownsHttpClient;
+  final Map<String, String> _headers;
 
   /// Whether to enable thinking mode for reasoning models.
   final bool enableThinking;
@@ -69,39 +79,65 @@ class OllamaChatModel extends ChatModel<OllamaChatOptions> {
       'Starting Ollama chat stream with ${messages.length} '
       'messages for model: $name',
     );
+
+    return _streamChatWithUsage(messages, options, outputSchema);
+  }
+
+  /// Streams chat completions using raw HTTP to preserve usage data.
+  ///
+  /// The ollama_dart SDK's `ChatStreamEvent` does not expose usage fields
+  /// (`promptEvalCount`, `evalCount`) that the Ollama API includes in the
+  /// final streaming chunk. This method bypasses the SDK's streaming API to
+  /// parse each NDJSON line as a [ChatResponse], which preserves all fields
+  /// including usage data.
+  Stream<ChatResult<ChatMessage>> _streamChatWithUsage(
+    List<ChatMessage> messages,
+    OllamaChatOptions? options,
+    Schema? outputSchema,
+  ) async* {
+    final request = ollama_mappers.generateChatCompletionRequest(
+      messages,
+      modelName: name,
+      options: options,
+      defaultOptions: defaultOptions,
+      tools: tools,
+      temperature: temperature,
+      outputSchema: outputSchema,
+      enableThinking: enableThinking,
+    );
+
+    final url = _baseUrl.resolve('/api/chat');
+    final httpRequest = http.Request('POST', url)
+      ..headers.addAll({
+        'Content-Type': 'application/json',
+        ..._headers,
+      })
+      ..body = jsonEncode(request.toJson());
+
+    final streamedResponse = await _httpClient.send(httpRequest);
     var chunkCount = 0;
 
-    return _client.chat
-        .createStream(
-          request: ollama_mappers.generateChatCompletionRequest(
-            messages,
-            modelName: name,
-            options: options,
-            defaultOptions: defaultOptions,
-            tools: tools,
-            temperature: temperature,
-            outputSchema: outputSchema,
-            enableThinking: enableThinking,
-          ),
-        )
-        .map((completion) {
-          chunkCount++;
-          _logger.fine('Received Ollama stream chunk $chunkCount');
-          final result = ollama_mappers.ChatResultMapper(
-            completion,
-          ).toChatResult();
-          return ChatResult<ChatMessage>(
-            output: result.output,
-            messages: result.messages,
-            finishReason: result.finishReason,
-            thinking: result.thinking,
-            metadata: result.metadata,
-            usage: result.usage,
-            id: result.id,
-          );
-        });
+    // Parse NDJSON stream, using ChatResponse.fromJson to preserve usage
+    await for (final line in streamedResponse.stream
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())) {
+      if (line.trim().isEmpty) continue;
+
+      final json = jsonDecode(line) as Map<String, dynamic>;
+      final chatResponse = ChatResponse.fromJson(json);
+
+      chunkCount++;
+      _logger.fine('Received Ollama stream chunk $chunkCount');
+
+      yield ollama_mappers.chatResponseToChatResult(chatResponse);
+    }
   }
 
   @override
-  void dispose() => _client.close();
+  void dispose() {
+    _client.close();
+    if (_ownsHttpClient) {
+      _httpClient.close();
+    }
+  }
 }

@@ -89,8 +89,10 @@ class TerminalEventHandler implements OpenAIResponsesEventHandler {
     final usage = _mapUsage(response.usage);
     final resultMetadata = _sessionManager.buildResultMetadata(response);
 
-    // Extract container_id from ContainerFileCitation annotations if present.
-    final containerId = _extractContainerId(response);
+    // Extract container_id from ContainerFileCitation annotations if present,
+    // falling back to the container_id extracted from raw SSE JSON by the chat
+    // model layer (stored in state).
+    final containerId = _extractContainerId(response) ?? state.containerId;
     if (containerId != null) {
       resultMetadata['container_id'] = containerId;
     }
@@ -128,6 +130,9 @@ class TerminalEventHandler implements OpenAIResponsesEventHandler {
     final mapped = _partMapper.mapResponseItems(response.output, attachments);
     final parts = [...mapped.parts];
 
+    // Track container file citations for download as DataParts.
+    _trackContainerFileCitations(response);
+
     final attachmentParts = await attachments.resolveAttachments();
     if (attachmentParts.isNotEmpty) {
       parts.addAll(attachmentParts);
@@ -155,6 +160,30 @@ class TerminalEventHandler implements OpenAIResponsesEventHandler {
         openai.ResponseStatus.failed ||
         openai.ResponseStatus.cancelled => FinishReason.unspecified,
       };
+
+  /// Tracks all ContainerFileCitation annotations in the response so the
+  /// attachment collector can download them as DataParts.
+  void _trackContainerFileCitations(openai.Response response) {
+    for (final item in response.output) {
+      if (item is openai.MessageOutputItem) {
+        for (final content in item.content) {
+          if (content is openai.OutputTextContent) {
+            final annotations = content.annotations;
+            if (annotations == null) continue;
+            for (final annotation in annotations) {
+              if (annotation is openai.ContainerFileCitation) {
+                attachments.trackContainerCitation(
+                  containerId: annotation.containerId,
+                  fileId: annotation.fileId,
+                  fileName: annotation.filename,
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
   /// Extracts the first container_id from ContainerFileCitation annotations
   /// in the response's message output items.

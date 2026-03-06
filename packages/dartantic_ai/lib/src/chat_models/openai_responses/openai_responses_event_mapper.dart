@@ -48,6 +48,15 @@ class OpenAIResponsesEventMapper {
   /// Mutable state for event mapping.
   final EventMappingState _state = EventMappingState();
 
+  /// The container ID extracted from raw SSE JSON.
+  ///
+  /// Set by the chat model when it finds a container_id in a
+  /// code_interpreter_call item's raw JSON (not parsed by the SDK).
+  String? get containerId => _state.containerId;
+  set containerId(String containerId) {
+    _state.containerId = containerId;
+  }
+
   /// Tool event recorder for streaming tool execution events.
   final OpenAIResponsesToolEventRecorder _toolRecorder =
       const OpenAIResponsesToolEventRecorder();

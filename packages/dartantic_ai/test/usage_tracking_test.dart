@@ -349,7 +349,7 @@ void main() {
         final usageByProvider = <String, int>{};
 
         final providers = {
-          'anthropic': 'claude-3-5-haiku-20241022',
+          'anthropic': 'claude-sonnet-4-0',
           'openai': 'gpt-4o-mini',
           'google': 'gemini-2.5-flash',
         };
@@ -405,7 +405,7 @@ void main() {
         // Test subset of stable providers
         final providers = {
           'openai': 'gpt-4o-mini',
-          'anthropic': 'claude-3-5-haiku-20241022',
+          'anthropic': 'claude-sonnet-4-0',
         };
 
         for (final entry in providers.entries) {

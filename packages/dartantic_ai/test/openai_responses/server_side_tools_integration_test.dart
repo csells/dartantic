@@ -18,7 +18,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:openai_dart/openai_dart.dart' hide ChatMessage;
+import 'package:openai_dart/openai_dart.dart'
+    hide ChatMessage, WebSearchLocation;
 // ignore: deprecated_member_use
 import 'package:openai_dart/openai_dart_assistants.dart' as assistants;
 import 'package:test/test.dart';
@@ -93,7 +94,7 @@ void main() {
 
       // The bug would have crashed here if the workaround wasn't in place This
       // test proves the workaround works
-    });
+    }, timeout: const Timeout(Duration(minutes: 2)));
 
     test(
       'generates plots/CSV and downloads both as DataPart',
@@ -160,7 +161,7 @@ void main() {
           reason: 'CSV should have CSV MIME type',
         );
       },
-      timeout: const Timeout(Duration(minutes: 1)),
+      timeout: const Timeout(Duration(minutes: 2)),
     );
 
     test(
@@ -188,26 +189,15 @@ void main() {
           history.addAll(chunk.messages);
         }
 
-        // Extract container ID from the response.output_item.done event
-        // metadata. The container_id is nested in event['item']['container_id']
-        // because OpenAI wraps the CodeInterpreterCall item inside the done
-        // event.
+        // Extract container_id from result metadata (set by terminal event
+        // handler from ContainerFileCitation annotations)
         String? containerId;
         for (final result in results1) {
-          final codeInterpreterMeta =
-              result.metadata['code_interpreter'] as List?;
-          if (codeInterpreterMeta != null) {
-            for (final event in codeInterpreterMeta) {
-              if (event is Map) {
-                final item = event['item'];
-                if (item is Map && item['container_id'] != null) {
-                  containerId = item['container_id'] as String;
-                  break;
-                }
-              }
-            }
+          final id = result.metadata['container_id'] as String?;
+          if (id != null) {
+            containerId = id;
+            break;
           }
-          if (containerId != null) break;
         }
 
         expect(
@@ -549,6 +539,6 @@ of structured data alongside the main chat response.
         isTrue,
         reason: 'Should use at least one server-side tool',
       );
-    });
+    }, timeout: const Timeout(Duration(minutes: 2)));
   });
 }

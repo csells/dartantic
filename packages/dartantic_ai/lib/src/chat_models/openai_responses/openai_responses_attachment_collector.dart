@@ -25,7 +25,8 @@ class AttachmentCollector {
   final Map<int, String> _imagesByIndex = {};
   final Set<int> _completedImageIndices = {};
 
-  final Set<({String containerId, String fileId})> _containerFiles = {};
+  final Set<({String containerId, String fileId, String? fileName})>
+      _containerFiles = {};
 
   /// Records a partial image update during streaming.
   void recordPartialImage({required String base64, required int index}) {
@@ -53,8 +54,11 @@ class AttachmentCollector {
   void trackContainerCitation({
     required String containerId,
     required String fileId,
+    String? fileName,
   }) {
-    _containerFiles.add((containerId: containerId, fileId: fileId));
+    _containerFiles.add(
+      (containerId: containerId, fileId: fileId, fileName: fileName),
+    );
   }
 
   /// Resolves all tracked attachments into DataParts.
@@ -102,16 +106,22 @@ class AttachmentCollector {
     for (final citation in _containerFiles) {
       final containerId = citation.containerId;
       final fileId = citation.fileId;
+      final citationFileName = citation.fileName;
       _logger.info('Downloading container file: $fileId from $containerId');
       final data = await _containerFileLoader(containerId, fileId);
 
       final inferredMime =
           data.mimeType ??
-          lookupMimeType(data.fileName ?? '', headerBytes: data.bytes) ??
+          lookupMimeType(
+            data.fileName ?? citationFileName ?? '',
+            headerBytes: data.bytes,
+          ) ??
           'application/octet-stream';
       final extension = PartHelpers.extensionFromMimeType(inferredMime);
       final fileName =
-          data.fileName ?? (extension != null ? '$fileId.$extension' : fileId);
+          data.fileName ??
+          citationFileName ??
+          (extension != null ? '$fileId.$extension' : fileId);
 
       attachments.add(
         DataPart(data.bytes, mimeType: inferredMime, name: fileName),

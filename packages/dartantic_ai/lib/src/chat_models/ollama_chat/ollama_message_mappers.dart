@@ -193,67 +193,99 @@ extension MessageListMapper on List<ChatMessage> {
   String _extractTextContent(ChatMessage message) => message.parts.text;
 }
 
-/// Extension on [o.ChatStreamEvent] to convert to [ChatResult].
-extension ChatResultMapper on o.ChatStreamEvent {
-  /// Converts this [o.ChatStreamEvent] to a [ChatResult].
-  ChatResult<ChatMessage> toChatResult() {
-    _logger.fine('Converting Ollama stream event to ChatResult');
-    final parts = <Part>[];
+/// Converts an [o.ChatResponse] to a [ChatResult].
+///
+/// Uses [o.ChatResponse] instead of [o.ChatStreamEvent] because
+/// [o.ChatResponse] preserves usage fields (`promptEvalCount`, `evalCount`)
+/// that the Ollama API includes in the final streaming chunk but
+/// [o.ChatStreamEvent] drops.
+ChatResult<ChatMessage> chatResponseToChatResult(o.ChatResponse response) {
+  _logger.fine('Converting Ollama chat response to ChatResult');
+  final parts = <Part>[];
 
-    // ChatStreamEvent.message is nullable
-    final messageContent = message?.content ?? '';
-    final messageThinking = message?.thinking;
-    final messageToolCalls = message?.toolCalls;
+  final messageContent = response.message?.content ?? '';
+  final messageThinking = response.message?.thinking;
+  final messageToolCalls = response.message?.toolCalls;
 
-    // Add text content
-    if (messageContent.isNotEmpty) {
-      parts.add(TextPart(messageContent));
-    }
+  // Add text content
+  if (messageContent.isNotEmpty) {
+    parts.add(TextPart(messageContent));
+  }
 
-    // Add tool calls
-    if (messageToolCalls != null) {
-      for (var i = 0; i < messageToolCalls.length; i++) {
-        final toolCall = messageToolCalls[i];
-        if (toolCall.function != null) {
-          // Generate a unique ID for this tool call
-          final toolId = ToolIdHelpers.generateToolCallId(
+  // Add tool calls
+  if (messageToolCalls != null) {
+    for (var i = 0; i < messageToolCalls.length; i++) {
+      final toolCall = messageToolCalls[i];
+      if (toolCall.function != null) {
+        // Generate a unique ID for this tool call
+        final toolId = ToolIdHelpers.generateToolCallId(
+          toolName: toolCall.function!.name,
+          providerHint: 'ollama',
+          arguments: toolCall.function!.arguments,
+          index: i,
+        );
+        _logger.fine(
+          'Generated tool ID: $toolId for tool: ${toolCall.function!.name}',
+        );
+        parts.add(
+          ToolPart.call(
+            callId: toolId,
             toolName: toolCall.function!.name,
-            providerHint: 'ollama',
             arguments: toolCall.function!.arguments,
-            index: i,
-          );
-          _logger.fine(
-            'Generated tool ID: $toolId for tool: ${toolCall.function!.name}',
-          );
-          parts.add(
-            ToolPart.call(
-              callId: toolId,
-              toolName: toolCall.function!.name,
-              arguments: toolCall.function!.arguments,
-            ),
-          );
-        }
+          ),
+        );
       }
     }
+  }
 
-    final responseMessage = ChatMessage(
-      role: ChatMessageRole.model,
-      parts: parts,
-    );
+  final responseMessage = ChatMessage(
+    role: ChatMessageRole.model,
+    parts: parts,
+  );
 
-    // Thinking content is passed via the thinking field on ChatResult
-    final thinking = messageThinking != null && messageThinking.isNotEmpty
-        ? messageThinking
-        : null;
+  // Thinking content is passed via the thinking field on ChatResult
+  final thinking = messageThinking != null && messageThinking.isNotEmpty
+      ? messageThinking
+      : null;
 
-    return ChatResult<ChatMessage>(
-      output: responseMessage,
-      messages: [responseMessage],
-      finishReason: (done ?? false)
-          ? FinishReason.stop
-          : FinishReason.unspecified,
-      thinking: thinking,
-      metadata: {'model': model, 'created_at': createdAt, 'done': done},
+  // Convert Ollama token counts to usage
+  // Only provide usage when done=true (final chunk)
+  final isDone = response.done ?? false;
+  final promptEvalCount = response.promptEvalCount;
+  final evalCount = response.evalCount;
+  final usage = isDone && (promptEvalCount != null || evalCount != null)
+      ? LanguageModelUsage(
+          promptTokens: promptEvalCount,
+          responseTokens: evalCount,
+          totalTokens: promptEvalCount != null && evalCount != null
+              ? promptEvalCount + evalCount
+              : promptEvalCount ?? evalCount,
+        )
+      : null;
+
+  if (usage != null) {
+    _logger.fine(
+      'Ollama usage: ${usage.promptTokens}/${usage.responseTokens}'
+      '/${usage.totalTokens}',
     );
   }
+
+  return ChatResult<ChatMessage>(
+    output: responseMessage,
+    messages: [responseMessage],
+    finishReason: isDone ? FinishReason.stop : FinishReason.unspecified,
+    thinking: thinking,
+    metadata: {
+      'model': response.model,
+      'created_at': response.createdAt,
+      'done': response.done,
+      'total_duration': response.totalDuration,
+      'load_duration': response.loadDuration,
+      'prompt_eval_count': promptEvalCount,
+      'prompt_eval_duration': response.promptEvalDuration,
+      'eval_count': evalCount,
+      'eval_duration': response.evalDuration,
+    },
+    usage: usage,
+  );
 }

@@ -575,6 +575,21 @@ class MessageStreamEventTransformer
   ) {
     final cb = e.contentBlock;
 
+    // Handle the dedicated ServerToolUseBlock type (anthropic_sdk_dart v1.1.0+)
+    if (cb is a.ServerToolUseBlock) {
+      _serverToolIndices.add(e.index);
+      _serverToolUseIds.add(cb.id);
+      _serverToolIdByIndex[e.index] = cb.id;
+      _serverToolNamesById[cb.id] = cb.name;
+
+      return _buildServerToolMetadataChunk({
+        'type': 'server_tool_use',
+        'tool_use_id': cb.id,
+        'tool_name': cb.name,
+        'input': cb.input,
+      });
+    }
+
     if (cb is a.ToolUseBlock) {
       if (_isServerToolName(cb.name)) {
         _serverToolIndices.add(e.index);
@@ -640,6 +655,61 @@ class MessageStreamEventTransformer
         event: event,
         output: outputMessage,
         messages: messageList,
+      );
+    }
+
+    // Handle typed code execution result blocks (anthropic_sdk_dart v1.1.0+)
+    if (cb is a.CodeExecutionToolResultBlock) {
+      return _buildTypedToolResultChunk(
+        cb.toolUseId,
+        cb.content,
+        AnthropicServerToolTypes.codeExecution,
+      );
+    }
+    if (cb is a.BashCodeExecutionToolResultBlock) {
+      return _buildTypedToolResultChunk(
+        cb.toolUseId,
+        cb.content,
+        AnthropicServerToolTypes.bashCodeExecution,
+      );
+    }
+    if (cb is a.TextEditorCodeExecutionToolResultBlock) {
+      return _buildTypedToolResultChunk(
+        cb.toolUseId,
+        cb.content,
+        AnthropicServerToolTypes.textEditorCodeExecution,
+      );
+    }
+
+    // Handle typed web fetch result blocks (anthropic_sdk_dart v1.1.0+)
+    if (cb is a.WebFetchToolResultBlock) {
+      final contentJson = cb.content;
+      final webFetchParts = _extractWebFetchDataParts(contentJson);
+      final outputMessage = webFetchParts.isEmpty
+          ? null
+          : ChatMessage(role: ChatMessageRole.model, parts: webFetchParts);
+      final messageList = outputMessage != null ? [outputMessage] : null;
+      return _buildToolMetadataChunk(
+        toolKey: AnthropicServerToolTypes.webFetch,
+        event: <String, Object?>{
+          'type': 'tool_result',
+          'tool_use_id': cb.toolUseId,
+          'tool_name': AnthropicServerToolTypes.webFetch,
+          'content': contentJson,
+        },
+        output: outputMessage,
+        messages: messageList,
+      );
+    }
+
+    // Handle container upload blocks (anthropic_sdk_dart v1.1.0+)
+    if (cb is a.ContainerUploadBlock) {
+      return _buildToolMetadataChunk(
+        toolKey: AnthropicServerToolTypes.codeExecution,
+        event: <String, Object?>{
+          'type': 'container_upload',
+          'file_id': cb.fileId,
+        },
       );
     }
 
@@ -885,6 +955,23 @@ class MessageStreamEventTransformer
         toolKey: [Map<String, Object?>.from(event)],
       },
       usage: null,
+    );
+  }
+
+  ChatResult<ChatMessage> _buildTypedToolResultChunk(
+    String toolUseId,
+    Map<String, dynamic> content,
+    String fallbackToolKey,
+  ) {
+    final toolKey = _serverToolNamesById[toolUseId] ?? fallbackToolKey;
+    return _buildToolMetadataChunk(
+      toolKey: toolKey,
+      event: <String, Object?>{
+        'type': 'tool_result',
+        'tool_use_id': toolUseId,
+        'tool_name': toolKey,
+        'content': content,
+      },
     );
   }
 

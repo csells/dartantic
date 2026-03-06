@@ -47,6 +47,17 @@ class MistralChatModel extends ChatModel<MistralChatModelOptions> {
     MistralChatModelOptions? options,
     Schema? outputSchema,
   }) {
+    // Mistral does not support tools + typed output simultaneously.
+    if (outputSchema != null &&
+        super.tools != null &&
+        super.tools!.isNotEmpty) {
+      throw UnsupportedError(
+        'Mistral does not support using tools and typed output '
+        '(outputSchema) simultaneously. Either use tools without '
+        'outputSchema, or use outputSchema without tools.',
+      );
+    }
+
     _logger.info(
       'Starting Mistral chat stream with ${messages.length} messages for '
       'model: $name',

@@ -37,7 +37,7 @@ void main() {
       test('generates consistent embeddings for same text', () async {
         final model = Agent.getProvider(
           'google',
-        ).createEmbeddingsModel(name: 'text-embedding-004');
+        ).createEmbeddingsModel(name: 'gemini-embedding-001');
 
         final result1 = await model.embedQuery('Test consistency');
         final result2 = await model.embedQuery('Test consistency');
@@ -104,7 +104,7 @@ void main() {
       test('handles empty document list', () async {
         final model = Agent.getProvider(
           'google',
-        ).createEmbeddingsModel(name: 'text-embedding-004');
+        ).createEmbeddingsModel(name: 'gemini-embedding-001');
 
         final result = await model.embedDocuments([]);
         final embeddings = result.embeddings;
@@ -168,7 +168,7 @@ void main() {
       test('finds most similar document', () async {
         final model = Agent.getProvider(
           'google',
-        ).createEmbeddingsModel(name: 'text-embedding-004');
+        ).createEmbeddingsModel(name: 'gemini-embedding-001');
 
         const query = 'programming language';
         final documents = [
@@ -332,7 +332,7 @@ void main() {
       test('handles special characters and unicode', () async {
         final model = Agent.getProvider(
           'google',
-        ).createEmbeddingsModel(name: 'text-embedding-004');
+        ).createEmbeddingsModel(name: 'gemini-embedding-001');
 
         const specialText = r'👋 Hello 世界! Special chars: @#$%^&*()';
 

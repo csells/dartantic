@@ -391,15 +391,11 @@ void main() {
         )) {
           history.addAll(chunk.messages);
 
-          // Extract container_id from streaming metadata
-          final ciEvents = chunk.metadata['code_interpreter'] as List?;
-          if (ciEvents != null) {
-            for (final event in ciEvents) {
-              final item = event['item'];
-              if (item is Map && item['container_id'] != null) {
-                firstContainerId = item['container_id'] as String;
-              }
-            }
+          // Extract container_id from result metadata (set by terminal event
+          // handler from ContainerFileCitation annotations)
+          final containerId = chunk.metadata['container_id'] as String?;
+          if (containerId != null) {
+            firstContainerId = containerId;
           }
         }
 
@@ -425,15 +421,11 @@ void main() {
         )) {
           history.addAll(chunk.messages);
 
-          // Extract container_id from streaming metadata
-          final ciEvents = chunk.metadata['code_interpreter'] as List?;
-          if (ciEvents != null) {
-            for (final event in ciEvents) {
-              final item = event['item'];
-              if (item is Map && item['container_id'] != null) {
-                secondContainerId = item['container_id'] as String;
-              }
-            }
+          // Extract container_id from result metadata (set by terminal event
+          // handler from ContainerFileCitation annotations)
+          final containerId = chunk.metadata['container_id'] as String?;
+          if (containerId != null) {
+            secondContainerId = containerId;
           }
         }
 

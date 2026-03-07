@@ -26,7 +26,7 @@ class AttachmentCollector {
   final Set<int> _completedImageIndices = {};
 
   final Set<({String containerId, String fileId, String? fileName})>
-      _containerFiles = {};
+  _containerFiles = {};
 
   /// Records a partial image update during streaming.
   void recordPartialImage({required String base64, required int index}) {
@@ -56,9 +56,11 @@ class AttachmentCollector {
     required String fileId,
     String? fileName,
   }) {
-    _containerFiles.add(
-      (containerId: containerId, fileId: fileId, fileName: fileName),
-    );
+    _containerFiles.add((
+      containerId: containerId,
+      fileId: fileId,
+      fileName: fileName,
+    ));
   }
 
   /// Resolves all tracked attachments into DataParts.

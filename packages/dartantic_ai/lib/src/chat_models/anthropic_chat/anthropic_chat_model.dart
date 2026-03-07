@@ -1,9 +1,6 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart' as a;
-// ignore: implementation_imports
-import 'package:anthropic_sdk_dart/src/generated/client.dart' as ag;
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
@@ -12,7 +9,6 @@ import '../../media_gen_models/anthropic/anthropic_files_client.dart';
 import '../../media_gen_models/anthropic/anthropic_tool_deliverable_tracker.dart';
 import 'anthropic_chat_options.dart';
 import 'anthropic_message_mappers.dart';
-import 'anthropic_server_side_tool_types.dart';
 import 'anthropic_server_side_tools.dart';
 
 /// Wrapper around [Anthropic Messages
@@ -186,158 +182,70 @@ class AnthropicChatModel extends ChatModel<AnthropicChatOptions> {
 
   @override
   void dispose() {
-    _client.endSession();
+    _client.close();
     _filesClient?.close();
   }
 
   Stream<a.MessageStreamEvent> _createMessageEventStream(
-    a.CreateMessageRequest request,
+    a.MessageCreateRequest request,
     MessageStreamEventTransformer transformer,
   ) async* {
-    final requestMap = request.toJson();
-    requestMap['stream'] = true;
-    _stripServerToolInputSchemas(requestMap);
+    await for (final event in _client.messageStream(request)) {
+      // Handle ContentBlockStartEvent for server-side tools
+      if (event is a.ContentBlockStartEvent) {
+        final cb = event.contentBlock;
+        if (cb is a.ServerToolUseBlock) {
+          // Register raw tool content for server-side tools
+          transformer.registerRawToolContent(cb.id, cb.input);
+        }
+      }
 
-    final lines = _client.rawMessageStream(requestMap);
-
-    await for (final line in lines) {
-      if (!line.startsWith('data:')) continue;
-      final payload = line.substring(5).trim();
-      if (payload.isEmpty || payload == '[DONE]') continue;
-
-      final map = json.decode(payload) as Map<String, dynamic>;
-      _registerRawToolPayload(map, transformer);
-      _normalizeServerToolEvent(map);
-      final type = map['type'];
-
-      if (type == 'content_block_delta') {
-        final delta = map['delta'];
-        if (delta is Map && delta['type'] == 'citations_delta') {
+      // Handle SignatureDelta for extended thinking
+      if (event is a.ContentBlockDeltaEvent) {
+        final delta = event.delta;
+        if (delta is a.SignatureDelta) {
+          if (delta.signature.isNotEmpty) {
+            _logger.fine('Captured signature delta for thinking block');
+            transformer.recordSignatureDelta(delta.signature);
+          }
+          continue;
+        }
+        // Skip CitationsDelta as it's not supported yet
+        if (delta is a.CitationsDelta) {
           _logger.fine('Skipping unsupported citations_delta event');
+          continue;
+        }
+        if (delta is a.CompactionDelta) {
+          _logger.fine('Skipping unsupported compaction_delta event');
           continue;
         }
       }
 
-      if (type == 'signature_delta' ||
-          (map['delta'] is Map &&
-              (map['delta'] as Map)['type'] == 'signature_delta')) {
-        final signature =
-            map['signature'] as String? ??
-            (map['delta'] as Map?)?['signature'] as String?;
-        if (signature != null && signature.isNotEmpty) {
-          _logger.fine('Captured signature delta for thinking block');
-          transformer.recordSignatureDelta(signature);
-        } else {
-          _logger.warning(
-            'Received signature_delta event without signature: $map',
-          );
-        }
-        continue;
-      }
-
-      yield a.MessageStreamEvent.fromJson(map);
-    }
-  }
-
-  void _stripServerToolInputSchemas(Map<String, dynamic> request) {
-    final tools = request['tools'];
-    if (tools is! List) return;
-
-    for (final entry in tools) {
-      if (entry is! Map<String, dynamic>) continue;
-      final type = entry['type'] as String?;
-      final name = entry['name'] as String?;
-      if (_shouldStripInputSchema(type, name)) {
-        entry.remove('input_schema');
-      }
-    }
-  }
-
-  bool _shouldStripInputSchema(String? type, String? name) {
-    const typesNeedingRemoval = {
-      'code_execution_20250825',
-      'web_search_20250305',
-      'web_fetch_20250910',
-    };
-    const namesNeedingRemoval = {'code_execution', 'web_search', 'web_fetch'};
-    return (type != null && typesNeedingRemoval.contains(type)) ||
-        (name != null && namesNeedingRemoval.contains(name));
-  }
-
-  void _registerRawToolPayload(
-    Map<String, dynamic> event,
-    MessageStreamEventTransformer transformer,
-  ) {
-    if (event['type'] != 'content_block_start') return;
-
-    final contentBlock = event['content_block'];
-    if (contentBlock is! Map<String, dynamic>) return;
-
-    final toolUseId = contentBlock['tool_use_id'];
-    if (toolUseId is! String || toolUseId.isEmpty) return;
-
-    final blockType = contentBlock['type'];
-    if (blockType == AnthropicServerToolTypes.serverToolUse) {
-      final input = contentBlock['input'];
-      if (input is Map<String, Object?>) {
-        transformer.registerRawToolContent(toolUseId, input);
-      }
-      return;
-    }
-
-    if (blockType is String &&
-        blockType.endsWith(AnthropicServerToolTypes.toolResultSuffix)) {
-      final content = contentBlock['content'];
-      if (content is Map<String, Object?>) {
-        transformer.registerRawToolContent(toolUseId, content);
-      }
-      // Replace content with empty string to satisfy JSON decoder expectations.
-      contentBlock['content'] = '';
-    }
-  }
-
-  void _normalizeServerToolEvent(Map<String, dynamic> event) {
-    if (event['type'] == 'content_block_start') {
-      final contentBlock = event['content_block'];
-      if (contentBlock is Map<String, dynamic>) {
-        final blockType = contentBlock['type'];
-        if (blockType == AnthropicServerToolTypes.serverToolUse) {
-          contentBlock['type'] = AnthropicServerToolTypes.toolUse;
-        } else if (blockType is String &&
-            blockType.endsWith(AnthropicServerToolTypes.toolResultSuffix)) {
-          contentBlock['type'] = AnthropicServerToolTypes.toolResult;
-        }
-      }
-    }
-
-    if (event['type'] == 'content_block_stop') {
-      final contentBlock = event['content_block'];
-      if (contentBlock is Map<String, dynamic>) {
-        final blockType = contentBlock['type'];
-        if (blockType == AnthropicServerToolTypes.serverToolUse) {
-          contentBlock['type'] = AnthropicServerToolTypes.toolUse;
-        } else if (blockType is String &&
-            blockType.endsWith(AnthropicServerToolTypes.toolResultSuffix)) {
-          contentBlock['type'] = AnthropicServerToolTypes.toolResult;
-        }
-      }
+      yield event;
     }
   }
 }
 
-class _AnthropicStreamingClient extends a.AnthropicClient {
+class _AnthropicStreamingClient {
   _AnthropicStreamingClient({
-    required super.apiKey,
-    super.baseUrl,
-    super.client,
+    required String apiKey,
+    String? baseUrl,
+    http.Client? client,
     Map<String, String>? headers,
     List<String> betaFeatures = const [],
-  }) : super(
-         headers: {
-           'anthropic-beta': _buildBetaHeader(betaFeatures),
-           ...?headers,
-         },
+  }) : _client = a.AnthropicClient(
+         config: a.AnthropicConfig(
+           authProvider: a.ApiKeyProvider(apiKey),
+           baseUrl: baseUrl ?? 'https://api.anthropic.com',
+           defaultHeaders: {
+             'anthropic-beta': _buildBetaHeader(betaFeatures),
+             ...?headers,
+           },
+         ),
+         httpClient: client,
        );
+
+  final a.AnthropicClient _client;
 
   static const List<String> _defaultBetaFeatures = <String>[
     'message-batches-2024-09-24',
@@ -350,19 +258,8 @@ class _AnthropicStreamingClient extends a.AnthropicClient {
     return features.join(',');
   }
 
-  Stream<String> rawMessageStream(Object request) async* {
-    final response = await makeRequestStream(
-      baseUrl: baseUrl ?? 'https://api.anthropic.com/v1',
-      path: '/messages',
-      method: ag.HttpMethod.post,
-      requestType: 'application/json',
-      responseType: 'application/json',
-      body: request,
-      headerParams: {if (apiKey.isNotEmpty) 'x-api-key': apiKey},
-    );
+  Stream<a.MessageStreamEvent> messageStream(a.MessageCreateRequest request) =>
+      _client.messages.createStream(request);
 
-    yield* response.stream
-        .transform(utf8.decoder)
-        .transform(const LineSplitter());
-  }
+  void close() => _client.close();
 }

@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
-import 'package:openai_dart/openai_dart.dart';
+import 'package:openai_dart/openai_dart.dart'
+    hide ChatMessage, FinishReason, Tool;
+import 'package:openai_dart/openai_dart.dart' as oai show ChatMessage, Tool;
 
 import '../../shared/openai_utils.dart';
 import '../helpers/message_part_helpers.dart';
@@ -13,8 +15,8 @@ import 'openai_message_mappers_helpers.dart';
 /// Logger for OpenAI message mapping operations.
 final Logger _logger = Logger('dartantic.chat.mappers.openai');
 
-/// Creates a [CreateChatCompletionRequest] from the given Message input.
-CreateChatCompletionRequest createChatCompletionRequestFromMessages(
+/// Creates a [ChatCompletionCreateRequest] from the given Message input.
+ChatCompletionCreateRequest createChatCompletionRequestFromMessages(
   List<ChatMessage> messages, {
   required String modelName,
   required OpenAIChatOptions? options,
@@ -25,24 +27,20 @@ CreateChatCompletionRequest createChatCompletionRequestFromMessages(
   final messagesDtos = messages.toOpenAIMessages();
   final toolsDtos = tools
       ?.map(
-        (tool) => ChatCompletionTool(
-          type: ChatCompletionToolType.function,
-          function: FunctionObject(
-            name: tool.name,
-            description: tool.description,
-            // OpenAI requires 'properties' field on object schemas, even if
-            // empty
-            parameters: OpenAIUtils.prepareSchemaForOpenAI(
-              Map<String, dynamic>.from(tool.inputSchema.value),
-            ),
-            strict: null, // Explicitly pass null to override any defaults
+        (tool) => oai.Tool.function(
+          name: tool.name,
+          description: tool.description,
+          // OpenAI requires 'properties' field on object schemas, even if
+          // empty
+          parameters: OpenAIUtils.prepareSchemaForOpenAI(
+            Map<String, dynamic>.from(tool.inputSchema.value),
           ),
         ),
       )
       .toList();
 
-  return CreateChatCompletionRequest(
-    model: ChatCompletionModel.modelId(modelName),
+  return ChatCompletionCreateRequest(
+    model: modelName,
     messages: messagesDtos,
     tools: toolsDtos,
     toolChoice: null,
@@ -54,9 +52,7 @@ CreateChatCompletionRequest createChatCompletionRequestFromMessages(
     presencePenalty: options?.presencePenalty ?? defaultOptions.presencePenalty,
     responseFormat: options?.responseFormat ?? defaultOptions.responseFormat,
     seed: options?.seed ?? defaultOptions.seed,
-    stop: (options?.stop ?? defaultOptions.stop) != null
-        ? ChatCompletionStop.listString(options?.stop ?? defaultOptions.stop!)
-        : null,
+    stop: options?.stop ?? defaultOptions.stop,
     temperature:
         temperature ?? options?.temperature ?? defaultOptions.temperature,
     topP: options?.topP ?? defaultOptions.topP,
@@ -69,16 +65,16 @@ CreateChatCompletionRequest createChatCompletionRequestFromMessages(
 
 /// Extension on [List<Message>] to convert messages to OpenAI SDK messages.
 extension MessageListToOpenAI on List<ChatMessage> {
-  /// Converts this list of [ChatMessage]s to a list of
-  /// [ChatCompletionMessage]s.
+  /// Converts this list of [ChatMessage]s to a list of OpenAI
+  /// [oai.ChatMessage]s.
   ///
   /// ThinkingPart is skipped during mapping since OpenAI doesn't need thinking
   /// content sent back in conversation history.
-  List<ChatCompletionMessage> toOpenAIMessages() {
+  List<oai.ChatMessage> toOpenAIMessages() {
     _logger.fine('Converting $length messages to OpenAI format');
 
     // Expand messages to handle multiple tool results
-    final expandedMessages = <ChatCompletionMessage>[];
+    final expandedMessages = <oai.ChatMessage>[];
     for (final message in this) {
       if (message.role == ChatMessageRole.user) {
         // Check if this is a tool result message with multiple results
@@ -88,7 +84,7 @@ extension MessageListToOpenAI on List<ChatMessage> {
           for (final toolResult in toolResults) {
             final content = ToolResultHelpers.serialize(toolResult.result);
             expandedMessages.add(
-              ChatCompletionMessage.tool(
+              oai.ChatMessage.tool(
                 toolCallId: toolResult.callId,
                 content: content,
               ),
@@ -107,7 +103,7 @@ extension MessageListToOpenAI on List<ChatMessage> {
     return expandedMessages;
   }
 
-  ChatCompletionMessage _mapMessage(ChatMessage message) {
+  oai.ChatMessage _mapMessage(ChatMessage message) {
     switch (message.role) {
       case ChatMessageRole.system:
         return _mapSystemMessage(message);
@@ -118,13 +114,13 @@ extension MessageListToOpenAI on List<ChatMessage> {
     }
   }
 
-  ChatCompletionMessage _mapSystemMessage(ChatMessage message) {
+  oai.ChatMessage _mapSystemMessage(ChatMessage message) {
     // System messages should have a single text part
     final text = message.parts.text;
-    return ChatCompletionMessage.system(content: text);
+    return oai.ChatMessage.system(text);
   }
 
-  ChatCompletionMessage _mapUserMessage(ChatMessage message) {
+  oai.ChatMessage _mapUserMessage(ChatMessage message) {
     // Check if this is a tool result message
     final toolResults = message.parts.toolResults;
 
@@ -134,46 +130,42 @@ extension MessageListToOpenAI on List<ChatMessage> {
       final toolResult = toolResults.first;
       // ignore: avoid_dynamic_calls
       final content = ToolResultHelpers.serialize(toolResult.result);
-      return ChatCompletionMessage.tool(
+      return oai.ChatMessage.tool(
         toolCallId: toolResult.callId,
         content: content,
       );
     }
 
     // Regular user message with content parts
-    final contentParts = <ChatCompletionMessageContentPart>[];
+    final contentParts = <ContentPart>[];
 
     for (final part in message.parts) {
       switch (part) {
         case TextPart(:final text):
-          contentParts.add(ChatCompletionMessageContentPartText(text: text));
+          contentParts.add(ContentPart.text(text));
         case DataPart(:final bytes, :final mimeType):
           if (mimeType.startsWith('image/')) {
             // Images: Use native image support for better quality
             final base64Data = base64.encode(bytes);
             contentParts.add(
-              ChatCompletionMessageContentPartImage(
-                imageUrl: ChatCompletionMessageImageUrl(
-                  url: 'data:$mimeType;base64,$base64Data',
-                ),
-              ),
+              ContentPart.imageUrl('data:$mimeType;base64,$base64Data'),
             );
           } else {
             // Non-images: Use dartantic_ai text format
             // This allows any MIME type to work with OpenAI
             final base64Data = base64.encode(bytes);
             contentParts.add(
-              ChatCompletionMessageContentPartText(
-                text: '[media: $mimeType] data:$mimeType;base64,$base64Data',
+              ContentPart.text(
+                '[media: $mimeType] data:$mimeType;base64,$base64Data',
               ),
             );
           }
-        case LinkPart(:final url):
-          contentParts.add(
-            ChatCompletionMessageContentPartImage(
-              imageUrl: ChatCompletionMessageImageUrl(url: url.toString()),
-            ),
-          );
+        case LinkPart(:final url, :final mimeType):
+          if (mimeType?.startsWith('image/') ?? false) {
+            contentParts.add(ContentPart.imageUrl(url.toString()));
+          } else {
+            contentParts.add(ContentPart.text(url.toString()));
+          }
         case ToolPart():
           // Skip tool parts in user messages (handled above)
           break;
@@ -184,42 +176,34 @@ extension MessageListToOpenAI on List<ChatMessage> {
     }
 
     if (contentParts.isEmpty) {
-      return const ChatCompletionMessage.user(
-        content: ChatCompletionUserMessageContentString(''),
-      );
+      return oai.ChatMessage.user('');
     } else if (contentParts.length == 1 &&
-        contentParts.first is ChatCompletionMessageContentPartText) {
-      final text =
-          (contentParts.first as ChatCompletionMessageContentPartText).text;
-      return ChatCompletionMessage.user(
-        content: ChatCompletionUserMessageContentString(text),
-      );
+        contentParts.first is TextContentPart) {
+      final text = (contentParts.first as TextContentPart).text;
+      return oai.ChatMessage.user(text);
     } else {
-      return ChatCompletionMessage.user(
-        content: ChatCompletionUserMessageContent.parts(contentParts),
-      );
+      return oai.ChatMessage.user(contentParts);
     }
   }
 
-  ChatCompletionMessage _mapModelMessage(ChatMessage message) {
+  oai.ChatMessage _mapModelMessage(ChatMessage message) {
     // Extract text content
     final textContent = message.parts.text;
 
     // Extract tool calls
     final toolCalls = message.parts.toolCalls
         .map(
-          (p) => ChatCompletionMessageToolCall(
+          (p) => ToolCall.functionCall(
             id: p.callId,
-            type: ChatCompletionMessageToolCallType.function,
-            function: ChatCompletionMessageFunctionCall(
+            call: FunctionCall.fromMap(
               name: p.toolName,
-              arguments: json.encode(p.arguments ?? {}),
+              arguments: p.arguments ?? {},
             ),
           ),
         )
         .toList();
 
-    return ChatCompletionMessage.assistant(
+    return oai.ChatMessage.assistant(
       content: textContent.isEmpty ? null : textContent,
       toolCalls: toolCalls.isEmpty ? null : toolCalls,
     );
@@ -230,7 +214,7 @@ extension MessageListToOpenAI on List<ChatMessage> {
 /// returns text content. Tool calls are accumulated in the provided list but
 /// not converted to ToolParts until streaming completes.
 ChatMessage messageFromOpenAIStreamDelta(
-  ChatCompletionStreamResponseDelta delta,
+  ChatDelta delta,
   List<StreamingToolCall> accumulatedToolCalls,
 ) {
   final parts = <Part>[];
@@ -330,7 +314,7 @@ ChatMessage createCompleteMessageWithTools(
 }
 
 /// Converts OpenAI completion response to Message.
-ChatMessage messageFromOpenAIResponse(CreateChatCompletionResponse response) {
+ChatMessage messageFromOpenAIResponse(ChatCompletion response) {
   if (response.choices.isEmpty) {
     return ChatMessage(role: ChatMessageRole.model, parts: const []);
   }

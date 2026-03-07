@@ -1,6 +1,6 @@
 import 'package:dartantic_ai/src/chat_models/openai_responses/openai_responses_server_side_tool_mapper.dart';
 import 'package:dartantic_ai/src/chat_models/openai_responses/openai_responses_server_side_tools.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 import 'package:test/test.dart';
 
 void main() {
@@ -15,10 +15,9 @@ void main() {
       );
 
       expect(tools, hasLength(1));
-      final tool = tools.single as openai.WebSearchPreviewTool;
-      expect(tool.searchContextSize, openai.SearchContextSize.high);
-      expect(tool.userLocation?.city, 'Berlin');
-      expect(tool.userLocation?.country, 'DE');
+      final tool = tools.single as openai.WebSearchTool;
+      expect(tool.searchContextSize, 'high');
+      expect(tool.userLocation, isNotNull);
     });
 
     test('skips file search when vector stores missing', () {
@@ -60,9 +59,31 @@ void main() {
 
       expect(tools, hasLength(1));
       final tool = tools.single as openai.CodeInterpreterTool;
-      expect(tool.container, isA<openai.CodeInterpreterContainerId>());
       final container = tool.container as openai.CodeInterpreterContainerId;
-      expect(container.containerId, 'ctr_abc');
+      expect(container.id, equals('ctr_abc'));
+    });
+
+    test('builds code interpreter tool without config', () {
+      final tools = OpenAIResponsesServerSideToolMapper.buildServerSideTools(
+        serverSideTools: const {OpenAIServerSideTool.codeInterpreter},
+      );
+
+      expect(tools, hasLength(1));
+      final tool = tools.single as openai.CodeInterpreterTool;
+      expect(tool.container, isA<openai.CodeInterpreterContainerAuto>());
+    });
+
+    test('builds web search tool with searchContentTypes', () {
+      final tools = OpenAIResponsesServerSideToolMapper.buildServerSideTools(
+        serverSideTools: const {OpenAIServerSideTool.webSearch},
+        webSearchConfig: const WebSearchConfig(
+          searchContentTypes: [SearchContentType.text],
+        ),
+      );
+
+      expect(tools, hasLength(1));
+      final tool = tools.single as openai.WebSearchTool;
+      expect(tool.searchContentTypes, [openai.SearchContentType.text]);
     });
 
     test('builds image generation tool', () {

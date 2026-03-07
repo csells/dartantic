@@ -1,6 +1,6 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import '../openai_responses_event_mapping_state.dart';
 import 'openai_responses_event_handler.dart';
@@ -15,23 +15,23 @@ class TextEventHandler implements OpenAIResponsesEventHandler {
   );
 
   @override
-  bool canHandle(openai.ResponseEvent event) =>
-      event is openai.ResponseOutputTextDelta ||
-      event is openai.ResponseOutputTextDone;
+  bool canHandle(openai.ResponseStreamEvent event) =>
+      event is openai.OutputTextDeltaEvent ||
+      event is openai.OutputTextDoneEvent;
 
   @override
   Stream<ChatResult<ChatMessage>> handle(
-    openai.ResponseEvent event,
+    openai.ResponseStreamEvent event,
     EventMappingState state,
   ) async* {
-    if (event is openai.ResponseOutputTextDelta) {
+    if (event is openai.OutputTextDeltaEvent) {
       yield* _handleTextDelta(event, state);
     }
-    // ResponseOutputTextDone requires no action
+    // OutputTextDoneEvent requires no action
   }
 
   Stream<ChatResult<ChatMessage>> _handleTextDelta(
-    openai.ResponseOutputTextDelta event,
+    openai.OutputTextDeltaEvent event,
     EventMappingState state,
   ) async* {
     if (event.delta.isEmpty) {

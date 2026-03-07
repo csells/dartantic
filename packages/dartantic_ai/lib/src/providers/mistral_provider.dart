@@ -78,6 +78,13 @@ class MistralProvider
         maxTokens: options?.maxTokens,
         safePrompt: options?.safePrompt,
         randomSeed: options?.randomSeed,
+        presencePenalty: options?.presencePenalty,
+        frequencyPenalty: options?.frequencyPenalty,
+        stop: options?.stop,
+        n: options?.n,
+        parallelToolCalls: options?.parallelToolCalls,
+        prediction: options?.prediction,
+        promptMode: options?.promptMode,
       ),
     );
   }
@@ -108,14 +115,19 @@ class MistralProvider
   @override
   Stream<ModelInfo> listModels() async* {
     _logger.info('Fetching models from Mistral API using SDK');
-    final client = m.MistralAIClient(
-      apiKey: apiKey ?? '',
-      baseUrl: baseUrl?.toString(),
-      headers: headers,
+    if (apiKeyName != null && (apiKey == null || apiKey!.isEmpty)) {
+      throw ArgumentError('$apiKeyName is required for $displayName provider');
+    }
+    final client = m.MistralClient(
+      config: m.MistralConfig(
+        authProvider: m.ApiKeyProvider(apiKey ?? ''),
+        baseUrl: baseUrl?.toString() ?? 'https://api.mistral.ai',
+        defaultHeaders: headers,
+      ),
     );
 
     try {
-      final response = await client.listModels();
+      final response = await client.models.list();
       final modelCount = response.data.length;
       _logger.info('Successfully fetched $modelCount models from Mistral');
 
@@ -132,7 +144,7 @@ class MistralProvider
         );
       }
     } finally {
-      client.endSession();
+      client.close();
     }
   }
 

@@ -37,10 +37,7 @@ void main() {
         // All providers should create agents even without API keys
         expect(() => Agent('openai:gpt-4o-mini'), returnsNormally);
         expect(() => Agent('google:gemini-2.5-flash'), returnsNormally);
-        expect(
-          () => Agent('anthropic:claude-3-5-haiku-latest'),
-          returnsNormally,
-        );
+        expect(() => Agent('anthropic'), returnsNormally);
         expect(() => Agent('mistral:mistral-small-latest'), returnsNormally);
       });
     });

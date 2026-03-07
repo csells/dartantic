@@ -35,7 +35,7 @@ void main() {
     });
 
     test('OpenAI Responses provider stores custom headers', () async {
-      // OpenAI Responses uses openai_core SDK which wraps HTTP differently, so
+      // OpenAI Responses uses openai_dart SDK which wraps HTTP differently, so
       // we verify headers are stored on the provider instead
       const customHeaders = {'X-Custom-Header': 'test-value'};
       final provider = OpenAIResponsesProvider(

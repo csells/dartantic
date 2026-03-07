@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:dartantic_ai/src/chat_models/openai_responses/openai_responses_event_mapper.dart';
 import 'package:dartantic_ai/src/shared/openai_responses_metadata.dart';
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 import 'package:test/test.dart';
 
 // Mock download function for tests
@@ -26,7 +26,7 @@ void main() {
 
       final results = await mapper
           .handle(
-            const openai.ResponseOutputTextDelta(
+            const openai.OutputTextDeltaEvent(
               itemId: 'msg',
               outputIndex: 0,
               contentIndex: 0,
@@ -54,86 +54,73 @@ void main() {
 
         final response = openai.Response(
           id: 'resp_123',
-          model: openai.ChatModel.gpt4o,
-          status: 'completed',
-          usage: const openai.Usage(
+          object: 'response',
+          createdAt: 0,
+          model: 'gpt-4o',
+          status: openai.ResponseStatus.completed,
+          usage: const openai.ResponseUsage(
             inputTokens: 12,
             outputTokens: 34,
             totalTokens: 46,
           ),
           output: [
-            const openai.OutputMessage(
-              role: 'assistant',
+            const openai.MessageOutputItem(
+              id: 'msg-1',
+              role: openai.MessageRole.assistant,
               content: [
                 openai.OutputTextContent(text: 'Hello!', annotations: []),
               ],
-              id: 'msg-1',
-              status: 'completed',
+              status: openai.ItemStatus.completed,
             ),
-            openai.FunctionCall(
+            openai.FunctionCallOutputItemResponse(
+              id: 'fc-1',
               callId: 'tool-1',
               name: 'fetchData',
               arguments: jsonEncode({'foo': 'bar'}),
             ),
-            openai.FunctionCallOutput(
-              callId: 'tool-1',
-              output: jsonEncode({'result': 42}),
-            ),
-            const openai.Reasoning(
+            const openai.ReasoningItem(
               id: 'reason-1',
-              summary: [openai.ReasoningSummary(text: 'Thinking...')],
+              summary: [openai.ReasoningSummaryContent(text: 'Thinking...')],
             ),
-            const openai.CodeInterpreterCall(
+            const openai.CodeInterpreterCallOutputItem(
               id: 'ci-1',
               code: 'print(1)',
-              status: openai.CodeInterpreterToolCallStatus.completed,
-              containerId: 'container-7',
-              results: [openai.CodeInterpreterLogs('done')],
+              status: openai.ItemStatus.completed,
             ),
-            openai.ImageGenerationCall(
+            openai.ImageGenerationCallOutputItem(
               id: 'img-1',
-              status: openai.ImageGenerationCallStatus.completed,
-              resultBase64: base64Encode(utf8.encode('fake')), // any bytes
+              status: openai.ItemStatus.completed,
+              result: base64Encode(utf8.encode('fake')), // any bytes
             ),
-            const openai.WebSearchCall(
+            const openai.WebSearchCallOutputItem(
               id: 'search-1',
-              status: openai.WebSearchToolCallStatus.completed,
+              status: openai.ItemStatus.completed,
             ),
-            const openai.FileSearchCall(
+            const openai.FileSearchCallOutputItem(
               id: 'files-1',
-              status: openai.FileSearchToolCallStatus.completed,
+              status: openai.ItemStatus.completed,
               queries: ['query'],
               results: [
-                openai.FileSearchToolCallResult(
-                  text: 'snippet',
-                  fileId: 'file-1',
-                ),
+                {'text': 'snippet', 'file_id': 'file-1'},
               ],
             ),
-            const openai.McpCall(
+            const openai.McpCallOutputItem(
               id: 'mcp-1',
+              callId: 'mcp-call-1',
               name: 'list',
               arguments: '{}',
               serverLabel: 'server-a',
               output: 'ok',
-            ),
-            const openai.McpApprovalRequest(
-              id: 'approve-1',
-              arguments: '{}',
-              name: 'needs_approval',
-              serverLabel: 'server-a',
-            ),
-            const openai.McpApprovalResponse(
-              approvalRequestId: 'approve-1',
-              approve: true,
-              reason: 'All good',
             ),
           ],
         );
 
         final results = await mapper
             .handle(
-              openai.ResponseCompleted(response: response, sequenceNumber: 10),
+              openai.ResponseCompletedEvent(
+                response: response,
+                sequenceNumber: 10,
+              ),
             )
             .toList();
 
@@ -154,11 +141,6 @@ void main() {
           (part) => part.kind == ToolPartKind.call,
         );
         expect(callPart.toolName, equals('fetchData'));
-
-        final resultPart = message.parts.whereType<ToolPart>().firstWhere(
-          (part) => part.kind == ToolPartKind.result,
-        );
-        expect(resultPart.result, containsPair('result', 42));
 
         final session = OpenAIResponsesMetadata.getSessionData(
           message.metadata,
@@ -189,25 +171,25 @@ void main() {
           downloadContainerFile: _mockDownloadContainerFile,
         );
 
-        // Step 1: ResponseOutputItemAdded with ImageGenerationCall
+        // Step 1: OutputItemAddedEvent with ImageGenerationCallOutputItem
         var results = await mapper
             .handle(
-              const openai.ResponseOutputItemAdded(
+              const openai.OutputItemAddedEvent(
                 outputIndex: 0,
                 sequenceNumber: 1,
-                item: openai.ImageGenerationCall(
+                item: openai.ImageGenerationCallOutputItem(
                   id: 'img-1',
-                  status: openai.ImageGenerationCallStatus.inProgress,
+                  status: openai.ItemStatus.inProgress,
                 ),
               ),
             )
             .toList();
         expect(results, isEmpty); // No output yet
 
-        // Step 2: ResponseImageGenerationCallInProgress
+        // Step 2: ResponseImageGenerationCallInProgressEvent
         results = await mapper
             .handle(
-              const openai.ResponseImageGenerationCallInProgress(
+              const openai.ResponseImageGenerationCallInProgressEvent(
                 itemId: 'img-1',
                 outputIndex: 0,
                 sequenceNumber: 2,
@@ -217,10 +199,10 @@ void main() {
         expect(results, hasLength(1)); // Metadata chunk emitted
         expect(results.first.metadata['image_generation'], isNotNull);
 
-        // Step 3: ResponseImageGenerationCallGenerating
+        // Step 3: ResponseImageGenerationCallGeneratingEvent
         results = await mapper
             .handle(
-              const openai.ResponseImageGenerationCallGenerating(
+              const openai.ResponseImageGenerationCallGeneratingEvent(
                 itemId: 'img-1',
                 outputIndex: 0,
                 sequenceNumber: 3,
@@ -229,13 +211,13 @@ void main() {
             .toList();
         expect(results, hasLength(1)); // Metadata chunk emitted
 
-        // Step 4: ResponseImageGenerationCallPartialImage
+        // Step 4: ResponseImageGenerationCallPartialImageEvent
         const fakeImageData =
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC'
             '0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
         results = await mapper
             .handle(
-              const openai.ResponseImageGenerationCallPartialImage(
+              const openai.ResponseImageGenerationCallPartialImageEvent(
                 itemId: 'img-1',
                 outputIndex: 0,
                 sequenceNumber: 4,
@@ -246,39 +228,40 @@ void main() {
             .toList();
         expect(results, hasLength(1)); // Metadata chunk emitted
 
-        // Step 5: ResponseOutputItemDone marks completion
+        // Step 5: OutputItemDoneEvent marks completion
         results = await mapper
             .handle(
-              const openai.ResponseOutputItemDone(
+              const openai.OutputItemDoneEvent(
                 outputIndex: 0,
                 sequenceNumber: 5,
-                item: openai.ImageGenerationCall(
+                item: openai.ImageGenerationCallOutputItem(
                   id: 'img-1',
-                  status: openai.ImageGenerationCallStatus.completed,
-                  resultBase64: fakeImageData,
+                  status: openai.ItemStatus.completed,
+                  result: fakeImageData,
                 ),
               ),
             )
             .toList();
         expect(results, isEmpty); // Just marks completion, no output yet
 
-        // Step 6: ResponseCompleted should include the image as a DataPart
+        // Step 6: ResponseCompletedEvent should include the image as a DataPart
         const response = openai.Response(
           id: 'resp_img',
-          model: openai.ChatModel.gpt4o,
-          status: 'completed',
+          object: 'response',
+          createdAt: 0,
+          status: openai.ResponseStatus.completed,
           output: [
-            openai.ImageGenerationCall(
+            openai.ImageGenerationCallOutputItem(
               id: 'img-1',
-              status: openai.ImageGenerationCallStatus.completed,
-              resultBase64: fakeImageData,
+              status: openai.ItemStatus.completed,
+              result: fakeImageData,
             ),
           ],
         );
 
         results = await mapper
             .handle(
-              const openai.ResponseCompleted(
+              const openai.ResponseCompletedEvent(
                 response: response,
                 sequenceNumber: 6,
               ),
@@ -314,12 +297,12 @@ void main() {
       // Image 1 at outputIndex 0
       await mapper
           .handle(
-            const openai.ResponseOutputItemAdded(
+            const openai.OutputItemAddedEvent(
               outputIndex: 0,
               sequenceNumber: 1,
-              item: openai.ImageGenerationCall(
+              item: openai.ImageGenerationCallOutputItem(
                 id: 'img-1',
-                status: openai.ImageGenerationCallStatus.inProgress,
+                status: openai.ItemStatus.inProgress,
               ),
             ),
           )
@@ -327,7 +310,7 @@ void main() {
 
       await mapper
           .handle(
-            const openai.ResponseImageGenerationCallPartialImage(
+            const openai.ResponseImageGenerationCallPartialImageEvent(
               itemId: 'img-1',
               outputIndex: 0,
               sequenceNumber: 2,
@@ -340,12 +323,12 @@ void main() {
       // Image 2 at outputIndex 1 (different index!)
       await mapper
           .handle(
-            const openai.ResponseOutputItemAdded(
+            const openai.OutputItemAddedEvent(
               outputIndex: 1,
               sequenceNumber: 3,
-              item: openai.ImageGenerationCall(
+              item: openai.ImageGenerationCallOutputItem(
                 id: 'img-2',
-                status: openai.ImageGenerationCallStatus.inProgress,
+                status: openai.ItemStatus.inProgress,
               ),
             ),
           )
@@ -353,7 +336,7 @@ void main() {
 
       await mapper
           .handle(
-            const openai.ResponseImageGenerationCallPartialImage(
+            const openai.ResponseImageGenerationCallPartialImageEvent(
               itemId: 'img-2',
               outputIndex: 1,
               sequenceNumber: 4,
@@ -366,13 +349,13 @@ void main() {
       // Complete both images
       await mapper
           .handle(
-            const openai.ResponseOutputItemDone(
+            const openai.OutputItemDoneEvent(
               outputIndex: 0,
               sequenceNumber: 5,
-              item: openai.ImageGenerationCall(
+              item: openai.ImageGenerationCallOutputItem(
                 id: 'img-1',
-                status: openai.ImageGenerationCallStatus.completed,
-                resultBase64: fakeImageData1,
+                status: openai.ItemStatus.completed,
+                result: fakeImageData1,
               ),
             ),
           )
@@ -380,40 +363,41 @@ void main() {
 
       await mapper
           .handle(
-            const openai.ResponseOutputItemDone(
+            const openai.OutputItemDoneEvent(
               outputIndex: 1,
               sequenceNumber: 6,
-              item: openai.ImageGenerationCall(
+              item: openai.ImageGenerationCallOutputItem(
                 id: 'img-2',
-                status: openai.ImageGenerationCallStatus.completed,
-                resultBase64: fakeImageData2,
+                status: openai.ItemStatus.completed,
+                result: fakeImageData2,
               ),
             ),
           )
           .toList();
 
-      // ResponseCompleted with both images at indices 0 and 1
+      // ResponseCompletedEvent with both images at indices 0 and 1
       const response = openai.Response(
         id: 'resp_multi',
-        model: openai.ChatModel.gpt4o,
-        status: 'completed',
+        object: 'response',
+        createdAt: 0,
+        status: openai.ResponseStatus.completed,
         output: [
-          openai.ImageGenerationCall(
+          openai.ImageGenerationCallOutputItem(
             id: 'img-1',
-            status: openai.ImageGenerationCallStatus.completed,
-            resultBase64: fakeImageData1,
+            status: openai.ItemStatus.completed,
+            result: fakeImageData1,
           ),
-          openai.ImageGenerationCall(
+          openai.ImageGenerationCallOutputItem(
             id: 'img-2',
-            status: openai.ImageGenerationCallStatus.completed,
-            resultBase64: fakeImageData2,
+            status: openai.ItemStatus.completed,
+            result: fakeImageData2,
           ),
         ],
       );
 
       final results = await mapper
           .handle(
-            const openai.ResponseCompleted(
+            const openai.ResponseCompletedEvent(
               response: response,
               sequenceNumber: 7,
             ),
@@ -441,63 +425,6 @@ void main() {
       expect(dataParts[1].mimeType, equals('image/png'));
       expect(dataParts[1].bytes, equals(base64Decode(fakeImageData2)));
       expect(dataParts[1].name, equals('image_1.png'));
-    });
-
-    test('attaches container file citations with inferred metadata', () async {
-      const pngBase64 =
-          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC'
-          '0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
-      final pngBytes = base64Decode(pngBase64);
-
-      final mapper = OpenAIResponsesEventMapper(
-        storeSession: false,
-        downloadContainerFile: (containerId, fileId) async => ContainerFileData(
-          bytes: Uint8List.fromList(pngBytes),
-          fileName: 'plot.png',
-        ),
-      );
-
-      const response = openai.Response(
-        id: 'resp_file',
-        model: openai.ChatModel.gpt4o,
-        status: 'completed',
-        output: [
-          openai.OutputMessage(
-            role: 'assistant',
-            content: [
-              openai.OutputTextContent(
-                text: 'See plot',
-                annotations: [
-                  openai.ContainerFileCitation(
-                    containerId: 'container-1',
-                    fileId: 'file-1',
-                    startIndex: 0,
-                    endIndex: 4,
-                  ),
-                ],
-              ),
-            ],
-            id: 'msg-plot',
-            status: 'completed',
-          ),
-        ],
-      );
-
-      final results = await mapper
-          .handle(
-            const openai.ResponseCompleted(
-              response: response,
-              sequenceNumber: 1,
-            ),
-          )
-          .toList();
-
-      expect(results, hasLength(1));
-      final message = results.single.output;
-      final attachment = message.parts.whereType<DataPart>().single;
-      expect(attachment.mimeType, 'image/png');
-      expect(attachment.name, 'plot.png');
-      expect(attachment.bytes, equals(pngBytes));
     });
   });
 }

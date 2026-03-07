@@ -1,5 +1,5 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import '../../shared/openai_utils.dart';
 import 'openai_responses_chat_options.dart';
@@ -27,16 +27,16 @@ class OpenAIResponsesOptionsMapper {
   ///
   /// Accepts either raw JSON map or typed enum values. Returns null if no
   /// reasoning configuration is specified.
-  static openai.ReasoningOptions? toReasoningOptions({
+  static openai.ReasoningConfig? toReasoningOptions({
     Map<String, dynamic>? raw,
     OpenAIReasoningEffort? effort,
     OpenAIReasoningSummary? summary,
   }) {
     openai.ReasoningEffort? resolvedEffort;
-    openai.ReasoningDetail? resolvedSummary;
+    openai.ReasoningSummary? resolvedSummary;
 
     if (raw != null && raw.isNotEmpty) {
-      final parsed = openai.ReasoningOptions.fromJson(raw);
+      final parsed = openai.ReasoningConfig.fromJson(raw);
       resolvedEffort = parsed.effort;
       resolvedSummary = parsed.summary;
     }
@@ -51,9 +51,9 @@ class OpenAIResponsesOptionsMapper {
 
     if (summary != null) {
       resolvedSummary = switch (summary) {
-        OpenAIReasoningSummary.detailed => openai.ReasoningDetail.detailed,
-        OpenAIReasoningSummary.concise => openai.ReasoningDetail.concise,
-        OpenAIReasoningSummary.auto => openai.ReasoningDetail.auto,
+        OpenAIReasoningSummary.detailed => openai.ReasoningSummary.detailed,
+        OpenAIReasoningSummary.concise => openai.ReasoningSummary.concise,
+        OpenAIReasoningSummary.auto => openai.ReasoningSummary.auto,
         OpenAIReasoningSummary.none => null,
       };
     }
@@ -62,7 +62,7 @@ class OpenAIResponsesOptionsMapper {
       return null;
     }
 
-    return openai.ReasoningOptions(
+    return openai.ReasoningConfig(
       effort: resolvedEffort,
       summary: resolvedSummary,
     );
@@ -99,7 +99,7 @@ class OpenAIResponsesOptionsMapper {
       final schema = OpenAIUtils.prepareSchemaForOpenAI(
         Map<String, dynamic>.from(outputSchema.value),
       );
-      return openai.TextFormatJsonSchema(
+      return openai.JsonSchemaFormat(
         name: 'dartantic_output',
         schema: schema,
         description: schema['description'] as String?,

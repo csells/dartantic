@@ -1,5 +1,5 @@
 import 'package:logging/logging.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import 'openai_responses_chat_options.dart';
 import 'openai_responses_server_side_tools.dart';
@@ -14,7 +14,7 @@ class OpenAIResponsesServerSideToolMapper {
   );
 
   /// Converts dartantic tool preferences into OpenAI Responses tool payloads.
-  static List<openai.Tool> buildServerSideTools({
+  static List<openai.ResponseTool> buildServerSideTools({
     required Set<OpenAIServerSideTool> serverSideTools,
     FileSearchConfig? fileSearchConfig,
     WebSearchConfig? webSearchConfig,
@@ -23,16 +23,17 @@ class OpenAIResponsesServerSideToolMapper {
   }) {
     if (serverSideTools.isEmpty) return const [];
 
-    final tools = <openai.Tool>[];
+    final tools = <openai.ResponseTool>[];
 
     for (final tool in serverSideTools) {
       switch (tool) {
         case OpenAIServerSideTool.webSearch:
           final config = webSearchConfig;
           tools.add(
-            openai.WebSearchPreviewTool(
+            openai.WebSearchTool(
               searchContextSize: _mapSearchContextSize(config?.contextSize),
               userLocation: _mapUserLocation(config?.location),
+              searchContentTypes: config?.searchContentTypes,
             ),
           );
           continue;
@@ -53,27 +54,25 @@ class OpenAIResponsesServerSideToolMapper {
             continue;
           }
 
-          openai.FileSearchFilter? parsedFilter;
-          if (config.filters != null && config.filters!.isNotEmpty) {
-            parsedFilter = openai.FileSearchFilter.fromJson(
-              Map<String, dynamic>.from(config.filters!),
+          openai.FileSearchRankingOptions? rankingOptions;
+          if (config.ranker != null || config.scoreThreshold != null) {
+            rankingOptions = openai.FileSearchRankingOptions(
+              ranker: config.ranker,
+              scoreThreshold: config.scoreThreshold?.toDouble(),
             );
           }
 
-          openai.RankingOptions? rankingOptions;
-          if (config.ranker != null || config.scoreThreshold != null) {
-            rankingOptions = openai.RankingOptions(
-              ranker: config.ranker,
-              scoreThreshold: config.scoreThreshold,
-            );
+          openai.FileSearchFilter? parsedFilter;
+          if (config.filters != null && config.filters!.isNotEmpty) {
+            parsedFilter = openai.FileSearchFilter.fromJson(config.filters!);
           }
 
           tools.add(
             openai.FileSearchTool(
               vectorStoreIds: config.vectorStoreIds,
-              filters: parsedFilter == null ? null : [parsedFilter],
               maxNumResults: config.maxResults,
               rankingOptions: rankingOptions,
+              filters: parsedFilter,
             ),
           );
           continue;
@@ -81,23 +80,25 @@ class OpenAIResponsesServerSideToolMapper {
           final config = imageGenerationConfig ?? const ImageGenerationConfig();
           tools.add(
             openai.ImageGenerationTool(
-              partialImages: config.partialImages,
+              partialImages: config.partialImages > 0
+                  ? config.partialImages
+                  : null,
               quality: _mapImageQuality(config.quality),
-              imageOutputSize: _mapImageSize(config.size),
+              size: _mapImageSize(config.size),
             ),
           );
           continue;
         case OpenAIServerSideTool.codeInterpreter:
           final config = codeInterpreterConfig;
-          openai.CodeInterpreterContainer container;
-          if (config != null && config.shouldReuseContainer) {
-            container = openai.CodeInterpreterContainerId(config.containerId!);
-          } else {
-            container = openai.CodeInterpreterContainerAuto(
-              fileIds: config?.fileIds,
-            );
-          }
-          tools.add(openai.CodeInterpreterTool(container: container));
+          tools.add(
+            openai.CodeInterpreterTool(
+              container: config?.shouldReuseContainer ?? false
+                  ? openai.CodeInterpreterContainer.id(config!.containerId!)
+                  : openai.CodeInterpreterContainer.auto(
+                      fileIds: config?.fileIds,
+                    ),
+            ),
+          );
           continue;
       }
     }
@@ -105,26 +106,28 @@ class OpenAIResponsesServerSideToolMapper {
     return tools;
   }
 
-  static openai.SearchContextSize? _mapSearchContextSize(
-    WebSearchContextSize? size,
-  ) {
+  static String? _mapSearchContextSize(WebSearchContextSize? size) {
     switch (size) {
       case WebSearchContextSize.low:
-        return openai.SearchContextSize.low;
+        return 'low';
       case WebSearchContextSize.medium:
-        return openai.SearchContextSize.medium;
+        return 'medium';
       case WebSearchContextSize.high:
-        return openai.SearchContextSize.high;
+        return 'high';
       case WebSearchContextSize.other:
-        return openai.SearchContextSize.other;
+        throw UnsupportedError(
+          'WebSearchContextSize.other is not supported by the OpenAI API.',
+        );
       case null:
         return null;
     }
   }
 
-  static openai.UserLocation? _mapUserLocation(WebSearchLocation? location) {
+  static openai.ApproximateLocation? _mapUserLocation(
+    WebSearchLocation? location,
+  ) {
     if (location == null || location.isEmpty) return null;
-    return openai.UserLocation(
+    return openai.ApproximateLocation(
       city: location.city,
       region: location.region,
       country: location.country,
@@ -132,28 +135,22 @@ class OpenAIResponsesServerSideToolMapper {
     );
   }
 
-  static openai.ImageOutputQuality _mapImageQuality(
-    ImageGenerationQuality quality,
-  ) => switch (quality) {
-    ImageGenerationQuality.low => openai.ImageOutputQuality.low,
-    ImageGenerationQuality.medium => openai.ImageOutputQuality.medium,
-    ImageGenerationQuality.high => openai.ImageOutputQuality.high,
-    ImageGenerationQuality.auto => openai.ImageOutputQuality.auto,
-  };
-
-  static openai.ImageOutputSize _mapImageSize(ImageGenerationSize size) =>
-      switch (size) {
-        ImageGenerationSize.auto => openai.ImageOutputSize.auto,
-        ImageGenerationSize.square256 => openai.ImageOutputSize.square256,
-        ImageGenerationSize.square512 => openai.ImageOutputSize.square512,
-        ImageGenerationSize.square1024 => openai.ImageOutputSize.square1024,
-        ImageGenerationSize.landscape1536x1024 =>
-          openai.ImageOutputSize.landscape1536x1024,
-        ImageGenerationSize.landscape1792x1024 =>
-          openai.ImageOutputSize.landscape1792x1024,
-        ImageGenerationSize.portrait1024x1536 =>
-          openai.ImageOutputSize.portrait1024x1536,
-        ImageGenerationSize.portrait1024x1792 =>
-          openai.ImageOutputSize.portrait1024x1792,
+  static String _mapImageQuality(ImageGenerationQuality quality) =>
+      switch (quality) {
+        ImageGenerationQuality.low => 'low',
+        ImageGenerationQuality.medium => 'medium',
+        ImageGenerationQuality.high => 'high',
+        ImageGenerationQuality.auto => 'auto',
       };
+
+  static String _mapImageSize(ImageGenerationSize size) => switch (size) {
+    ImageGenerationSize.auto => 'auto',
+    ImageGenerationSize.square256 => '256x256',
+    ImageGenerationSize.square512 => '512x512',
+    ImageGenerationSize.square1024 => '1024x1024',
+    ImageGenerationSize.landscape1536x1024 => '1536x1024',
+    ImageGenerationSize.landscape1792x1024 => '1792x1024',
+    ImageGenerationSize.portrait1024x1536 => '1024x1536',
+    ImageGenerationSize.portrait1024x1792 => '1024x1792',
+  };
 }

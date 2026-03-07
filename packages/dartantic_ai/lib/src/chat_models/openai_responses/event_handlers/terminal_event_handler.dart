@@ -1,6 +1,6 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import '../openai_responses_attachment_collector.dart';
 import '../openai_responses_event_mapping_state.dart';
@@ -35,23 +35,24 @@ class TerminalEventHandler implements OpenAIResponsesEventHandler {
       const OpenAIResponsesPartMapper();
 
   @override
-  bool canHandle(openai.ResponseEvent event) =>
-      event is openai.ResponseCompleted || event is openai.ResponseFailed;
+  bool canHandle(openai.ResponseStreamEvent event) =>
+      event is openai.ResponseCompletedEvent ||
+      event is openai.ResponseFailedEvent;
 
   @override
   Stream<ChatResult<ChatMessage>> handle(
-    openai.ResponseEvent event,
+    openai.ResponseStreamEvent event,
     EventMappingState state,
   ) async* {
-    if (event is openai.ResponseCompleted) {
+    if (event is openai.ResponseCompletedEvent) {
       yield* _handleResponseCompleted(event, state);
-    } else if (event is openai.ResponseFailed) {
+    } else if (event is openai.ResponseFailedEvent) {
       _handleResponseFailed(event);
     }
   }
 
   Stream<ChatResult<ChatMessage>> _handleResponseCompleted(
-    openai.ResponseCompleted event,
+    openai.ResponseCompletedEvent event,
     EventMappingState state,
   ) async* {
     if (state.finalResultBuilt) {
@@ -61,17 +62,16 @@ class TerminalEventHandler implements OpenAIResponsesEventHandler {
     yield await _buildFinalResult(event.response, state);
   }
 
-  void _handleResponseFailed(openai.ResponseFailed event) {
+  void _handleResponseFailed(openai.ResponseFailedEvent event) {
     final error = event.response.error;
     if (error != null) {
-      throw openai.OpenAIRequestException(
+      throw openai.ApiException(
         message: error.message,
         code: error.code,
-        param: error.param,
         statusCode: -1,
       );
     }
-    throw const openai.OpenAIRequestException(
+    throw const openai.ApiException(
       message: 'OpenAI Responses request failed',
       statusCode: -1,
     );
@@ -88,8 +88,18 @@ class TerminalEventHandler implements OpenAIResponsesEventHandler {
     );
     final usage = _mapUsage(response.usage);
     final resultMetadata = _sessionManager.buildResultMetadata(response);
+
+    // Extract container_id directly from code interpreter output items.
+    final containerId = response.output
+        .whereType<openai.CodeInterpreterCallOutputItem>()
+        .map((item) => item.containerId)
+        .firstWhere((id) => id != null, orElse: () => null);
+    if (containerId != null) {
+      resultMetadata['container_id'] = containerId;
+    }
+
     final finishReason = _mapFinishReason(response);
-    final responseId = response.id ?? '';
+    final responseId = response.id;
 
     _logger.fine('Building final message with ${parts.length} parts');
     for (final part in parts) {
@@ -118,11 +128,11 @@ class TerminalEventHandler implements OpenAIResponsesEventHandler {
   }
 
   Future<List<Part>> _collectAllParts(openai.Response response) async {
-    final mapped = _partMapper.mapResponseItems(
-      response.output ?? const <openai.ResponseItem>[],
-      attachments,
-    );
+    final mapped = _partMapper.mapResponseItems(response.output, attachments);
     final parts = [...mapped.parts];
+
+    // Track container file citations for download as DataParts.
+    _trackContainerFileCitations(response);
 
     final attachmentParts = await attachments.resolveAttachments();
     if (attachmentParts.isNotEmpty) {
@@ -132,7 +142,8 @@ class TerminalEventHandler implements OpenAIResponsesEventHandler {
     return parts;
   }
 
-  static LanguageModelUsage _mapUsage(openai.Usage? usage) => usage == null
+  static LanguageModelUsage _mapUsage(openai.ResponseUsage? usage) =>
+      usage == null
       ? const LanguageModelUsage()
       : LanguageModelUsage(
           promptTokens: usage.inputTokens,
@@ -140,17 +151,45 @@ class TerminalEventHandler implements OpenAIResponsesEventHandler {
           totalTokens: usage.totalTokens,
         );
 
-  static FinishReason _mapFinishReason(openai.Response response) {
-    switch (response.status) {
-      case 'completed':
-        return FinishReason.stop;
-      case 'incomplete':
-        final reason = response.incompleteDetails?.reason;
-        if (reason == 'max_output_tokens') return FinishReason.length;
-        if (reason == 'content_filter') return FinishReason.contentFilter;
-        return FinishReason.unspecified;
-      default:
-        return FinishReason.unspecified;
+  static FinishReason _mapFinishReason(openai.Response response) =>
+      switch (response.status) {
+        openai.ResponseStatus.completed => FinishReason.stop,
+        openai.ResponseStatus.incomplete => _mapIncompleteReason(response),
+        openai.ResponseStatus.unknown ||
+        openai.ResponseStatus.queued ||
+        openai.ResponseStatus.inProgress ||
+        openai.ResponseStatus.failed ||
+        openai.ResponseStatus.cancelled => FinishReason.unspecified,
+      };
+
+  /// Tracks all ContainerFileCitation annotations in the response so the
+  /// attachment collector can download them as DataParts.
+  void _trackContainerFileCitations(openai.Response response) {
+    for (final item in response.output) {
+      if (item is openai.MessageOutputItem) {
+        for (final content in item.content) {
+          if (content is openai.OutputTextContent) {
+            final annotations = content.annotations;
+            if (annotations == null) continue;
+            for (final annotation in annotations) {
+              if (annotation is openai.ContainerFileCitation) {
+                attachments.trackContainerCitation(
+                  containerId: annotation.containerId,
+                  fileId: annotation.fileId,
+                  fileName: annotation.filename,
+                );
+              }
+            }
+          }
+        }
+      }
     }
+  }
+
+  static FinishReason _mapIncompleteReason(openai.Response response) {
+    final reason = response.incompleteDetails?.reason;
+    if (reason == 'max_output_tokens') return FinishReason.length;
+    if (reason == 'content_filter') return FinishReason.contentFilter;
+    return FinishReason.unspecified;
   }
 }

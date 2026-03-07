@@ -73,6 +73,19 @@ void main() {
       expect(tool.container, isA<openai.CodeInterpreterContainerAuto>());
     });
 
+    test('builds web search tool with searchContentTypes', () {
+      final tools = OpenAIResponsesServerSideToolMapper.buildServerSideTools(
+        serverSideTools: const {OpenAIServerSideTool.webSearch},
+        webSearchConfig: const WebSearchConfig(
+          searchContentTypes: [SearchContentType.text],
+        ),
+      );
+
+      expect(tools, hasLength(1));
+      final tool = tools.single as openai.WebSearchTool;
+      expect(tool.searchContentTypes, [openai.SearchContentType.text]);
+    });
+
     test('builds image generation tool', () {
       final tools = OpenAIResponsesServerSideToolMapper.buildServerSideTools(
         serverSideTools: const {OpenAIServerSideTool.imageGeneration},

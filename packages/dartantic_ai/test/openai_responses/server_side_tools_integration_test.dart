@@ -18,7 +18,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:openai_dart/openai_dart.dart' hide ChatMessage;
+import 'package:openai_dart/openai_dart.dart'
+    hide ChatMessage, WebSearchLocation;
 // ignore: deprecated_member_use
 import 'package:openai_dart/openai_dart_assistants.dart' as assistants;
 import 'package:test/test.dart';
@@ -74,26 +75,30 @@ void main() {
       timeout: const Timeout(Duration(minutes: 1)),
     );
 
-    test('generates and downloads container files', () async {
-      final agent = Agent(
-        'openai-responses',
-        chatModelOptions: const OpenAIResponsesChatModelOptions(
-          serverSideTools: {OpenAIServerSideTool.codeInterpreter},
-        ),
-      );
+    test(
+      'generates and downloads container files',
+      () async {
+        final agent = Agent(
+          'openai-responses',
+          chatModelOptions: const OpenAIResponsesChatModelOptions(
+            serverSideTools: {OpenAIServerSideTool.codeInterpreter},
+          ),
+        );
 
-      // Accumulate results properly
-      final results = <ChatResult>[];
-      await agent
-          .sendStream('Create a text file test.txt with the word hello in it')
-          .forEach(results.add);
+        // Accumulate results properly
+        final results = <ChatResult>[];
+        await agent
+            .sendStream('Create a text file test.txt with the word hello in it')
+            .forEach(results.add);
 
-      final fullOutput = results.map((r) => r.output).join();
-      expect(fullOutput, contains('test.txt'));
+        final fullOutput = results.map((r) => r.output).join();
+        expect(fullOutput, contains('test.txt'));
 
-      // The bug would have crashed here if the workaround wasn't in place This
-      // test proves the workaround works
-    }, timeout: const Timeout(Duration(minutes: 2)));
+        // The bug would have crashed here if the workaround wasn't in place
+        // This test proves the workaround works
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
 
     test(
       'generates plots/CSV and downloads both as DataPart',
@@ -500,44 +505,48 @@ of structured data alongside the main chat response.
   });
 
   group('Multiple Tools Integration', () {
-    test('uses multiple server-side tools in one response', () async {
-      final agent = Agent(
-        'openai-responses',
-        chatModelOptions: const OpenAIResponsesChatModelOptions(
-          serverSideTools: {
-            OpenAIServerSideTool.webSearch,
-            OpenAIServerSideTool.codeInterpreter,
-          },
-        ),
-      );
+    test(
+      'uses multiple server-side tools in one response',
+      () async {
+        final agent = Agent(
+          'openai-responses',
+          chatModelOptions: const OpenAIResponsesChatModelOptions(
+            serverSideTools: {
+              OpenAIServerSideTool.webSearch,
+              OpenAIServerSideTool.codeInterpreter,
+            },
+          ),
+        );
 
-      // Accumulate results properly
-      final results = <ChatResult>[];
-      await agent
-          .sendStream(
-            'First, search the web for the current temperature in Seattle in '
-            'Fahrenheit. Then write Python code to check if that temperature '
-            'is above or below 50°F and calculate the difference.',
-          )
-          .forEach(results.add);
+        // Accumulate results properly
+        final results = <ChatResult>[];
+        await agent
+            .sendStream(
+              'First, search the web for the current temperature in Seattle in '
+              'Fahrenheit. Then write Python code to check if that temperature '
+              'is above or below 50°F and calculate the difference.',
+            )
+            .forEach(results.add);
 
-      // Should have both web_search and code_interpreter events
-      var hadWebSearch = false;
-      var hadCodeInterpreter = false;
-      for (final result in results) {
-        if (result.metadata['web_search'] != null) hadWebSearch = true;
-        if (result.metadata['code_interpreter'] != null) {
-          hadCodeInterpreter = true;
+        // Should have both web_search and code_interpreter events
+        var hadWebSearch = false;
+        var hadCodeInterpreter = false;
+        for (final result in results) {
+          if (result.metadata['web_search'] != null) hadWebSearch = true;
+          if (result.metadata['code_interpreter'] != null) {
+            hadCodeInterpreter = true;
+          }
         }
-      }
 
-      // Note: Model may choose to only use one tool if it can answer another
-      // way This test validates that multiple tools CAN be used together
-      expect(
-        hadWebSearch || hadCodeInterpreter,
-        isTrue,
-        reason: 'Should use at least one server-side tool',
-      );
-    }, timeout: const Timeout(Duration(minutes: 2)));
+        // Note: Model may choose to only use one tool if it can answer another
+        // way This test validates that multiple tools CAN be used together
+        expect(
+          hadWebSearch || hadCodeInterpreter,
+          isTrue,
+          reason: 'Should use at least one server-side tool',
+        );
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
   });
 }

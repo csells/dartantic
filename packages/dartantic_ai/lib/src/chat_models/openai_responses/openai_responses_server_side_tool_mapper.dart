@@ -33,6 +33,7 @@ class OpenAIResponsesServerSideToolMapper {
             openai.WebSearchTool(
               searchContextSize: _mapSearchContextSize(config?.contextSize),
               userLocation: _mapUserLocation(config?.location),
+              searchContentTypes: config?.searchContentTypes,
             ),
           );
           continue;

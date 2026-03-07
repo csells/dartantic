@@ -1,6 +1,26 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:meta/meta.dart';
-import 'package:openai_dart/openai_dart.dart' show StreamOptions;
+import 'package:openai_dart/openai_dart.dart'
+    show
+        ChatAudioConfig,
+        ChatModality,
+        Prediction,
+        PromptCacheRetention,
+        ReasoningEffort,
+        StreamOptions,
+        Verbosity,
+        WebSearchOptions;
+
+export 'package:openai_dart/openai_dart.dart'
+    show
+        ChatAudioConfig,
+        ChatModality,
+        Prediction,
+        PromptCacheRetention,
+        ReasoningEffort,
+        StreamOptions,
+        Verbosity,
+        WebSearchOptions;
 
 /// Generation options to pass into the Chat Model.
 @immutable
@@ -23,6 +43,17 @@ class OpenAIChatOptions extends ChatModelOptions {
     this.streamOptions,
     this.logprobs,
     this.topLogprobs,
+    this.reasoningEffort,
+    this.verbosity,
+    this.prediction,
+    this.modalities,
+    this.audio,
+    this.webSearchOptions,
+    this.store,
+    this.metadata,
+    this.promptCacheKey,
+    this.promptCacheRetention,
+    this.safetyIdentifier,
   });
 
   /// Stream options for OpenAI chat completions.
@@ -145,6 +176,41 @@ class OpenAIChatOptions extends ChatModelOptions {
   /// An integer between 0 and 20 specifying the number of most likely tokens to
   /// return at each token position.
   final int? topLogprobs;
+
+  /// Controls reasoning effort for reasoning models (o1, o3, o4-mini).
+  final ReasoningEffort? reasoningEffort;
+
+  /// Controls the verbosity of the model's response.
+  final Verbosity? verbosity;
+
+  /// Predicted output for faster responses when high confidence in the
+  /// response content. Works best with gpt-4o and gpt-4.1 models.
+  final Prediction? prediction;
+
+  /// Output modalities to request (e.g. text, audio).
+  final List<ChatModality>? modalities;
+
+  /// Audio output configuration (voice and format). Required when
+  /// [modalities] includes [ChatModality.audio].
+  final ChatAudioConfig? audio;
+
+  /// Web search options for including web results in the response.
+  final WebSearchOptions? webSearchOptions;
+
+  /// Whether to store this completion for model improvements.
+  final bool? store;
+
+  /// Custom metadata to attach to the request.
+  final Map<String, dynamic>? metadata;
+
+  /// Prompt cache key for optimizing cache hit rates.
+  final String? promptCacheKey;
+
+  /// Retention policy for the prompt cache.
+  final PromptCacheRetention? promptCacheRetention;
+
+  /// A stable identifier for detecting usage policy violations.
+  final String? safetyIdentifier;
 }
 
 /// Specifies the latency tier to use for processing the request. This is

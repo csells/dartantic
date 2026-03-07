@@ -95,6 +95,20 @@ ChatCompletionCreateRequest createChatCompletionRequest(
   presencePenalty: options?.presencePenalty ?? defaultOptions.presencePenalty,
   seed: options?.seed ?? defaultOptions.seed,
   topLogprobs: options?.topLogprobs ?? defaultOptions.topLogprobs,
+  reasoningEffort: options?.reasoningEffort ?? defaultOptions.reasoningEffort,
+  verbosity: options?.verbosity ?? defaultOptions.verbosity,
+  prediction: options?.prediction ?? defaultOptions.prediction,
+  modalities: options?.modalities ?? defaultOptions.modalities,
+  audio: options?.audio ?? defaultOptions.audio,
+  webSearchOptions:
+      options?.webSearchOptions ?? defaultOptions.webSearchOptions,
+  store: options?.store ?? defaultOptions.store,
+  metadata: options?.metadata ?? defaultOptions.metadata,
+  promptCacheKey: options?.promptCacheKey ?? defaultOptions.promptCacheKey,
+  promptCacheRetention:
+      options?.promptCacheRetention ?? defaultOptions.promptCacheRetention,
+  safetyIdentifier:
+      options?.safetyIdentifier ?? defaultOptions.safetyIdentifier,
 );
 
 /// Helper class to track streaming tool call state

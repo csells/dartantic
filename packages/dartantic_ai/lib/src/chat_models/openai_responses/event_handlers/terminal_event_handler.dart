@@ -89,10 +89,11 @@ class TerminalEventHandler implements OpenAIResponsesEventHandler {
     final usage = _mapUsage(response.usage);
     final resultMetadata = _sessionManager.buildResultMetadata(response);
 
-    // Extract container_id from ContainerFileCitation annotations if present,
-    // falling back to the container_id extracted from raw SSE JSON by the chat
-    // model layer (stored in state).
-    final containerId = _extractContainerId(response) ?? state.containerId;
+    // Extract container_id directly from code interpreter output items.
+    final containerId = response.output
+        .whereType<openai.CodeInterpreterCallOutputItem>()
+        .map((item) => item.containerId)
+        .firstWhere((id) => id != null, orElse: () => null);
     if (containerId != null) {
       resultMetadata['container_id'] = containerId;
     }
@@ -183,27 +184,6 @@ class TerminalEventHandler implements OpenAIResponsesEventHandler {
         }
       }
     }
-  }
-
-  /// Extracts the first container_id from ContainerFileCitation annotations
-  /// in the response's message output items.
-  static String? _extractContainerId(openai.Response response) {
-    for (final item in response.output) {
-      if (item is openai.MessageOutputItem) {
-        for (final content in item.content) {
-          if (content is openai.OutputTextContent) {
-            final annotations = content.annotations;
-            if (annotations == null) continue;
-            for (final annotation in annotations) {
-              if (annotation is openai.ContainerFileCitation) {
-                return annotation.containerId;
-              }
-            }
-          }
-        }
-      }
-    }
-    return null;
   }
 
   static FinishReason _mapIncompleteReason(openai.Response response) {

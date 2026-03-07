@@ -77,9 +77,9 @@ class OpenAIResponsesChatModel
   }) async* {
     final invocation = _buildInvocation(messages, options, outputSchema);
     _validateInvocation(invocation);
-    final rawStream = _sendRawRequest(invocation);
+    final responseStream = _sendRequest(invocation);
     final mapper = _createMapper(invocation);
-    yield* _consumeResponseStream(rawStream, mapper);
+    yield* _consumeResponseStream(responseStream, mapper);
   }
 
   @override
@@ -95,16 +95,27 @@ class OpenAIResponsesChatModel
   ) async {
     _logger.fine('Downloading container file: $fileId from $containerId');
 
-    // Download content directly. The ContainerFile metadata retrieve call is
-    // skipped because openai_dart 1.1.0 has a bug where ContainerFile.fromJson
-    // crashes on null `bytes` field. The filename is supplied by the caller via
-    // the ContainerFileCitation annotation instead.
+    final metadata = await _client.containers.files.retrieve(
+      containerId,
+      fileId,
+    );
+    final fileName = _extractFileName(metadata.path);
+
     final bytes = await _client.containers.files.retrieveContent(
       containerId,
       fileId,
     );
 
-    return ContainerFileData(bytes: bytes);
+    return ContainerFileData(bytes: bytes, fileName: fileName);
+  }
+
+  /// Extracts the filename from a container file path.
+  ///
+  /// Example: '/mnt/data/fibonacci.csv' → 'fibonacci.csv'
+  String _extractFileName(String path) {
+    final segments = path.split('/');
+    final fileName = segments.isNotEmpty ? segments.last : path;
+    return fileName.isEmpty ? path : fileName;
   }
 
   List<openai.ResponseTool> _buildAllTools(
@@ -142,41 +153,33 @@ class OpenAIResponsesChatModel
     }
   }
 
-  Stream<Map<String, dynamic>> _sendRawRequest(
+  Stream<openai.ResponseStreamEvent> _sendRequest(
     OpenAIResponsesInvocation invocation,
   ) {
     final allTools = _buildAllTools(invocation.serverSide);
     final textFormat = invocation.parameters.textFormat;
 
-    final requestBody = openai.CreateResponseRequest(
-      model: name,
-      input: invocation.history.input ?? const openai.ResponseInputText(''),
-      instructions: invocation.history.instructions,
-      previousResponseId: invocation.history.previousResponseId,
-      store: invocation.store,
-      temperature: invocation.parameters.temperature ?? temperature,
-      topP: invocation.parameters.topP,
-      maxOutputTokens: invocation.parameters.maxOutputTokens,
-      reasoning: invocation.parameters.reasoning,
-      text: textFormat != null ? openai.TextConfig(format: textFormat) : null,
-      toolChoice: null,
-      tools: allTools.isEmpty ? null : allTools,
-      parallelToolCalls: invocation.parameters.parallelToolCalls,
-      metadata: invocation.parameters.metadata,
-      include: invocation.parameters.include
-          ?.map(openai.Include.fromJson)
-          .toList(),
-      truncation: invocation.parameters.truncation,
-    ).toJson();
-    requestBody['stream'] = true;
-
-    // Use streamSseEvents directly to access raw JSON maps, which allows:
-    // 1. Extracting container_id from code_interpreter_call items (the SDK's
-    //    typed CodeInterpreterCallOutputItem drops this field during parsing)
-    // 2. Skipping unknown event types like keepalive (SDK 1.1.0 bug)
-    return _client.responses.streamSseEvents(
-      endpoint: '/responses',
-      body: requestBody,
+    return _client.responses.createStream(
+      openai.CreateResponseRequest(
+        model: name,
+        input: invocation.history.input ?? const openai.ResponseInputText(''),
+        instructions: invocation.history.instructions,
+        previousResponseId: invocation.history.previousResponseId,
+        store: invocation.store,
+        temperature: invocation.parameters.temperature ?? temperature,
+        topP: invocation.parameters.topP,
+        maxOutputTokens: invocation.parameters.maxOutputTokens,
+        reasoning: invocation.parameters.reasoning,
+        text: textFormat != null ? openai.TextConfig(format: textFormat) : null,
+        toolChoice: null,
+        tools: allTools.isEmpty ? null : allTools,
+        parallelToolCalls: invocation.parameters.parallelToolCalls,
+        metadata: invocation.parameters.metadata,
+        include: invocation.parameters.include
+            ?.map(openai.Include.fromJson)
+            .toList(),
+        truncation: invocation.parameters.truncation,
+      ),
     );
   }
 
@@ -188,38 +191,11 @@ class OpenAIResponsesChatModel
   );
 
   Stream<ChatResult<ChatMessage>> _consumeResponseStream(
-    Stream<Map<String, dynamic>> rawStream,
+    Stream<openai.ResponseStreamEvent> responseStream,
     OpenAIResponsesEventMapper mapper,
   ) async* {
     try {
-      await for (final json in rawStream) {
-        final type = json['type'] as String?;
-
-        // Extract container_id from code_interpreter_call items in
-        // response.output_item.done events (not parsed by SDK typed classes).
-        if (type == 'response.output_item.done') {
-          final item = json['item'] as Map<String, dynamic>?;
-          if (item != null && item['type'] == 'code_interpreter_call') {
-            final containerId = item['container_id'] as String?;
-            if (containerId != null) {
-              mapper.containerId = containerId;
-            }
-          }
-        }
-
-        // Skip unknown event types (e.g., keepalive) that the SDK doesn't
-        // handle (openai_dart 1.1.0 bug).
-        final openai.ResponseStreamEvent event;
-        try {
-          event = openai.ResponseStreamEvent.fromJson(json);
-        } on FormatException catch (e) {
-          if (e.message.startsWith('Unknown ResponseStreamEvent type:')) {
-            _logger.fine('Skipping unknown SSE event type: $type');
-            continue;
-          }
-          rethrow;
-        }
-
+      await for (final event in responseStream) {
         _logger.fine('Received event: ${event.runtimeType}');
         yield* mapper.handle(event);
       }

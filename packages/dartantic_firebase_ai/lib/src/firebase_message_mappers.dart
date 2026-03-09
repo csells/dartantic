@@ -312,7 +312,9 @@ extension ChatToolListMapper on List<Tool>? {
       return null;
     }
     return <fai.Tool>[
-      fai.Tool.functionDeclarations(functionDeclarations ?? []),
+      if (functionDeclarations != null && functionDeclarations.isNotEmpty)
+        fai.Tool.functionDeclarations(functionDeclarations),
+      if (codeExecution != null) fai.Tool.codeExecution(),
     ];
   }
 

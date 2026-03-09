@@ -161,6 +161,16 @@ extension GenerateContentResponseMapper on fai.GenerateContentResponse {
   /// Each streaming chunk sets `messages: const []`. The caller is responsible
   /// for accumulating parts and producing the final consolidated message.
   ChatResult<ChatMessage> toChatResult(String model) {
+    if (candidates.isEmpty) {
+      final blockReason = promptFeedback?.blockReason?.name;
+      final blockMessage = promptFeedback?.blockReasonMessage;
+      throw StateError(
+        'Firebase AI returned no candidates. '
+        '${blockReason != null ? 'Block reason: $blockReason. ' : ''}'
+        '${blockMessage != null ? 'Message: $blockMessage' : ''}',
+      );
+    }
+
     final candidate = candidates.first;
     final parts = <Part>[];
     String? thinkingDelta;
@@ -182,10 +192,14 @@ extension GenerateContentResponseMapper on fai.GenerateContentResponse {
           parts.add(
             ToolPart.call(callId: callId, toolName: name, arguments: args),
           );
+        case fai.ExecutableCodePart(:final language, :final code):
+          parts.add(TextPart('```$language\n$code\n```'));
+        case fai.CodeExecutionResultPart(:final output):
+          if (output.isNotEmpty) {
+            parts.add(TextPart('Code execution output:\n$output'));
+          }
         case fai.FunctionResponse():
         case fai.FileData():
-        case fai.ExecutableCodePart():
-        case fai.CodeExecutionResultPart():
         case fai.UnknownPart():
           break;
       }

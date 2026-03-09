@@ -50,6 +50,8 @@ class _DemoScreenState extends State<DemoScreen> {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+      if (!mounted) return;
+
       // Register Firebase AI providers with new naming
       Agent.providerFactories['firebase-vertex'] = () =>
           FirebaseAIProvider(backend: FirebaseAIBackend.vertexAI);
@@ -68,6 +70,7 @@ class _DemoScreenState extends State<DemoScreen> {
       // Test agent creation
       _testAgentCreation();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _logs.add('❌ Provider registration failed: $e');
       });

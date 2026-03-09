@@ -59,16 +59,18 @@ class _SimpleChatScreenState extends State<SimpleChatScreen> {
   @override
   void initState() {
     super.initState();
-    _chatModel = _provider.createChatModel(
-      name: 'gemini-2.5-flash',
-    ) as FirebaseAIChatModel;
-    _imagenModel = _provider.createMediaModel(
-      name: 'imagen-4.0-generate-001',
-    ) as FirebaseAIMediaGenerationModel;
-    _geminiImageModel = _provider.createMediaModel(
-      name: 'gemini-2.5-flash-image',
-      options: const FirebaseAIGeminiMediaGenerationModelOptions(),
-    ) as FirebaseAIMediaGenerationModel;
+    _chatModel =
+        _provider.createChatModel(name: 'gemini-2.5-flash')
+            as FirebaseAIChatModel;
+    _imagenModel =
+        _provider.createMediaModel(name: 'imagen-4.0-generate-001')
+            as FirebaseAIMediaGenerationModel;
+    _geminiImageModel =
+        _provider.createMediaModel(
+              name: 'gemini-2.5-flash-image',
+              options: const FirebaseAIGeminiMediaGenerationModelOptions(),
+            )
+            as FirebaseAIMediaGenerationModel;
   }
 
   @override
@@ -90,18 +92,26 @@ class _SimpleChatScreenState extends State<SimpleChatScreen> {
       _imageCaption = null;
     });
 
-    await for (final result in _imagenModel.generateMediaStream(
-      'A friendly robot mascot waving hello, pixel art style',
-      mimeTypes: ['image/png'],
-    )) {
-      for (final asset in result.assets) {
-        if (asset is DataPart) {
-          setState(() => _generatedImage = asset.bytes);
+    try {
+      await for (final result in _imagenModel.generateMediaStream(
+        'A friendly robot mascot waving hello, pixel art style',
+        mimeTypes: ['image/png'],
+      )) {
+        if (!mounted) return;
+        for (final asset in result.assets) {
+          if (asset is DataPart) {
+            setState(() => _generatedImage = asset.bytes);
+          }
         }
       }
-    }
 
-    setState(() => _isStreaming = false);
+      if (!mounted) return;
+      setState(() => _isStreaming = false);
+    } finally {
+      if (mounted && _isStreaming) {
+        setState(() => _isStreaming = false);
+      }
+    }
   }
 
   Future<void> _generateViaGemini() async {
@@ -113,25 +123,33 @@ class _SimpleChatScreenState extends State<SimpleChatScreen> {
       _imageCaption = null;
     });
 
-    await for (final result in _geminiImageModel.generateMediaStream(
-      'Generate an image of a friendly robot mascot waving hello, '
-      'pixel art style',
-      mimeTypes: ['image/png'],
-    )) {
-      for (final asset in result.assets) {
-        if (asset is DataPart) {
-          setState(() => _generatedImage = asset.bytes);
+    try {
+      await for (final result in _geminiImageModel.generateMediaStream(
+        'Generate an image of a friendly robot mascot waving hello, '
+        'pixel art style',
+        mimeTypes: ['image/png'],
+      )) {
+        if (!mounted) return;
+        for (final asset in result.assets) {
+          if (asset is DataPart) {
+            setState(() => _generatedImage = asset.bytes);
+          }
+        }
+        for (final message in result.messages) {
+          final text = message.parts.text;
+          if (text.isNotEmpty) {
+            setState(() => _imageCaption = text);
+          }
         }
       }
-      for (final message in result.messages) {
-        final text = message.parts.text;
-        if (text.isNotEmpty) {
-          setState(() => _imageCaption = text);
-        }
+
+      if (!mounted) return;
+      setState(() => _isStreaming = false);
+    } finally {
+      if (mounted && _isStreaming) {
+        setState(() => _isStreaming = false);
       }
     }
-
-    setState(() => _isStreaming = false);
   }
 
   Future<void> _sendMessage() async {
@@ -146,19 +164,27 @@ class _SimpleChatScreenState extends State<SimpleChatScreen> {
     });
     _scrollToBottom();
 
-    final buffer = StringBuffer();
-    await for (final chunk in _chatModel.sendStream(_messages)) {
-      final delta = chunk.output.text;
-      buffer.write(delta);
-      setState(() => _streamingText = buffer.toString());
-      _scrollToBottom();
-    }
+    try {
+      final buffer = StringBuffer();
+      await for (final chunk in _chatModel.sendStream(_messages)) {
+        final delta = chunk.output.text;
+        buffer.write(delta);
+        if (!mounted) return;
+        setState(() => _streamingText = buffer.toString());
+        _scrollToBottom();
+      }
 
-    setState(() {
-      _messages.add(ChatMessage.model(buffer.toString()));
-      _streamingText = '';
-      _isStreaming = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        _messages.add(ChatMessage.model(buffer.toString()));
+        _streamingText = '';
+        _isStreaming = false;
+      });
+    } finally {
+      if (mounted && _isStreaming) {
+        setState(() => _isStreaming = false);
+      }
+    }
   }
 
   void _scrollToBottom() {

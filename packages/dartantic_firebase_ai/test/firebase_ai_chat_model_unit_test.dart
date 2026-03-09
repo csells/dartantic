@@ -92,9 +92,7 @@ void main() {
       final model = FirebaseAIChatModel(
         name: 'gemini-2.5-flash',
         backend: FirebaseAIBackend.googleAI,
-        defaultOptions: const FirebaseAIChatModelOptions(
-          enableThinking: true,
-        ),
+        defaultOptions: const FirebaseAIChatModelOptions(enableThinking: true),
       );
 
       expect(model.defaultOptions.enableThinking, isTrue);

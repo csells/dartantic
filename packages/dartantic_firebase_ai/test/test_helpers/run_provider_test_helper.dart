@@ -72,7 +72,18 @@ void runProviderTest(
     entries = entries.where((e) => e.key == 'firebase-google');
   }
 
-  for (final entry in entries) {
+  final filtered = entries.toList();
+  if (filtered.isEmpty) {
+    test('$description (no matching providers)', () {
+      fail(
+        'No providers match the required capabilities: $requiredCaps. '
+        'Check providerTestCaps configuration.',
+      );
+    });
+    return;
+  }
+
+  for (final entry in filtered) {
     final providerName = entry.key;
     final provider = entry.value.provider;
     final isSkipped = normalizedSkips.contains(providerName);

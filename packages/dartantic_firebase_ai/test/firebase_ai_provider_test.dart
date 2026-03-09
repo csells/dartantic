@@ -38,15 +38,11 @@ void main() {
       );
     }, requiredCaps: {ProviderTestCaps.chat});
 
-    runProviderTest(
-      'creates media model',
-      (provider) async {
-        final mediaModel = provider.createMediaModel();
+    runProviderTest('creates media model', (provider) async {
+      final mediaModel = provider.createMediaModel();
 
-        expect(mediaModel, isA<FirebaseAIMediaGenerationModel>());
-      },
-      requiredCaps: {ProviderTestCaps.mediaGeneration},
-    );
+      expect(mediaModel, isA<FirebaseAIMediaGenerationModel>());
+    }, requiredCaps: {ProviderTestCaps.mediaGeneration});
 
     runProviderTest(
       'supports Imagen and Gemini media option variants',

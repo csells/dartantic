@@ -57,20 +57,20 @@ class FirebaseAIProvider
     this.useLimitedUseAppCheckTokens,
     super.headers,
   }) : super(
-        apiKey: null,
-        apiKeyName: null,
-        name: 'firebase_ai',
-        displayName: backend == FirebaseAIBackend.googleAI
-            ? 'Firebase AI (Google AI)'
-            : 'Firebase AI (Vertex AI)',
-        defaultModelNames: const {
-          ModelKind.chat: 'gemini-2.5-flash',
-          ModelKind.media: 'imagen-4.0-generate-001',
-        },
-        aliases: backend == FirebaseAIBackend.googleAI
-            ? const ['firebase-google']
-            : const ['firebase-vertex'],
-      );
+         apiKey: null,
+         apiKeyName: null,
+         name: 'firebase_ai',
+         displayName: backend == FirebaseAIBackend.googleAI
+             ? 'Firebase AI (Google AI)'
+             : 'Firebase AI (Vertex AI)',
+         defaultModelNames: const {
+           ModelKind.chat: 'gemini-2.5-flash',
+           ModelKind.media: 'imagen-4.0-generate-001',
+         },
+         aliases: backend == FirebaseAIBackend.googleAI
+             ? const ['firebase-google']
+             : const ['firebase-vertex'],
+       );
 
   static final Logger _logger = Logger('dartantic.chat.providers.firebase_ai');
 
@@ -108,24 +108,26 @@ class FirebaseAIProvider
     FirebaseAIChatModelOptions? options,
   }) {
     final modelName = name ?? defaultModelNames[ModelKind.chat]!;
+    final effectiveTemperature = temperature ?? options?.temperature;
 
-    if (temperature != null && (temperature < 0.0 || temperature > 2.0)) {
+    if (effectiveTemperature != null &&
+        (effectiveTemperature < 0.0 || effectiveTemperature > 2.0)) {
       throw ArgumentError(
-        'Temperature must be between 0.0 and 2.0, got: $temperature',
+        'Temperature must be between 0.0 and 2.0, got: $effectiveTemperature',
       );
     }
 
     _logger.info(
       'Creating Firebase AI model: $modelName (${backend.name}) with '
       '${tools?.length ?? 0} tools, '
-      'temp: $temperature, '
+      'temp: $effectiveTemperature, '
       'thinking: $enableThinking',
     );
 
     return FirebaseAIChatModel(
       name: modelName,
       tools: tools,
-      temperature: temperature,
+      temperature: effectiveTemperature,
       backend: backend,
       app: app,
       appCheck: appCheck,
@@ -136,7 +138,7 @@ class FirebaseAIProvider
         topK: options?.topK,
         candidateCount: options?.candidateCount,
         maxOutputTokens: options?.maxOutputTokens,
-        temperature: temperature ?? options?.temperature,
+        temperature: effectiveTemperature,
         stopSequences: options?.stopSequences,
         responseMimeType: options?.responseMimeType,
         responseSchema: options?.responseSchema,

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:test/test.dart';
 
@@ -77,12 +79,19 @@ void main() {
           });
 
           final results = await model.sendStream([
-            ChatMessage.user('What is the capital of France?'),
+            ChatMessage.user(
+              'Return a JSON object with the name and population of '
+              'the capital of France.',
+            ),
           ], outputSchema: schema).toList();
 
           expect(results, isNotEmpty);
           final text = results.map((r) => r.output.text).nonNulls.join();
-          expect(text, contains('Paris'));
+          final parsed = jsonDecode(text) as Map<String, dynamic>;
+          expect(parsed, contains('name'));
+          expect(parsed, contains('population'));
+          expect(parsed['name'], isA<String>());
+          expect(parsed['population'], isA<int>());
         },
         integration: true,
         requiredCaps: {ProviderTestCaps.chat},
@@ -120,6 +129,30 @@ void main() {
           final toolCall = toolCalls.first;
           expect(toolCall.toolName, 'get_weather');
           expect(toolCall.kind, ToolPartKind.call);
+
+          // Execute the tool and send the result back
+          final toolResult = tool.onCall(toolCall.arguments!);
+          final followUpResults = await model.sendStream([
+            ChatMessage.user("What's the weather in San Francisco?"),
+            lastResult.output,
+            ChatMessage(
+              role: ChatMessageRole.user,
+              parts: [
+                ToolPart.result(
+                  callId: toolCall.callId,
+                  toolName: toolCall.toolName,
+                  result: toolResult,
+                ),
+              ],
+            ),
+          ]).toList();
+
+          expect(followUpResults, isNotEmpty);
+          final finalText = followUpResults
+              .map((r) => r.output.text)
+              .nonNulls
+              .join();
+          expect(finalText.toLowerCase(), contains('72'));
         },
         integration: true,
         requiredCaps: {ProviderTestCaps.chat},

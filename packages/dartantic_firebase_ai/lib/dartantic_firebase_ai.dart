@@ -1,7 +1,7 @@
 /// Firebase AI provider for dartantic_ai.
 ///
 /// Provides access to Google's Gemini models through Firebase with App Check
-/// security, Firebase Auth integration, and hybrid on-device inference support.
+/// security and Firebase Auth integration.
 library;
 
 export 'src/firebase_ai_chat_model.dart';

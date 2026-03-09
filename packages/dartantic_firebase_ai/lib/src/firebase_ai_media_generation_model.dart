@@ -42,11 +42,20 @@ class FirebaseAIMediaGenerationModel
            useLimitedUseAppCheckTokens: useLimitedUseAppCheckTokens,
          ),
        },
-       super(
-         defaultOptions:
-             defaultOptions ??
-             const FirebaseAIImagenMediaGenerationModelOptions(),
-       );
+       super(defaultOptions: defaultOptions ?? _inferDefaultOptions(name));
+
+  /// Infers the correct default options subtype based on the model name.
+  ///
+  /// Models whose names contain "gemini" use the Gemini generation path;
+  /// all others (e.g. "imagen-*") use the Imagen generation path.
+  static FirebaseAIMediaGenerationModelOptions _inferDefaultOptions(
+    String name,
+  ) {
+    if (name.contains('gemini')) {
+      return const FirebaseAIGeminiMediaGenerationModelOptions();
+    }
+    return const FirebaseAIImagenMediaGenerationModelOptions();
+  }
 
   static final Logger _logger = Logger('dartantic.media.firebase_ai');
 
@@ -117,6 +126,19 @@ class FirebaseAIMediaGenerationModel
     required List<Part> attachments,
     required FirebaseAIImagenMediaGenerationModelOptions options,
   }) async* {
+    if (history.isNotEmpty) {
+      throw UnsupportedError(
+        'Firebase AI Imagen does not support conversation history. '
+        'Use a Gemini image model for context-aware generation.',
+      );
+    }
+    if (attachments.isNotEmpty) {
+      throw UnsupportedError(
+        'Firebase AI Imagen does not support attachments. '
+        'Use a Gemini image model for image editing or reference.',
+      );
+    }
+
     final imagen = _firebaseAI.imagenModel(
       model: name,
       generationConfig: _buildImagenGenerationConfig(options),
@@ -187,70 +209,93 @@ class FirebaseAIMediaGenerationModel
       ChatMessage.user(prompt, parts: attachments),
     ];
 
-    final assets = <DataPart>[];
-    final links = <LinkPart>[];
-    final textParts = <TextPart>[];
+    var totalAssets = 0;
+    var totalLinks = 0;
     fai.GenerateContentResponse? lastResponse;
 
     await for (final response in model.generateContentStream(
       requestMessages.toContentList(),
     )) {
       lastResponse = response;
-      final candidate = response.candidates.firstOrNull;
-      if (candidate == null) continue;
 
-      for (var i = 0; i < candidate.content.parts.length; i++) {
-        final part = candidate.content.parts[i];
-        switch (part) {
-          case fai.InlineDataPart(:final mimeType, :final bytes):
-            assets.add(
-              DataPart(
-                bytes,
-                mimeType: mimeType,
-                name: _suggestName(mimeType, assetsIndex: assets.length),
-              ),
-            );
-          case fai.FileData(:final mimeType, :final fileUri):
-            final uri = Uri.tryParse(fileUri);
-            if (uri != null) {
-              links.add(
-                LinkPart(
-                  uri,
+      for (final candidate in response.candidates) {
+        final assets = <DataPart>[];
+        final links = <LinkPart>[];
+        final textParts = <TextPart>[];
+
+        for (final part in candidate.content.parts) {
+          switch (part) {
+            case fai.InlineDataPart(:final mimeType, :final bytes):
+              assets.add(
+                DataPart(
+                  bytes,
                   mimeType: mimeType,
-                  name: uri.pathSegments.isNotEmpty
-                      ? uri.pathSegments.last
-                      : null,
+                  name: _suggestName(
+                    mimeType,
+                    assetsIndex: totalAssets + assets.length,
+                  ),
                 ),
               );
-            }
-          case fai.TextPart(:final text):
-            if (text.isNotEmpty) textParts.add(TextPart(text));
-          default:
-            break;
+            case fai.FileData(:final mimeType, :final fileUri):
+              final uri = Uri.tryParse(fileUri);
+              if (uri != null) {
+                links.add(
+                  LinkPart(
+                    uri,
+                    mimeType: mimeType,
+                    name: uri.pathSegments.isNotEmpty
+                        ? uri.pathSegments.last
+                        : null,
+                  ),
+                );
+              }
+            case fai.TextPart(:final text):
+              if (text.isNotEmpty) textParts.add(TextPart(text));
+            default:
+              break;
+          }
+        }
+
+        totalAssets += assets.length;
+        totalLinks += links.length;
+
+        if (assets.isNotEmpty || links.isNotEmpty || textParts.isNotEmpty) {
+          yield MediaGenerationResult(
+            assets: assets,
+            links: links,
+            messages: textParts.isEmpty
+                ? const []
+                : [
+                    ChatMessage(
+                      role: ChatMessageRole.model,
+                      parts: List<Part>.from(textParts),
+                    ),
+                  ],
+            finishReason: mapFinishReason(candidate.finishReason),
+            isComplete: false,
+            metadata: {
+              'provider': 'firebase_ai',
+              'backend': _backend.name,
+              'engine': 'gemini',
+              'model': name,
+            },
+          );
         }
       }
     }
 
-    final candidate = lastResponse?.candidates.firstOrNull;
-
     _logger.info(
-      'Firebase AI Gemini generated ${assets.length} image(s) and '
-      '${links.length} link(s) for model "$name" (${_backend.name}).',
+      'Firebase AI Gemini generated $totalAssets image(s) and '
+      '$totalLinks link(s) for model "$name" (${_backend.name}).',
     );
 
+    final lastCandidate = lastResponse?.candidates.lastOrNull;
+
+    // Emit a final completion marker.
     yield MediaGenerationResult(
-      assets: assets,
-      links: links,
-      messages: textParts.isEmpty
-          ? const []
-          : [
-              ChatMessage(
-                role: ChatMessageRole.model,
-                parts: List<Part>.from(textParts),
-              ),
-            ],
-      finishReason: candidate != null
-          ? mapFinishReason(candidate.finishReason)
+      assets: const [],
+      finishReason: lastCandidate != null
+          ? mapFinishReason(lastCandidate.finishReason)
           : FinishReason.unspecified,
       isComplete: true,
       usage: LanguageModelUsage(
@@ -267,7 +312,7 @@ class FirebaseAIMediaGenerationModel
         'resolved_mime_type': resolvedMimeType,
         'history_messages': history.length,
         'attachment_count': attachments.length,
-        'finish_message': candidate?.finishMessage,
+        'finish_message': lastCandidate?.finishMessage,
         'block_reason': lastResponse?.promptFeedback?.blockReason?.name,
         'block_reason_message':
             lastResponse?.promptFeedback?.blockReasonMessage,

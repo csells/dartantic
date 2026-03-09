@@ -198,8 +198,20 @@ extension GenerateContentResponseMapper on fai.GenerateContentResponse {
           if (output.isNotEmpty) {
             parts.add(TextPart('Code execution output:\n$output'));
           }
+        case fai.FileData(:final mimeType, :final fileUri):
+          final uri = Uri.tryParse(fileUri);
+          if (uri != null) {
+            parts.add(
+              LinkPart(
+                uri,
+                mimeType: mimeType,
+                name: uri.pathSegments.isNotEmpty
+                    ? uri.pathSegments.last
+                    : null,
+              ),
+            );
+          }
         case fai.FunctionResponse():
-        case fai.FileData():
         case fai.UnknownPart():
           break;
       }

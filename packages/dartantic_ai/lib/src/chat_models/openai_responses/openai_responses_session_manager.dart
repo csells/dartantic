@@ -1,5 +1,5 @@
 import 'package:logging/logging.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import '../../shared/openai_responses_metadata.dart';
 
@@ -43,7 +43,7 @@ class OpenAIResponsesSessionManager {
   /// that should be included in the ChatResult metadata (not message metadata).
   Map<String, Object?> buildResultMetadata(openai.Response response) => {
     'response_id': response.id,
-    if (response.model != null) 'model': response.model!.toJson(),
-    if (response.status != null) 'status': response.status,
+    if (response.model != null) 'model': response.model,
+    'status': response.status.toJson(),
   };
 }

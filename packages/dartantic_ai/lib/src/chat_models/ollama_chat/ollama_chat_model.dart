@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
-import 'package:ollama_dart/ollama_dart.dart' show OllamaClient;
+import 'package:ollama_dart/ollama_dart.dart' show OllamaClient, OllamaConfig;
 
 import 'ollama_chat_options.dart';
 import 'ollama_message_mappers.dart' as ollama_mappers;
@@ -22,10 +22,13 @@ class OllamaChatModel extends ChatModel<OllamaChatOptions> {
     Uri? baseUrl,
     http.Client? client,
     Map<String, String>? headers,
+    this.enableThinking = false,
   }) : _client = OllamaClient(
-         baseUrl: baseUrl?.toString(),
-         client: client,
-         headers: headers,
+         config: OllamaConfig(
+           baseUrl: baseUrl?.toString() ?? 'http://localhost:11434',
+           defaultHeaders: headers ?? {},
+         ),
+         httpClient: client,
        ),
        super(
          name: name,
@@ -41,6 +44,9 @@ class OllamaChatModel extends ChatModel<OllamaChatOptions> {
   static final Logger _logger = Logger('dartantic.chat.models.ollama');
 
   final OllamaClient _client;
+
+  /// Whether to enable thinking mode for reasoning models.
+  final bool enableThinking;
 
   @override
   Stream<ChatResult<ChatMessage>> sendStream(
@@ -65,8 +71,8 @@ class OllamaChatModel extends ChatModel<OllamaChatOptions> {
     );
     var chunkCount = 0;
 
-    return _client
-        .generateChatCompletionStream(
+    return _client.chat
+        .createStream(
           request: ollama_mappers.generateChatCompletionRequest(
             messages,
             modelName: name,
@@ -75,25 +81,16 @@ class OllamaChatModel extends ChatModel<OllamaChatOptions> {
             tools: tools,
             temperature: temperature,
             outputSchema: outputSchema,
+            enableThinking: enableThinking,
           ),
         )
-        .map((completion) {
+        .map((event) {
           chunkCount++;
           _logger.fine('Received Ollama stream chunk $chunkCount');
-          final result = ollama_mappers.ChatResultMapper(
-            completion,
-          ).toChatResult();
-          return ChatResult<ChatMessage>(
-            output: result.output,
-            messages: result.messages,
-            finishReason: result.finishReason,
-            metadata: result.metadata,
-            usage: result.usage,
-            id: result.id,
-          );
+          return ollama_mappers.ChatResultMapper(event).toChatResult();
         });
   }
 
   @override
-  void dispose() => _client.endSession();
+  void dispose() => _client.close();
 }

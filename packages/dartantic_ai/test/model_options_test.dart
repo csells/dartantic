@@ -31,10 +31,7 @@ void main() {
       });
 
       test('temperature 1 produces varied output', () async {
-        final agent = Agent(
-          'anthropic:claude-3-5-haiku-latest',
-          temperature: 1,
-        );
+        final agent = Agent('anthropic', temperature: 1);
         const prompt = 'Write a creative sentence about clouds.';
 
         final result1 = await agent.send(prompt);
@@ -69,7 +66,7 @@ void main() {
         final openaiLength = result.output.length;
 
         // Anthropic models might be more verbose
-        agent = Agent('anthropic:claude-3-5-haiku-latest');
+        agent = Agent('anthropic');
         result = await agent.send('Define AI in one sentence.');
         expect(result.output, isNotEmpty);
         final anthropicLength = result.output.length;
@@ -139,7 +136,7 @@ void main() {
       });
 
       test('providers respect system prompts', () async {
-        final agent = Agent('anthropic:claude-3-5-haiku-latest');
+        final agent = Agent('anthropic');
 
         final result = await agent.send(
           'Tell me about the ocean',
@@ -173,7 +170,7 @@ void main() {
       });
 
       test('agent respects system prompt', () async {
-        final agent = Agent('anthropic:claude-3-5-haiku-latest');
+        final agent = Agent('anthropic');
 
         final result = await agent.send(
           'What do you think about numbers?',

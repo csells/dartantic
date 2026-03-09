@@ -21,7 +21,7 @@ import 'chat_orchestrator_provider.dart';
 import 'google_api_utils.dart';
 
 const String _defaultChatModelName = 'gemini-2.5-flash';
-const String _defaultEmbeddingsModelName = 'text-embedding-004';
+const String _defaultEmbeddingsModelName = 'gemini-embedding-001';
 const String _defaultMediaModelName = 'gemini-2.5-flash-image';
 
 /// Provider for Google Gemini native API.

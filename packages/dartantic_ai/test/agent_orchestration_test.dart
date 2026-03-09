@@ -29,7 +29,7 @@ void main() {
               agent.model.startsWith('${provider.name}?'),
           isTrue,
         );
-        expect(agent.model, contains(expectedModel));
+        expect(Uri.decodeQueryComponent(agent.model), contains(expectedModel));
       });
 
       runProviderTest('agent with custom display name', (provider) async {

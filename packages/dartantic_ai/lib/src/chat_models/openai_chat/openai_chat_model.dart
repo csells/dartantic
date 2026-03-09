@@ -1,7 +1,8 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
-import 'package:openai_dart/openai_dart.dart';
+import 'package:openai_dart/openai_dart.dart'
+    hide ChatMessage, FinishReason, Tool;
 
 import '../../retry_http_client.dart';
 import 'openai_chat_options.dart';
@@ -21,15 +22,16 @@ class OpenAIChatModel extends ChatModel<OpenAIChatOptions> {
     String? organization,
     Uri? baseUrl,
     Map<String, String>? headers,
-    Map<String, dynamic>? queryParams,
     http.Client? client,
   }) : _client = OpenAIClient(
-         apiKey: apiKey,
-         organization: organization,
-         baseUrl: baseUrl?.toString(),
-         headers: headers,
-         queryParams: queryParams,
-         client: client != null
+         config: OpenAIConfig(
+           authProvider: apiKey != null ? ApiKeyProvider(apiKey) : null,
+           organization: organization,
+           baseUrl: baseUrl?.toString() ?? 'https://api.openai.com/v1',
+           defaultHeaders: headers ?? const {},
+           retryPolicy: const RetryPolicy(maxRetries: 0),
+         ),
+         httpClient: client != null
              ? RetryHttpClient(inner: client)
              : RetryHttpClient(inner: http.Client()),
        ),
@@ -91,8 +93,8 @@ class OpenAIChatModel extends ChatModel<OpenAIChatOptions> {
     );
 
     try {
-      await for (final completion in _client.createChatCompletionStream(
-        request: request,
+      await for (final completion in _client.chat.completions.createStream(
+        request,
       )) {
         chunkCount++;
         _logger.fine('Received OpenAI stream chunk $chunkCount');
@@ -196,5 +198,5 @@ class OpenAIChatModel extends ChatModel<OpenAIChatOptions> {
   }
 
   @override
-  void dispose() => _client.endSession();
+  void dispose() => _client.close();
 }

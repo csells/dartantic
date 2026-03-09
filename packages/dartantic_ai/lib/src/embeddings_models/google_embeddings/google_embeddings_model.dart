@@ -50,7 +50,7 @@ class GoogleEmbeddingsModel
   static final _logger = Logger('dartantic.embeddings.models.google');
 
   /// The default model name.
-  static const defaultName = 'text-embedding-004';
+  static const defaultName = 'gemini-embedding-001';
 
   late final gl.GenerativeService _service;
   final CustomHttpClient _httpClient;

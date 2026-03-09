@@ -18,7 +18,10 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:openai_core/openai_core.dart';
+import 'package:openai_dart/openai_dart.dart'
+    hide ChatMessage, WebSearchLocation;
+// ignore: deprecated_member_use
+import 'package:openai_dart/openai_dart_assistants.dart' as assistants;
 import 'package:test/test.dart';
 
 import '../test_utils.dart';
@@ -72,26 +75,30 @@ void main() {
       timeout: const Timeout(Duration(minutes: 1)),
     );
 
-    test('generates and downloads container files', () async {
-      final agent = Agent(
-        'openai-responses',
-        chatModelOptions: const OpenAIResponsesChatModelOptions(
-          serverSideTools: {OpenAIServerSideTool.codeInterpreter},
-        ),
-      );
+    test(
+      'generates and downloads container files',
+      () async {
+        final agent = Agent(
+          'openai-responses',
+          chatModelOptions: const OpenAIResponsesChatModelOptions(
+            serverSideTools: {OpenAIServerSideTool.codeInterpreter},
+          ),
+        );
 
-      // Accumulate results properly
-      final results = <ChatResult>[];
-      await agent
-          .sendStream('Create a text file test.txt with the word hello in it')
-          .forEach(results.add);
+        // Accumulate results properly
+        final results = <ChatResult>[];
+        await agent
+            .sendStream('Create a text file test.txt with the word hello in it')
+            .forEach(results.add);
 
-      final fullOutput = results.map((r) => r.output).join();
-      expect(fullOutput, contains('test.txt'));
+        final fullOutput = results.map((r) => r.output).join();
+        expect(fullOutput, contains('test.txt'));
 
-      // The bug would have crashed here if the workaround wasn't in place This
-      // test proves the workaround works
-    });
+        // The bug would have crashed here if the workaround wasn't in place
+        // This test proves the workaround works
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
 
     test(
       'generates plots/CSV and downloads both as DataPart',
@@ -158,7 +165,7 @@ void main() {
           reason: 'CSV should have CSV MIME type',
         );
       },
-      timeout: const Timeout(Duration(minutes: 1)),
+      timeout: const Timeout(Duration(minutes: 2)),
     );
 
     test(
@@ -186,26 +193,15 @@ void main() {
           history.addAll(chunk.messages);
         }
 
-        // Extract container ID from the response.output_item.done event
-        // metadata. The container_id is nested in event['item']['container_id']
-        // because OpenAI wraps the CodeInterpreterCall item inside the done
-        // event.
+        // Extract container_id from result metadata (set by terminal event
+        // handler from ContainerFileCitation annotations)
         String? containerId;
         for (final result in results1) {
-          final codeInterpreterMeta =
-              result.metadata['code_interpreter'] as List?;
-          if (codeInterpreterMeta != null) {
-            for (final event in codeInterpreterMeta) {
-              if (event is Map) {
-                final item = event['item'];
-                if (item is Map && item['container_id'] != null) {
-                  containerId = item['container_id'] as String;
-                  break;
-                }
-              }
-            }
+          final id = result.metadata['container_id'] as String?;
+          if (id != null) {
+            containerId = id;
+            break;
           }
-          if (containerId != null) break;
         }
 
         expect(
@@ -411,8 +407,8 @@ void main() {
   group('File Search Integration', () {
     test('searches vector store and returns relevant results', () async {
       // Create a test vector store with sample content
-      final client = OpenAIClient(
-        apiKey: Platform.environment['OPENAI_API_KEY'],
+      final client = OpenAIClient.withApiKey(
+        Platform.environment['OPENAI_API_KEY']!,
       );
 
       // Create a simple test file
@@ -430,31 +426,34 @@ of structured data alongside the main chat response.
 ''';
 
       // Upload the test file
-      final uploadedFile = await client.uploadFileBytes(
+      final uploadedFile = await client.files.upload(
         purpose: FilePurpose.assistants,
-        fileBytes: Uint8List.fromList(testContent.codeUnits),
+        bytes: Uint8List.fromList(testContent.codeUnits),
         filename: 'test_docs.md',
       );
 
       // Create vector store
-      final vectorStore = await client.createVectorStore(
-        name: 'Test Documentation',
-        fileIds: [uploadedFile.id],
+      final vectorStore = await client.beta.vectorStores.create(
+        assistants.CreateVectorStoreRequest(
+          name: 'Test Documentation',
+          fileIds: [uploadedFile.id],
+        ),
       );
 
       // Wait for processing
       var status = vectorStore.status;
       var attempts = 0;
-      while (status == VectorStoreStatus.inProgress && attempts < 30) {
+      while (status == assistants.VectorStoreStatus.inProgress &&
+          attempts < 30) {
         await Future<void>.delayed(const Duration(seconds: 2));
-        final updated = await client.retrieveVectorStore(vectorStore.id);
+        final updated = await client.beta.vectorStores.retrieve(vectorStore.id);
         status = updated.status;
         attempts++;
       }
 
       expect(
         status,
-        VectorStoreStatus.completed,
+        assistants.VectorStoreStatus.completed,
         reason: 'Vector store should be ready',
       );
 
@@ -499,51 +498,55 @@ of structured data alongside the main chat response.
       validateNoMetadataDuplicates(results);
 
       // Cleanup
-      await client.deleteVectorStore(vectorStore.id);
-      await client.deleteFile(uploadedFile.id);
+      await client.beta.vectorStores.delete(vectorStore.id);
+      await client.files.delete(uploadedFile.id);
       client.close();
     });
   });
 
   group('Multiple Tools Integration', () {
-    test('uses multiple server-side tools in one response', () async {
-      final agent = Agent(
-        'openai-responses',
-        chatModelOptions: const OpenAIResponsesChatModelOptions(
-          serverSideTools: {
-            OpenAIServerSideTool.webSearch,
-            OpenAIServerSideTool.codeInterpreter,
-          },
-        ),
-      );
+    test(
+      'uses multiple server-side tools in one response',
+      () async {
+        final agent = Agent(
+          'openai-responses',
+          chatModelOptions: const OpenAIResponsesChatModelOptions(
+            serverSideTools: {
+              OpenAIServerSideTool.webSearch,
+              OpenAIServerSideTool.codeInterpreter,
+            },
+          ),
+        );
 
-      // Accumulate results properly
-      final results = <ChatResult>[];
-      await agent
-          .sendStream(
-            'First, search the web for the current temperature in Seattle in '
-            'Fahrenheit. Then write Python code to check if that temperature '
-            'is above or below 50°F and calculate the difference.',
-          )
-          .forEach(results.add);
+        // Accumulate results properly
+        final results = <ChatResult>[];
+        await agent
+            .sendStream(
+              'First, search the web for the current temperature in Seattle in '
+              'Fahrenheit. Then write Python code to check if that temperature '
+              'is above or below 50°F and calculate the difference.',
+            )
+            .forEach(results.add);
 
-      // Should have both web_search and code_interpreter events
-      var hadWebSearch = false;
-      var hadCodeInterpreter = false;
-      for (final result in results) {
-        if (result.metadata['web_search'] != null) hadWebSearch = true;
-        if (result.metadata['code_interpreter'] != null) {
-          hadCodeInterpreter = true;
+        // Should have both web_search and code_interpreter events
+        var hadWebSearch = false;
+        var hadCodeInterpreter = false;
+        for (final result in results) {
+          if (result.metadata['web_search'] != null) hadWebSearch = true;
+          if (result.metadata['code_interpreter'] != null) {
+            hadCodeInterpreter = true;
+          }
         }
-      }
 
-      // Note: Model may choose to only use one tool if it can answer another
-      // way This test validates that multiple tools CAN be used together
-      expect(
-        hadWebSearch || hadCodeInterpreter,
-        isTrue,
-        reason: 'Should use at least one server-side tool',
-      );
-    });
+        // Note: Model may choose to only use one tool if it can answer another
+        // way This test validates that multiple tools CAN be used together
+        expect(
+          hadWebSearch || hadCodeInterpreter,
+          isTrue,
+          reason: 'Should use at least one server-side tool',
+        );
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
   });
 }

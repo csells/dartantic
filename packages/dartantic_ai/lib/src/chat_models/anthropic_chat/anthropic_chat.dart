@@ -1,5 +1,5 @@
 export 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart'
-    show ThinkingConfig, ThinkingConfigEnabledType;
+    show ThinkingConfig, ThinkingDisabled, ThinkingEnabled;
 
 export 'anthropic_chat_model.dart';
 export 'anthropic_chat_options.dart';

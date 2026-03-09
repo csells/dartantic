@@ -17,7 +17,7 @@ void main() {
   group('Usage Tracking', () {
     group('basic usage tracking', () {
       test('tracks token usage for single request', () async {
-        final agent = Agent('anthropic:claude-3-5-haiku-latest');
+        final agent = Agent('anthropic');
         final result = await agent.send('Say hello');
 
         // Usage tracking may not be available for all providers
@@ -123,7 +123,7 @@ void main() {
 
     group('cumulative usage tracking', () {
       test('accumulates usage across multiple calls', () async {
-        final agent = Agent('anthropic:claude-3-5-haiku-latest');
+        final agent = Agent('anthropic');
 
         var totalPromptTokens = 0;
         var totalResponseTokens = 0;
@@ -168,7 +168,7 @@ void main() {
 
     group('streaming usage tracking', () {
       test('tracks usage in streaming mode', () async {
-        final agent = Agent('anthropic:claude-3-5-haiku-latest');
+        final agent = Agent('anthropic');
 
         LanguageModelUsage? finalUsage;
         final chunks = <String>[];
@@ -267,7 +267,7 @@ void main() {
 
     group('cost calculation', () {
       test('calculates reasonable costs', () async {
-        final agent = Agent('anthropic:claude-3-5-haiku-latest');
+        final agent = Agent('anthropic');
         final result = await agent.send('Hello');
 
         // Example cost calculation (rates are examples)
@@ -323,7 +323,7 @@ void main() {
         const prompt = 'What is 1+1?';
 
         // Anthropic
-        var agent = Agent('anthropic:claude-3-5-haiku-latest');
+        var agent = Agent('anthropic');
         var result = await agent.send(prompt);
         if (result.usage?.totalTokens != null) {
           expect(result.usage!.totalTokens, greaterThan(0));
@@ -349,7 +349,7 @@ void main() {
         final usageByProvider = <String, int>{};
 
         final providers = {
-          'anthropic': 'claude-3-5-haiku-latest',
+          'anthropic': 'claude-sonnet-4-0',
           'openai': 'gpt-4o-mini',
           'google': 'gemini-2.5-flash',
         };
@@ -405,7 +405,7 @@ void main() {
         // Test subset of stable providers
         final providers = {
           'openai': 'gpt-4o-mini',
-          'anthropic': 'claude-3-5-haiku-latest',
+          'anthropic': 'claude-sonnet-4-0',
         };
 
         for (final entry in providers.entries) {

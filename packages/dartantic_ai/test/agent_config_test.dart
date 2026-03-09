@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_ai/src/platform/platform.dart' as platform;
-
 import 'package:test/test.dart';
 
 void main() {
@@ -312,7 +311,10 @@ void main() {
         final agent = Agent('ollama:llama2');
 
         expect(agent.providerName, equals('ollama'));
-        expect(agent.model, equals('ollama:llama2'));
+        expect(
+          agent.model,
+          equals('ollama?chat=llama2&embeddings=nomic-embed-text'),
+        );
       });
     });
 

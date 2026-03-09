@@ -11,8 +11,8 @@ import 'ollama_chat_options.dart';
 /// Logger for chat.mappers.ollama operations.
 final Logger _logger = Logger('dartantic.chat.mappers.ollama');
 
-/// Creates a [o.GenerateChatCompletionRequest] from the given input.
-o.GenerateChatCompletionRequest generateChatCompletionRequest(
+/// Creates a [o.ChatRequest] from the given input.
+o.ChatRequest generateChatCompletionRequest(
   List<ChatMessage> messages, {
   required String modelName,
   required OllamaChatOptions? options,
@@ -20,6 +20,7 @@ o.GenerateChatCompletionRequest generateChatCompletionRequest(
   List<Tool>? tools,
   double? temperature,
   Schema? outputSchema,
+  bool enableThinking = false,
 }) {
   _logger.fine(
     'Creating Ollama chat completion request for model: $modelName '
@@ -28,19 +29,20 @@ o.GenerateChatCompletionRequest generateChatCompletionRequest(
 
   // Use native Ollama format parameter for structured output
   final format = outputSchema != null
-      ? o.GenerateChatCompletionRequestFormat.schema(
-          Map<String, dynamic>.from(outputSchema.value),
-        )
+      ? o.SchemaFormat(Map<String, dynamic>.from(outputSchema.value))
       : options?.format ?? defaultOptions.format;
 
-  return o.GenerateChatCompletionRequest(
+  return o.ChatRequest(
     model: modelName,
     messages: messages.toMessages(),
     format: format,
     keepAlive: options?.keepAlive ?? defaultOptions.keepAlive,
     tools: tools?.toOllamaTools(),
     stream: true,
-    options: o.RequestOptions(
+    think: enableThinking ? const o.ThinkEnabled(true) : null,
+    logprobs: options?.logprobs ?? defaultOptions.logprobs,
+    topLogprobs: options?.topLogprobs ?? defaultOptions.topLogprobs,
+    options: o.ModelOptions(
       numKeep: options?.numKeep ?? defaultOptions.numKeep,
       seed: options?.seed ?? defaultOptions.seed,
       numPredict: options?.numPredict ?? defaultOptions.numPredict,
@@ -80,9 +82,9 @@ o.GenerateChatCompletionRequest generateChatCompletionRequest(
 
 /// Extension on [List<Tool>] to convert to Ollama SDK tool list.
 extension OllamaToolListMapper on List<Tool> {
-  /// Converts this list of [o.Tool]s to a list of Ollama SDK [o.Tool]s.
-  List<o.Tool> toOllamaTools() => map(
-    (tool) => o.Tool(
+  /// Converts this list of [Tool]s to a list of Ollama SDK [o.ToolDefinition]s.
+  List<o.ToolDefinition> toOllamaTools() => map(
+    (tool) => o.ToolDefinition(
       type: o.ToolType.function,
       function: o.ToolFunction(
         name: tool.name,
@@ -96,25 +98,20 @@ extension OllamaToolListMapper on List<Tool> {
 /// Extension on [List<Message>] to convert messages to Ollama SDK messages.
 extension MessageListMapper on List<ChatMessage> {
   /// Converts this list of [ChatMessage]s to a list of Ollama SDK
-  /// [o.Message]s.
+  /// [o.ChatMessage]s.
   ///
   /// ThinkingPart is implicitly filtered out since only TextPart content
   /// is extracted for the message text.
-  List<o.Message> toMessages() {
+  List<o.ChatMessage> toMessages() {
     _logger.fine('Converting $length messages to Ollama format');
 
     return map(_mapMessage).expand((msg) => msg).toList(growable: false);
   }
 
-  List<o.Message> _mapMessage(ChatMessage message) {
+  List<o.ChatMessage> _mapMessage(ChatMessage message) {
     switch (message.role) {
       case ChatMessageRole.system:
-        return [
-          o.Message(
-            role: o.MessageRole.system,
-            content: _extractTextContent(message),
-          ),
-        ];
+        return [o.ChatMessage.system(_extractTextContent(message))];
       case ChatMessageRole.user:
         // Check if this is a tool result message
         final toolResults = message.parts.toolResults;
@@ -122,10 +119,9 @@ extension MessageListMapper on List<ChatMessage> {
           // Tool result message
           return toolResults
               .map(
-                (p) => o.Message(
-                  role: o.MessageRole.tool,
+                (p) => o.ChatMessage.tool(
                   // ignore: avoid_dynamic_calls
-                  content: ToolResultHelpers.serialize(p.result),
+                  ToolResultHelpers.serialize(p.result),
                 ),
               )
               .toList();
@@ -137,20 +133,19 @@ extension MessageListMapper on List<ChatMessage> {
     }
   }
 
-  List<o.Message> _mapUserMessage(ChatMessage message) {
+  List<o.ChatMessage> _mapUserMessage(ChatMessage message) {
     final textParts = message.parts.whereType<TextPart>().toList();
     final dataParts = message.parts.whereType<DataPart>().toList();
 
     if (dataParts.isEmpty) {
       // Text-only message
       final text = message.parts.text;
-      return [o.Message(role: o.MessageRole.user, content: text)];
+      return [o.ChatMessage.user(text)];
     } else if (textParts.length == 1 && dataParts.isNotEmpty) {
       // Single text with images (Ollama's preferred format)
       return [
-        o.Message(
-          role: o.MessageRole.user,
-          content: textParts.first.text,
+        o.ChatMessage.user(
+          textParts.first.text,
           images: dataParts
               .map((p) => base64Encode(p.bytes))
               .toList(growable: false),
@@ -161,12 +156,9 @@ extension MessageListMapper on List<ChatMessage> {
       return message.parts
           .map((part) {
             if (part is TextPart) {
-              return o.Message(role: o.MessageRole.user, content: part.text);
+              return o.ChatMessage.user(part.text);
             } else if (part is DataPart) {
-              return o.Message(
-                role: o.MessageRole.user,
-                content: base64Encode(part.bytes),
-              );
+              return o.ChatMessage.user(base64Encode(part.bytes));
             }
             return null;
           })
@@ -175,14 +167,13 @@ extension MessageListMapper on List<ChatMessage> {
     }
   }
 
-  List<o.Message> _mapModelMessage(ChatMessage message) {
+  List<o.ChatMessage> _mapModelMessage(ChatMessage message) {
     final textContent = _extractTextContent(message);
     final toolCalls = message.parts.toolCalls;
 
     return [
-      o.Message(
-        role: o.MessageRole.assistant,
-        content: textContent,
+      o.ChatMessage.assistant(
+        textContent,
         toolCalls: toolCalls.isNotEmpty
             ? toolCalls
                   .map(
@@ -202,22 +193,26 @@ extension MessageListMapper on List<ChatMessage> {
   String _extractTextContent(ChatMessage message) => message.parts.text;
 }
 
-/// Extension on [o.GenerateChatCompletionResponse] to convert to [ChatResult].
-extension ChatResultMapper on o.GenerateChatCompletionResponse {
-  /// Converts this [o.GenerateChatCompletionResponse] to a [ChatResult].
+/// Extension on [o.ChatStreamEvent] to convert to [ChatResult].
+extension ChatResultMapper on o.ChatStreamEvent {
+  /// Converts this [o.ChatStreamEvent] to a [ChatResult].
   ChatResult<ChatMessage> toChatResult() {
-    _logger.fine('Converting Ollama response to ChatResult');
+    _logger.fine('Converting Ollama stream event to ChatResult');
     final parts = <Part>[];
 
+    final messageContent = message?.content ?? '';
+    final messageThinking = message?.thinking;
+    final messageToolCalls = message?.toolCalls;
+
     // Add text content
-    if (message.content.isNotEmpty) {
-      parts.add(TextPart(message.content));
+    if (messageContent.isNotEmpty) {
+      parts.add(TextPart(messageContent));
     }
 
     // Add tool calls
-    if (message.toolCalls != null) {
-      for (var i = 0; i < message.toolCalls!.length; i++) {
-        final toolCall = message.toolCalls![i];
+    if (messageToolCalls != null) {
+      for (var i = 0; i < messageToolCalls.length; i++) {
+        final toolCall = messageToolCalls[i];
         if (toolCall.function != null) {
           // Generate a unique ID for this tool call
           final toolId = ToolIdHelpers.generateToolCallId(
@@ -245,37 +240,47 @@ extension ChatResultMapper on o.GenerateChatCompletionResponse {
       parts: parts,
     );
 
+    // Thinking content is passed via the thinking field on ChatResult
+    final thinking = messageThinking != null && messageThinking.isNotEmpty
+        ? messageThinking
+        : null;
+
     // Convert Ollama token counts to usage
     // Only provide usage when done=true (final chunk)
-    final usage = done && (promptEvalCount != null || evalCount != null)
+    final isDone = done ?? false;
+    final promptTokens = promptEvalCount;
+    final responseTokens = evalCount;
+    final usage = isDone && (promptTokens != null || responseTokens != null)
         ? LanguageModelUsage(
-            promptTokens: promptEvalCount,
-            responseTokens: evalCount,
-            totalTokens: promptEvalCount != null && evalCount != null
-                ? promptEvalCount! + evalCount!
-                : promptEvalCount ?? evalCount,
+            promptTokens: promptTokens,
+            responseTokens: responseTokens,
+            totalTokens: promptTokens != null && responseTokens != null
+                ? promptTokens + responseTokens
+                : promptTokens ?? responseTokens,
           )
         : null;
 
     if (usage != null) {
       _logger.fine(
-        'Ollama usage: ${usage.promptTokens}/${usage.responseTokens}/${usage.totalTokens}',
+        'Ollama usage: ${usage.promptTokens}/${usage.responseTokens}'
+        '/${usage.totalTokens}',
       );
     }
 
     return ChatResult<ChatMessage>(
       output: responseMessage,
       messages: [responseMessage],
-      finishReason: FinishReason.unspecified,
+      finishReason: isDone ? FinishReason.stop : FinishReason.unspecified,
+      thinking: thinking,
       metadata: {
         'model': model,
         'created_at': createdAt,
         'done': done,
         'total_duration': totalDuration,
         'load_duration': loadDuration,
-        'prompt_eval_count': promptEvalCount,
+        'prompt_eval_count': promptTokens,
         'prompt_eval_duration': promptEvalDuration,
-        'eval_count': evalCount,
+        'eval_count': responseTokens,
         'eval_duration': evalDuration,
       },
       usage: usage,

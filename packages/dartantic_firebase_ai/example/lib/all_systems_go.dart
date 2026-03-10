@@ -69,10 +69,11 @@ class _DemoScreenState extends State<DemoScreen> {
 
       // Test agent creation
       _testAgentCreation();
-    } catch (e) {
+    } catch (e, st) {
       if (!mounted) return;
       setState(() {
         _logs.add('❌ Provider registration failed: $e');
+        _logs.add(st.toString());
       });
     }
   }
@@ -97,9 +98,10 @@ class _DemoScreenState extends State<DemoScreen> {
         _logs.add('   you would call agent.sendStream(prompt)');
         _logs.add('   to get AI responses!');
       });
-    } catch (e) {
+    } catch (e, st) {
       setState(() {
         _logs.add('❌ Agent creation failed: $e');
+        _logs.add(st.toString());
       });
     }
   }

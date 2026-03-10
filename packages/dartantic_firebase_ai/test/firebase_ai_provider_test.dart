@@ -38,6 +38,25 @@ void main() {
       );
     }, requiredCaps: {ProviderTestCaps.chat});
 
+    runProviderTest(
+      'rejects out-of-range temperature via options',
+      (provider) async {
+        expect(
+          () => provider.createChatModel(
+            options: const FirebaseAIChatModelOptions(temperature: -0.1),
+          ),
+          throwsArgumentError,
+        );
+        expect(
+          () => provider.createChatModel(
+            options: const FirebaseAIChatModelOptions(temperature: 2.1),
+          ),
+          throwsArgumentError,
+        );
+      },
+      requiredCaps: {ProviderTestCaps.chat},
+    );
+
     runProviderTest('creates media model', (provider) async {
       final mediaModel = provider.createMediaModel();
 
@@ -92,6 +111,38 @@ void main() {
                   as FirebaseAIGeminiMediaGenerationModelOptions)
               .safetySettings,
           hasLength(1),
+        );
+      },
+      requiredCaps: {ProviderTestCaps.mediaGeneration},
+    );
+
+    runProviderTest(
+      'infers Gemini media defaults from model name',
+      (provider) async {
+        final model = provider.createMediaModel(name: 'gemini-2.5-flash-image');
+        expect(
+          model.defaultOptions,
+          isA<FirebaseAIGeminiMediaGenerationModelOptions>(),
+        );
+      },
+      requiredCaps: {ProviderTestCaps.mediaGeneration},
+    );
+
+    runProviderTest(
+      'rejects tools on media model creation',
+      (provider) async {
+        expect(
+          () => provider.createMediaModel(
+            tools: [
+              Tool<Map<String, dynamic>>(
+                name: 'some_tool',
+                description: 'test',
+                inputSchema: Schema.fromMap({'type': 'object'}),
+                onCall: (input) => input,
+              ),
+            ],
+          ),
+          throwsArgumentError,
         );
       },
       requiredCaps: {ProviderTestCaps.mediaGeneration},

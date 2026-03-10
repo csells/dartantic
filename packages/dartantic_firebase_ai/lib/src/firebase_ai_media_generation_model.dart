@@ -141,7 +141,10 @@ class FirebaseAIMediaGenerationModel
 
     final imagen = _firebaseAI.imagenModel(
       model: name,
-      generationConfig: _buildImagenGenerationConfig(options),
+      generationConfig: _buildImagenGenerationConfig(
+        options,
+        resolvedMimeType: resolvedMimeType,
+      ),
       safetySettings: _buildImagenSafetySettings(options.safetySettings),
     );
 
@@ -197,6 +200,7 @@ class FirebaseAIMediaGenerationModel
         temperature: options.temperature,
         maxOutputTokens: options.maxOutputTokens,
         candidateCount: options.imageSampleCount,
+        responseMimeType: resolvedMimeType,
         responseModalities: const [
           fai.ResponseModalities.text,
           fai.ResponseModalities.image,
@@ -211,6 +215,7 @@ class FirebaseAIMediaGenerationModel
 
     var totalAssets = 0;
     var totalLinks = 0;
+    var producedAnyMedia = false;
     fai.GenerateContentResponse? lastResponse;
 
     await for (final response in model.generateContentStream(
@@ -260,6 +265,7 @@ class FirebaseAIMediaGenerationModel
         totalLinks += links.length;
 
         if (assets.isNotEmpty || links.isNotEmpty || textParts.isNotEmpty) {
+          producedAnyMedia = true;
           yield MediaGenerationResult(
             assets: assets,
             links: links,
@@ -290,13 +296,23 @@ class FirebaseAIMediaGenerationModel
     );
 
     final lastCandidate = lastResponse?.candidates.lastOrNull;
+    final blockReason = lastResponse?.promptFeedback?.blockReason;
+
+    // Determine the finish reason: if no media was produced, surface a
+    // non-success state so callers don't treat an empty result as success.
+    final FinishReason finishReason;
+    if (!producedAnyMedia && blockReason != null) {
+      finishReason = FinishReason.contentFilter;
+    } else if (lastCandidate != null) {
+      finishReason = mapFinishReason(lastCandidate.finishReason);
+    } else {
+      finishReason = FinishReason.unspecified;
+    }
 
     // Emit a final completion marker.
     yield MediaGenerationResult(
       assets: const [],
-      finishReason: lastCandidate != null
-          ? mapFinishReason(lastCandidate.finishReason)
-          : FinishReason.unspecified,
+      finishReason: finishReason,
       isComplete: true,
       usage: LanguageModelUsage(
         promptTokens: lastResponse?.usageMetadata?.promptTokenCount,
@@ -313,7 +329,7 @@ class FirebaseAIMediaGenerationModel
         'history_messages': history.length,
         'attachment_count': attachments.length,
         'finish_message': lastCandidate?.finishMessage,
-        'block_reason': lastResponse?.promptFeedback?.blockReason?.name,
+        'block_reason': blockReason?.name,
         'block_reason_message':
             lastResponse?.promptFeedback?.blockReasonMessage,
       },
@@ -321,11 +337,12 @@ class FirebaseAIMediaGenerationModel
   }
 
   fai.ImagenGenerationConfig _buildImagenGenerationConfig(
-    FirebaseAIImagenMediaGenerationModelOptions options,
-  ) => fai.ImagenGenerationConfig(
+    FirebaseAIImagenMediaGenerationModelOptions options, {
+    required String resolvedMimeType,
+  }) => fai.ImagenGenerationConfig(
     numberOfImages: options.imageSampleCount,
     aspectRatio: _mapAspectRatio(options.aspectRatio),
-    imageFormat: _mapImageFormat(options.responseMimeType),
+    imageFormat: _mapImageFormat(resolvedMimeType),
   );
 
   fai.ImagenSafetySettings? _buildImagenSafetySettings(

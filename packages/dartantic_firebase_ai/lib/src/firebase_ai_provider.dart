@@ -169,10 +169,13 @@ class FirebaseAIProvider
   }) {
     final modelName = name ?? defaultModelNames[ModelKind.media]!;
 
-    _logger.info(
-      'Creating Firebase AI media model: $modelName '
-      'with ${(tools ?? const []).length} tools',
-    );
+    if (tools != null && tools.isNotEmpty) {
+      throw ArgumentError(
+        'Firebase AI media generation does not support tools.',
+      );
+    }
+
+    _logger.info('Creating Firebase AI media model: $modelName');
 
     return FirebaseAIMediaGenerationModel(
       name: modelName,

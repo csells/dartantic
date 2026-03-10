@@ -149,6 +149,7 @@ void main() {
       final model = provider.createChatModel(enableThinking: true);
 
       expect(model, isA<FirebaseAIChatModel>());
+      expect(model.defaultOptions.enableThinking, isTrue);
     });
 
     test('createChatModel passes thinking budget via options', () {

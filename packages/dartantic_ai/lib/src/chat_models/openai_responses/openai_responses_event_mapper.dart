@@ -1,6 +1,6 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import 'event_handlers/fallback_event_handler.dart';
 import 'event_handlers/function_call_event_handler.dart';
@@ -48,6 +48,15 @@ class OpenAIResponsesEventMapper {
   /// Mutable state for event mapping.
   final EventMappingState _state = EventMappingState();
 
+  /// The container ID extracted from raw SSE JSON.
+  ///
+  /// Set by the chat model when it finds a container_id in a
+  /// code_interpreter_call item's raw JSON (not parsed by the SDK).
+  String? get containerId => _state.containerId;
+  set containerId(String containerId) {
+    _state.containerId = containerId;
+  }
+
   /// Tool event recorder for streaming tool execution events.
   final OpenAIResponsesToolEventRecorder _toolRecorder =
       const OpenAIResponsesToolEventRecorder();
@@ -77,7 +86,9 @@ class OpenAIResponsesEventMapper {
   ///
   /// Uses chain-of-responsibility pattern: iterates through handlers until
   /// one accepts and processes the event.
-  Stream<ChatResult<ChatMessage>> handle(openai.ResponseEvent event) async* {
+  Stream<ChatResult<ChatMessage>> handle(
+    openai.ResponseStreamEvent event,
+  ) async* {
     for (final handler in _handlers) {
       if (handler.canHandle(event)) {
         yield* handler.handle(event, _state);

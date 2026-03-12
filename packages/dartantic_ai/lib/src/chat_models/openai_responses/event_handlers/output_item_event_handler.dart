@@ -1,6 +1,6 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import '../openai_responses_attachment_collector.dart';
 import '../openai_responses_event_mapping_state.dart';
@@ -27,31 +27,31 @@ class OutputItemEventHandler implements OpenAIResponsesEventHandler {
   );
 
   @override
-  bool canHandle(openai.ResponseEvent event) =>
-      event is openai.ResponseOutputItemAdded ||
-      event is openai.ResponseOutputItemDone;
+  bool canHandle(openai.ResponseStreamEvent event) =>
+      event is openai.OutputItemAddedEvent ||
+      event is openai.OutputItemDoneEvent;
 
   @override
   Stream<ChatResult<ChatMessage>> handle(
-    openai.ResponseEvent event,
+    openai.ResponseStreamEvent event,
     EventMappingState state,
   ) async* {
-    if (event is openai.ResponseOutputItemAdded) {
+    if (event is openai.OutputItemAddedEvent) {
       _handleOutputItemAdded(event, state);
-    } else if (event is openai.ResponseOutputItemDone) {
+    } else if (event is openai.OutputItemDoneEvent) {
       yield* _handleOutputItemDone(event, state);
     }
   }
 
   void _handleOutputItemAdded(
-    openai.ResponseOutputItemAdded event,
+    openai.OutputItemAddedEvent event,
     EventMappingState state,
   ) {
     final item = event.item;
-    _logger.fine('ResponseOutputItemAdded: item type = ${item.runtimeType}');
-    if (item is openai.FunctionCall) {
+    _logger.fine('OutputItemAddedEvent: item type = ${item.runtimeType}');
+    if (item is openai.FunctionCallOutputItemResponse) {
       state.functionCalls[event.outputIndex] = StreamingFunctionCall(
-        itemId: item.id ?? 'item_${event.outputIndex}',
+        itemId: item.id,
         callId: item.callId,
         name: item.name,
         outputIndex: event.outputIndex,
@@ -63,57 +63,50 @@ class OutputItemEventHandler implements OpenAIResponsesEventHandler {
       return;
     }
 
-    if (item is openai.Reasoning) {
+    if (item is openai.ReasoningItem) {
       _logger.fine('Reasoning item at index ${event.outputIndex}');
       state.reasoningOutputIndices.add(event.outputIndex);
       return;
     }
 
-    if (item is openai.ImageGenerationCall) {
+    if (item is openai.ImageGenerationCallOutputItem) {
       _logger.fine('Image generation call at index ${event.outputIndex}');
     }
   }
 
   Stream<ChatResult<ChatMessage>> _handleOutputItemDone(
-    openai.ResponseOutputItemDone event,
+    openai.OutputItemDoneEvent event,
     EventMappingState state,
   ) async* {
     final item = event.item;
-    _logger.fine('ResponseOutputItemDone: item type = ${item.runtimeType}');
+    _logger.fine('OutputItemDoneEvent: item type = ${item.runtimeType}');
 
-    if (item is openai.ImageGenerationCall) {
+    if (item is openai.ImageGenerationCallOutputItem) {
       _logger.fine('Image generation completed at index ${event.outputIndex}');
       attachments.markImageGenerationCompleted(
         index: event.outputIndex,
-        resultBase64: item.resultBase64,
+        resultBase64: item.result,
       );
     }
 
-    if (item is openai.CodeInterpreterCall) {
+    if (item is openai.CodeInterpreterCallOutputItem) {
       _logger.fine('Code interpreter completed at index ${event.outputIndex}');
       _logger.fine(
-        'CodeInterpreterCall details: containerId=${item.containerId}, '
-        'results=${item.results?.length ?? 0}, status=${item.status}',
+        'CodeInterpreterCallOutputItem details: '
+        'outputs=${item.outputs?.length ?? 0}, status=${item.status}',
       );
 
-      // Extract file outputs from code interpreter results
-      final containerId = item.containerId;
-      if (containerId != null && item.results != null) {
-        for (final result in item.results!) {
-          if (result is openai.CodeInterpreterFiles) {
-            for (final file in result.files) {
-              final fileId = file.fileId ?? file.id;
-              if (fileId != null) {
-                _logger.info(
-                  'Found code interpreter file output: '
-                  'container_id=$containerId, file_id=$fileId',
-                );
-                attachments.trackContainerCitation(
-                  containerId: containerId,
-                  fileId: fileId,
-                );
-              }
-            }
+      if (item.outputs != null) {
+        for (final output in item.outputs!) {
+          if (output is openai.CodeInterpreterLogsOutput) {
+            _logger.fine('Code interpreter logs: ${output.logs.length} chars');
+          } else if (output is openai.CodeInterpreterImageOutput) {
+            _logger.fine('Code interpreter image: ${output.url}');
+          } else {
+            _logger.warning(
+              'Unhandled code interpreter output type: '
+              '${output.runtimeType}',
+            );
           }
         }
       }

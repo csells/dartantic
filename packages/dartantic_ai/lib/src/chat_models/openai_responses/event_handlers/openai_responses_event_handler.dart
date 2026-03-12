@@ -1,5 +1,5 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import '../openai_responses_event_mapping_state.dart';
 
@@ -10,11 +10,11 @@ import '../openai_responses_event_mapping_state.dart';
 /// more [ChatResult]s.
 abstract class OpenAIResponsesEventHandler {
   /// Checks if this handler can process the given [event].
-  bool canHandle(openai.ResponseEvent event);
+  bool canHandle(openai.ResponseStreamEvent event);
 
   /// Processes the [event] and yields zero or more [ChatResult]s.
   Stream<ChatResult<ChatMessage>> handle(
-    openai.ResponseEvent event,
+    openai.ResponseStreamEvent event,
     EventMappingState state,
   );
 }

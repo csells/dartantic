@@ -1,4 +1,7 @@
 import 'package:meta/meta.dart';
+import 'package:openai_dart/openai_dart.dart' show SearchContentType;
+
+export 'package:openai_dart/openai_dart.dart' show SearchContentType;
 
 /// OpenAI-provided server-side tools that can be enabled for a Responses call.
 enum OpenAIServerSideTool {
@@ -102,6 +105,7 @@ class WebSearchConfig {
     this.contextSize,
     this.location,
     this.followupQuestions,
+    this.searchContentTypes,
   });
 
   /// Desired context size (falls back to provider defaults when omitted).
@@ -112,6 +116,9 @@ class WebSearchConfig {
 
   /// Whether the model should surface follow-up questions in metadata.
   final bool? followupQuestions;
+
+  /// Content types to include in search results (e.g. text, image).
+  final List<SearchContentType>? searchContentTypes;
 }
 
 /// Configuration for the OpenAI Responses `code_interpreter` tool.

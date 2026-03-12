@@ -107,13 +107,18 @@ class AnthropicProvider
   @override
   Stream<ModelInfo> listModels() async* {
     _logger.info('Fetching models from Anthropic API using SDK');
+    if (apiKeyName != null && (apiKey == null || apiKey!.isEmpty)) {
+      throw ArgumentError('$apiKeyName is required for $displayName provider');
+    }
     final client = a.AnthropicClient(
-      apiKey: apiKey ?? '',
-      baseUrl: baseUrl?.toString(),
+      config: a.AnthropicConfig(
+        authProvider: a.ApiKeyProvider(apiKey ?? ''),
+        baseUrl: baseUrl?.toString() ?? 'https://api.anthropic.com',
+      ),
     );
 
     try {
-      final response = await client.listModels();
+      final response = await client.models.list();
       final modelCount = response.data.length;
       _logger.info('Successfully fetched $modelCount models from Anthropic');
 
@@ -126,11 +131,11 @@ class AnthropicProvider
           kinds: {kind},
           displayName: m.displayName,
           description: null,
-          extra: {'createdAt': m.createdAt, 'type': m.type.name},
+          extra: {'createdAt': m.createdAt, 'type': m.type},
         );
       }
     } finally {
-      client.endSession();
+      client.close();
     }
   }
 

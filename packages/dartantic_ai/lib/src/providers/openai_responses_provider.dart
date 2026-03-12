@@ -59,12 +59,8 @@ class OpenAIResponsesProvider
   /// Environment variable used to read the API key.
   static const defaultApiKeyName = 'OPENAI_API_KEY';
 
-  /// Default base URL for the OpenAI Responses API.
-  /// Note: Points to the Responses API endpoint to work around a bug
-  /// in openai_core v0.4.0 where it incorrectly constructs the URL path.
-  static final defaultResponsesBaseUrl = Uri.parse(
-    'https://api.openai.com/v1/responses',
-  );
+  /// Default base URL for the OpenAI API.
+  static final defaultResponsesBaseUrl = Uri.parse('https://api.openai.com/v1');
 
   /// Backwards-compatible alias for the default Responses endpoint.
   static final defaultBaseUrl = defaultResponsesBaseUrl;

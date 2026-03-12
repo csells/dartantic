@@ -3,7 +3,9 @@
 import 'dart:io';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:openai_core/openai_core.dart';
+import 'package:openai_dart/openai_dart.dart' hide ChatMessage;
+// ignore: deprecated_member_use
+import 'package:openai_dart/openai_dart_assistants.dart' as assistants;
 
 void main(List<String> args) async {
   stdout.writeln('Open AI Responses: Vector Search Demo\n');
@@ -60,24 +62,23 @@ void main(List<String> args) async {
 /// The vector store ID is cached in tmp/vector_store_id.txt for reuse
 /// across runs to avoid re-uploading files unnecessarily.
 Future<String> setupVectorStore(List<String> filePaths) async {
-  final client = OpenAIClient(
-    apiKey: Platform.environment['OPENAI_API_KEY'],
-    // baseUrl: 'https://api.openai.com/v1',
+  final client = OpenAIClient.withApiKey(
+    Platform.environment['OPENAI_API_KEY']!,
   );
 
   // Check for cached vector store ID
   final cacheFile = File('tmp/vector_store_id.txt');
   if (cacheFile.existsSync()) {
     final cachedId = await cacheFile.readAsString();
-    stdout.writeln('✅ Using cached vector store: $cachedId');
+    stdout.writeln('Using cached vector store: $cachedId');
     return cachedId.trim();
   }
 
-  stdout.writeln('📤 Uploading files to OpenAI...');
+  stdout.writeln('Uploading files to OpenAI...');
 
   // Get list of already uploaded files
   final existingFiles = <String, String>{}; // filename -> file_id
-  final filesList = await client.listFiles(purpose: 'assistants');
+  final filesList = await client.files.list(purpose: FilePurpose.assistants);
   for (final file in filesList.data) {
     existingFiles[file.filename] = file.id;
   }
@@ -101,46 +102,48 @@ Future<String> setupVectorStore(List<String> filePaths) async {
     // Check if already uploaded
     if (existingFiles.containsKey(filename)) {
       final existingId = existingFiles[filename]!;
-      stdout.writeln('  ♻️  Already uploaded: $filename (ID: $existingId)');
+      stdout.writeln('  Already uploaded: $filename (ID: $existingId)');
       fileIds.add(existingId);
       continue;
     }
 
     // Upload new file
-    stdout.writeln('  📄 Uploading: $filename');
+    stdout.writeln('  Uploading: $filename');
     final fileBytes = await file.readAsBytes();
-    final uploadedFile = await client.uploadFileBytes(
+    final uploadedFile = await client.files.upload(
       purpose: FilePurpose.assistants,
-      fileBytes: fileBytes,
+      bytes: fileBytes,
       filename: filename,
     );
 
-    stdout.writeln('     ✅ Uploaded: ${uploadedFile.id}');
+    stdout.writeln('     Uploaded: ${uploadedFile.id}');
     fileIds.add(uploadedFile.id);
   }
 
   // Create vector store
-  stdout.writeln('🗂️  Creating vector store with ${fileIds.length} files...');
-  final vectorStore = await client.createVectorStore(
-    name: 'Dartantic Documentation',
-    fileIds: fileIds,
-    chunkingStrategy: const AutoChunkingStrategy(),
+  stdout.writeln('Creating vector store with ${fileIds.length} files...');
+  final vectorStore = await client.beta.vectorStores.create(
+    assistants.CreateVectorStoreRequest(
+      name: 'Dartantic Documentation',
+      fileIds: fileIds,
+      chunkingStrategy: const assistants.AutoChunkingStrategy(),
+    ),
   );
 
-  stdout.writeln('   ✅ Created vector store: ${vectorStore.id}');
+  stdout.writeln('   Created vector store: ${vectorStore.id}');
 
   // Wait for vector store to be ready
-  stdout.write('   ⏳ Processing files');
+  stdout.write('   Processing files');
   var status = vectorStore.status;
-  while (status == VectorStoreStatus.inProgress) {
+  while (status == assistants.VectorStoreStatus.inProgress) {
     stdout.write('.');
     await Future<void>.delayed(const Duration(seconds: 2));
-    final updated = await client.retrieveVectorStore(vectorStore.id);
+    final updated = await client.beta.vectorStores.retrieve(vectorStore.id);
     status = updated.status;
   }
   stdout.writeln(' Done!');
 
-  if (status != VectorStoreStatus.completed) {
+  if (status != assistants.VectorStoreStatus.completed) {
     throw Exception('Vector store creation failed with status: $status');
   }
 

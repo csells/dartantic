@@ -9,7 +9,6 @@
 /// 7. Each functionality should only be tested in ONE file - no duplication
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-
 import 'package:test/test.dart';
 
 import 'test_helpers/run_provider_test.dart';
@@ -139,7 +138,7 @@ void main() {
 
     group('streaming message assembly (80% cases)', () {
       test('streaming chunks assemble into complete messages', () async {
-        final agent = Agent('anthropic:claude-3-5-haiku-latest');
+        final agent = Agent('anthropic');
 
         final chunks = <String>[];
         await for (final chunk in agent.sendStream('Count to 3')) {
@@ -178,7 +177,7 @@ void main() {
       });
 
       test('Anthropic format compatibility', () async {
-        final agent = Agent('anthropic:claude-3-5-haiku-latest');
+        final agent = Agent('anthropic');
         final result = await agent.send('Test Anthropic format');
 
         // Anthropic has its own format

@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
 import 'package:mime/mime.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import 'openai_responses_attachment_types.dart';
 
@@ -25,7 +25,8 @@ class AttachmentCollector {
   final Map<int, String> _imagesByIndex = {};
   final Set<int> _completedImageIndices = {};
 
-  final Set<({String containerId, String fileId})> _containerFiles = {};
+  final Set<({String containerId, String fileId, String? fileName})>
+  _containerFiles = {};
 
   /// Records a partial image update during streaming.
   void recordPartialImage({required String base64, required int index}) {
@@ -45,16 +46,21 @@ class AttachmentCollector {
   }
 
   /// Registers a completed image generation call.
-  void registerImageCall(openai.ImageGenerationCall call, int index) {
-    markImageGenerationCompleted(index: index, resultBase64: call.resultBase64);
+  void registerImageCall(openai.ImageGenerationCallOutputItem call, int index) {
+    markImageGenerationCompleted(index: index, resultBase64: call.result);
   }
 
   /// Tracks a container file citation for later download.
   void trackContainerCitation({
     required String containerId,
     required String fileId,
+    String? fileName,
   }) {
-    _containerFiles.add((containerId: containerId, fileId: fileId));
+    _containerFiles.add((
+      containerId: containerId,
+      fileId: fileId,
+      fileName: fileName,
+    ));
   }
 
   /// Resolves all tracked attachments into DataParts.
@@ -102,16 +108,22 @@ class AttachmentCollector {
     for (final citation in _containerFiles) {
       final containerId = citation.containerId;
       final fileId = citation.fileId;
+      final citationFileName = citation.fileName;
       _logger.info('Downloading container file: $fileId from $containerId');
       final data = await _containerFileLoader(containerId, fileId);
 
       final inferredMime =
           data.mimeType ??
-          lookupMimeType(data.fileName ?? '', headerBytes: data.bytes) ??
+          lookupMimeType(
+            data.fileName ?? citationFileName ?? '',
+            headerBytes: data.bytes,
+          ) ??
           'application/octet-stream';
       final extension = PartHelpers.extensionFromMimeType(inferredMime);
       final fileName =
-          data.fileName ?? (extension != null ? '$fileId.$extension' : fileId);
+          data.fileName ??
+          citationFileName ??
+          (extension != null ? '$fileId.$extension' : fileId);
 
       attachments.add(
         DataPart(data.bytes, mimeType: inferredMime, name: fileName),

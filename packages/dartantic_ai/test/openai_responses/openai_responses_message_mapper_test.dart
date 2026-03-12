@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:dartantic_ai/src/chat_models/openai_responses/openai_responses_message_mapper.dart';
 import 'package:dartantic_ai/src/shared/openai_responses_metadata.dart';
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 import 'package:test/test.dart';
 
 void main() {
@@ -32,13 +32,12 @@ void main() {
       );
       expect(segment.input, isA<openai.ResponseInputItems>());
 
-      final input = segment.input as openai.ResponseInputItems?;
-      expect(input, isNotNull);
-      expect(input!.items, hasLength(2)); // Now has system + user messages
+      final input = (segment.input! as openai.ResponseInputItems).items;
+      expect(input, hasLength(2)); // Now has system + user messages
 
       // Check system message first
-      final systemItem = input.items.first as openai.InputMessage;
-      expect(systemItem.role, equals('system'));
+      final systemItem = input.first as openai.MessageItem;
+      expect(systemItem.role, equals(openai.MessageRole.system));
       expect(systemItem.content, hasLength(1));
       expect(
         systemItem.content.first,
@@ -50,8 +49,8 @@ void main() {
       );
 
       // Check user message second
-      final messageItem = input.items[1] as openai.InputMessage;
-      expect(messageItem.role, equals('user'));
+      final messageItem = input[1] as openai.MessageItem;
+      expect(messageItem.role, equals(openai.MessageRole.user));
       expect(messageItem.content, hasLength(2));
       expect(
         messageItem.content.first,
@@ -99,18 +98,19 @@ void main() {
       expect(segment.instructions, isNull);
       expect(segment.previousResponseId, equals('resp_123'));
 
-      final input = segment.input as openai.ResponseInputItems?;
-      expect(input, isNotNull);
+      final inputItems = (segment.input! as openai.ResponseInputItems).items;
       // Since pending items are always empty, only the new tool result
       // is mapped
-      expect(input!.items, hasLength(1));
+      expect(inputItems, hasLength(1));
 
-      expect(input.items.first, isA<openai.FunctionCallOutput>());
+      expect(inputItems.first, isA<openai.FunctionCallOutputItem>());
 
-      final toolResult = input.items.first as openai.FunctionCallOutput;
+      final toolResult = inputItems.first as openai.FunctionCallOutputItem;
       expect(toolResult.callId, equals('tool-1'));
+      final outputStr =
+          (toolResult.output as openai.FunctionCallOutputString).value;
       expect(
-        jsonDecode(toolResult.output) as Map<String, dynamic>,
+        jsonDecode(outputStr) as Map<String, dynamic>,
         containsPair('value', 42),
       );
     });

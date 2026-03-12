@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:logging/logging.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import '../../shared/openai_responses_metadata.dart';
 
@@ -17,11 +17,11 @@ class OpenAIResponsesHistorySegment {
     required this.anchorIndex,
   });
 
-  /// Concrete [openai.ResponseItem] payloads that will be sent to the API.
-  final List<openai.ResponseItem> items;
+  /// Concrete [openai.Item] payloads that will be sent to the API.
+  final List<openai.Item> items;
 
-  /// Serialized input payload or `null` when no new data must be sent.
-  final openai.Input? input;
+  /// Input payload or `null` when no new data must be sent.
+  final openai.ResponseInput? input;
 
   /// Optional system instructions to provide to the API.
   final String? instructions;
@@ -93,7 +93,7 @@ class OpenAIResponsesMessageMapper {
     );
 
     // No pending items in dartantic - tools are executed synchronously
-    final items = <openai.ResponseItem>[];
+    final items = <openai.Item>[];
 
     for (
       var i = sessionResolution.firstMessageIndex;
@@ -106,7 +106,7 @@ class OpenAIResponsesMessageMapper {
 
     final input = items.isEmpty
         ? null
-        : openai.ResponseInputItems(List.of(items));
+        : openai.ResponseInput.items(List<openai.Item>.of(items));
 
     log.info('━━━ Mapping Complete ━━━');
     log.info('Actual items to send: ${items.length}');
@@ -191,12 +191,12 @@ class OpenAIResponsesMessageMapper {
     return null;
   }
 
-  static List<openai.ResponseItem> _mapMessageParts(
+  static List<openai.Item> _mapMessageParts(
     ChatMessage message, {
     required openai.ImageDetail imageDetail,
   }) {
-    final items = <openai.ResponseItem>[];
-    final content = <openai.ResponseContent>[];
+    final items = <openai.Item>[];
+    final content = <openai.InputContent>[];
     final isUserMessage = message.role == ChatMessageRole.user;
     final isSystemMessage = message.role == ChatMessageRole.system;
     final isModelMessage = message.role == ChatMessageRole.model;
@@ -211,20 +211,25 @@ class OpenAIResponsesMessageMapper {
     void flushContent() {
       if (content.isEmpty) return;
       if (isModelMessage) {
-        // Model messages need to use OutputMessage
+        // Model messages use MessageItem with assistant role and status
         items.add(
-          openai.OutputMessage(
-            role: role,
+          openai.MessageItem(
+            role: openai.MessageRole.assistant,
             content: List.of(content),
             id:
                 '$_syntheticMessageIdPrefix'
                 '${DateTime.now().millisecondsSinceEpoch}',
-            status: 'completed',
+            status: openai.ItemStatus.completed,
           ),
         );
       } else {
-        // User and system messages use InputMessage
-        items.add(openai.InputMessage(role: role, content: List.of(content)));
+        // User and system messages use MessageItem
+        items.add(
+          openai.MessageItem(
+            role: openai.MessageRole.fromJson(role),
+            content: List.of(content),
+          ),
+        );
       }
       content.clear();
     }
@@ -255,25 +260,23 @@ class OpenAIResponsesMessageMapper {
   /// Maps a TextPart to response content.
   static void _mapTextPart(
     TextPart part,
-    List<openai.ResponseContent> content,
+    List<openai.InputContent> content,
     bool isModelMessage,
   ) {
     if (part.text.isEmpty) return;
     if (isModelMessage) {
-      // Model messages use OutputTextContent
-      content.add(
-        openai.OutputTextContent(text: part.text, annotations: const []),
-      );
+      // Model messages use AssistantTextContent (serializes as output_text)
+      content.add(openai.AssistantTextContent(part.text));
     } else {
       // User and system messages use InputTextContent
-      content.add(openai.InputTextContent(text: part.text));
+      content.add(openai.InputTextContent(part.text));
     }
   }
 
   /// Maps a DataPart to response content.
   static void _mapDataPart(
     DataPart part,
-    List<openai.ResponseContent> content,
+    List<openai.InputContent> content,
     bool isModelMessage,
     openai.ImageDetail imageDetail,
   ) {
@@ -285,9 +288,9 @@ class OpenAIResponsesMessageMapper {
       // Images: Use InputImageContent
       final base64Data = base64Encode(bytes);
       content.add(
-        openai.InputImageContent(
+        openai.InputImageContent.url(
+          'data:$mimeType;base64,$base64Data',
           detail: imageDetail,
-          imageUrl: 'data:$mimeType;base64,$base64Data',
         ),
       );
     } else if (mimeType == 'application/pdf') {
@@ -296,7 +299,7 @@ class OpenAIResponsesMessageMapper {
       final fileName = name ?? PartHelpers.nameFromMimeType(mimeType);
       final fileDataUrl = 'data:$mimeType;base64,$base64Data';
       content.add(
-        openai.InputFileContent(filename: fileName, fileData: fileDataUrl),
+        openai.InputFileContent.data(fileDataUrl, filename: fileName),
       );
     } else {
       // All other files: Include as text with base64 data URL
@@ -310,11 +313,9 @@ class OpenAIResponsesMessageMapper {
       final fileContent = '$prefix $fileDataUrl';
 
       if (isModelMessage) {
-        content.add(
-          openai.OutputTextContent(text: fileContent, annotations: const []),
-        );
+        content.add(openai.AssistantTextContent(fileContent));
       } else {
-        content.add(openai.InputTextContent(text: fileContent));
+        content.add(openai.InputTextContent(fileContent));
       }
     }
   }
@@ -322,38 +323,30 @@ class OpenAIResponsesMessageMapper {
   /// Maps a LinkPart to response content.
   static void _mapLinkPart(
     LinkPart part,
-    List<openai.ResponseContent> content,
+    List<openai.InputContent> content,
     bool isModelMessage,
     openai.ImageDetail imageDetail,
   ) {
     final resolvedMime = part.mimeType ?? '';
     if (resolvedMime.toLowerCase().startsWith('image/')) {
       content.add(
-        openai.InputImageContent(
-          detail: imageDetail,
-          imageUrl: part.url.toString(),
-        ),
+        openai.InputImageContent.url(part.url.toString(), detail: imageDetail),
       );
     } else {
       if (isModelMessage) {
-        content.add(
-          openai.OutputTextContent(
-            text: part.url.toString(),
-            annotations: const [],
-          ),
-        );
+        content.add(openai.AssistantTextContent(part.url.toString()));
       } else {
-        content.add(openai.InputTextContent(text: part.url.toString()));
+        content.add(openai.InputTextContent(part.url.toString()));
       }
     }
   }
 
   /// Maps a ToolPart to response items.
-  static List<openai.ResponseItem> _mapToolPart(ToolPart part) {
+  static List<openai.Item> _mapToolPart(ToolPart part) {
     switch (part.kind) {
       case ToolPartKind.call:
         return [
-          openai.FunctionCall(
+          openai.FunctionCallItem(
             arguments: jsonEncode(part.arguments ?? const {}),
             callId: part.callId,
             name: part.toolName,
@@ -361,9 +354,11 @@ class OpenAIResponsesMessageMapper {
         ];
       case ToolPartKind.result:
         return [
-          openai.FunctionCallOutput(
+          openai.FunctionCallOutputItem(
             callId: part.callId,
-            output: _stringifyToolResult(part.result),
+            output: openai.FunctionCallOutputString(
+              _stringifyToolResult(part.result),
+            ),
           ),
         ];
     }

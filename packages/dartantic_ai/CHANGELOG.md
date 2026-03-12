@@ -1,3 +1,23 @@
+## 3.2.0
+
+### SDK Dependency Upgrades
+
+Migrated all provider SDK dependencies to their latest major versions:
+
+| Dependency                                  | Before | After |
+| ------------------------------------------- | ------ | ----- |
+| `anthropic_sdk_dart`                        | 0.3.x  | 1.2.0 |
+| `mistralai_dart`                            | 0.1.x  | 1.2.0 |
+| `ollama_dart`                               | 0.3.x  | 1.2.0 |
+| `openai_dart`                               | 0.6.x  | 1.1.0 |
+| `google_cloud_ai_generativelanguage_v1beta` | 0.4.0  | 0.5.0 |
+
+### Breaking Changes
+
+- **Google Embeddings Model**: Default embeddings model changed from
+  `text-embedding-004` to `gemini-embedding-001`. The old model was removed
+  from Google's v1beta API.
+
 ## 3.1.0
 
 ### Fixed: Google Server-Side Tools with Structured Output
@@ -9,6 +29,7 @@ unsupported".
 
 Server-side tools now work with typed output using the same two-phase
 `GoogleDoubleAgentOrchestrator` approach as user-defined tools:
+
 - **Phase 1**: Execute server-side tools (no outputSchema)
 - **Phase 2**: Get structured JSON output (no tools)
 

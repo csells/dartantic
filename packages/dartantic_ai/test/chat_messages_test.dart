@@ -16,7 +16,6 @@
 import 'dart:typed_data';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-
 import 'package:test/test.dart';
 
 import 'test_helpers/run_provider_test.dart';
@@ -25,7 +24,7 @@ void main() {
   group('Chat Messages', () {
     group('single turn chat', () {
       test('sends a simple message and receives response', () async {
-        final agent = Agent('anthropic:claude-3-5-haiku-latest');
+        final agent = Agent('anthropic');
 
         final response = await agent.send(
           'Say "Hello, test!" and nothing else.',
@@ -69,7 +68,7 @@ void main() {
 
     group('multi turn chat', () {
       test('maintains conversation history', () async {
-        final agent = Agent('anthropic:claude-3-5-haiku-latest');
+        final agent = Agent('anthropic');
         final messages = <ChatMessage>[];
 
         var response = await agent.send(
@@ -203,7 +202,7 @@ void main() {
 
     group('streaming', () {
       test('streams response chunks', () async {
-        final agent = Agent('anthropic:claude-3-5-haiku-latest');
+        final agent = Agent('anthropic');
 
         final chunks = <String>[];
         await for (final chunk in agent.sendStream(
@@ -267,7 +266,7 @@ void main() {
       });
 
       test('handles malformed messages gracefully', () async {
-        final agent = Agent('anthropic:claude-3-5-haiku-latest');
+        final agent = Agent('anthropic');
 
         // Empty prompt should still work
         final response = await agent.send('Say "test"');

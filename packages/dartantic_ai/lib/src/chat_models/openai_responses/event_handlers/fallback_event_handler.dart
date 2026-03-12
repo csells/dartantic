@@ -1,5 +1,5 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 
 import '../openai_responses_event_mapping_state.dart';
 import '../openai_responses_tool_event_recorder.dart';
@@ -17,11 +17,11 @@ class FallbackEventHandler implements OpenAIResponsesEventHandler {
   final OpenAIResponsesToolEventRecorder toolRecorder;
 
   @override
-  bool canHandle(openai.ResponseEvent event) => true; // Catch-all
+  bool canHandle(openai.ResponseStreamEvent event) => true; // Catch-all
 
   @override
   Stream<ChatResult<ChatMessage>> handle(
-    openai.ResponseEvent event,
+    openai.ResponseStreamEvent event,
     EventMappingState state,
   ) => toolRecorder.recordToolEventIfNeeded(event, state);
 }

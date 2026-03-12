@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:dartantic_ai/src/chat_models/openai_responses/openai_responses_event_mapper.dart';
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:openai_core/openai_core.dart' as openai;
+import 'package:openai_dart/openai_dart.dart' as openai;
 import 'package:test/test.dart';
 
 // Mock download function for tests
@@ -25,7 +25,7 @@ void main() {
         );
 
         // Simulate reasoning summary text delta event
-        const thinkingEvent = openai.ResponseReasoningSummaryTextDelta(
+        const thinkingEvent = openai.ReasoningSummaryTextDeltaEvent(
           itemId: 'reasoning_1',
           outputIndex: 0,
           summaryIndex: 0,
@@ -55,17 +55,17 @@ void main() {
         downloadContainerFile: _mockDownloadContainerFile,
       );
 
-      // First, add a Reasoning item at outputIndex 0
-      const reasoningItemEvent = openai.ResponseOutputItemAdded(
-        item: openai.Reasoning(id: 'reasoning_1', summary: []),
+      // First, add a ReasoningItem at outputIndex 0
+      const reasoningItemEvent = openai.OutputItemAddedEvent(
+        item: openai.ReasoningItem(id: 'reasoning_1', summary: []),
         outputIndex: 0,
         sequenceNumber: 1,
       );
       await mapper.handle(reasoningItemEvent).toList();
 
       // Then, text delta at outputIndex 0 should be skipped (not emitted)
-      // because reasoning text comes through ResponseReasoningSummaryTextDelta
-      const textDeltaEvent = openai.ResponseOutputTextDelta(
+      // because reasoning text comes through ReasoningSummaryTextDeltaEvent
+      const textDeltaEvent = openai.OutputTextDeltaEvent(
         itemId: 'item_0',
         outputIndex: 0,
         contentIndex: 0,
@@ -75,7 +75,7 @@ void main() {
       final results = await mapper.handle(textDeltaEvent).toList();
 
       // Should be empty - reasoning text is skipped from
-      // ResponseOutputTextDelta
+      // OutputTextDeltaEvent
       expect(
         results,
         isEmpty,
@@ -89,13 +89,13 @@ void main() {
         downloadContainerFile: _mockDownloadContainerFile,
       );
 
-      // Add an OutputMessage item at outputIndex 0 (not reasoning)
-      const outputItemEvent = openai.ResponseOutputItemAdded(
-        item: openai.OutputMessage(
+      // Add a MessageOutputItem at outputIndex 0 (not reasoning)
+      const outputItemEvent = openai.OutputItemAddedEvent(
+        item: openai.MessageOutputItem(
           id: 'msg_1',
-          role: 'assistant',
+          role: openai.MessageRole.assistant,
           content: [],
-          status: 'completed',
+          status: openai.ItemStatus.completed,
         ),
         outputIndex: 0,
         sequenceNumber: 1,
@@ -103,7 +103,7 @@ void main() {
       await mapper.handle(outputItemEvent).toList();
 
       // Text delta at outputIndex 0 should be regular text
-      const textDeltaEvent = openai.ResponseOutputTextDelta(
+      const textDeltaEvent = openai.OutputTextDeltaEvent(
         itemId: 'item_0',
         outputIndex: 0,
         contentIndex: 0,

@@ -135,5 +135,24 @@ void main() {
       },
       timeout: const Timeout(Duration(minutes: 2)),
     );
+
+    test(
+      'URL Context: queries URLs and returns context',
+      () async {
+        final agent = Agent(
+          'google',
+          chatModelOptions: const GoogleChatModelOptions(
+            serverSideTools: {GoogleServerSideTool.urlContext},
+          ),
+        );
+
+        final result = await agent.send(
+          'Open this url and tell me the publisher of the package: https://pub.dev/packages/dartantic_ai',
+        );
+
+        expect(result.output, contains('sellsbrothers.com'));
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
   });
 }

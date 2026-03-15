@@ -99,6 +99,14 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
         outputSchema == null &&
         serverSideTools.contains(GoogleServerSideTool.codeExecution);
 
+    final enableGoogleSearch =
+        outputSchema == null &&
+        serverSideTools.contains(GoogleServerSideTool.googleSearch);
+
+    final enableUrlContext =
+        outputSchema == null &&
+        serverSideTools.contains(GoogleServerSideTool.urlContext);
+
     final generationConfig = _buildGenerationConfig(
       options: options,
       outputSchema: outputSchema,
@@ -132,9 +140,8 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
       tools:
           toolsToSend.toToolList(
             enableCodeExecution: enableCodeExecution,
-            enableGoogleSearch:
-                outputSchema == null &&
-                serverSideTools.contains(GoogleServerSideTool.googleSearch),
+            enableGoogleSearch: enableGoogleSearch,
+            enableUrlContext: enableUrlContext,
           ) ??
           const [],
     );

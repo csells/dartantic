@@ -494,12 +494,14 @@ extension ChatToolListMapper on List<Tool>? {
   List<gl.Tool>? toToolList({
     required bool enableCodeExecution,
     required bool enableGoogleSearch,
+    required bool enableUrlContext,
   }) {
     final hasTools = this != null && this!.isNotEmpty;
     _logger.fine(
       'Converting tools to Google format: hasTools=$hasTools, '
       'enableCodeExecution=$enableCodeExecution, '
       'enableGoogleSearch=$enableGoogleSearch, '
+      'enableUrlContext=$enableUrlContext, '
       'toolCount=${this?.length ?? 0}',
     );
 
@@ -520,10 +522,12 @@ extension ChatToolListMapper on List<Tool>? {
 
     final codeExecution = enableCodeExecution ? gl.CodeExecution() : null;
     final googleSearch = enableGoogleSearch ? gl.Tool_GoogleSearch() : null;
+    final urlContext = enableUrlContext ? gl.UrlContext() : null;
 
     if ((functionDeclarations == null || functionDeclarations.isEmpty) &&
         codeExecution == null &&
-        googleSearch == null) {
+        googleSearch == null &&
+        urlContext == null) {
       return null;
     }
 
@@ -532,6 +536,7 @@ extension ChatToolListMapper on List<Tool>? {
         functionDeclarations: functionDeclarations ?? const [],
         codeExecution: codeExecution,
         googleSearch: googleSearch,
+        urlContext: urlContext,
       ),
     ];
   }

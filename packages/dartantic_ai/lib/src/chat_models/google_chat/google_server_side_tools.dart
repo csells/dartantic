@@ -5,4 +5,8 @@ enum GoogleServerSideTool {
 
   /// Google Search tool (Grounding).
   googleSearch,
+
+  /// Google URL context tool (URL context). Enables the model to query URLs in
+  /// the messages to retrieve additional context.
+  urlContext,
 }

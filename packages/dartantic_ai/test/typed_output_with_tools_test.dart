@@ -21,7 +21,7 @@ import 'dart:convert';
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:test/test.dart';
 
-import 'test_helpers/run_provider_test.dart';
+import 'test_helpers/run_provider.dart';
 
 void main() {
   // Recipe lookup tool for chef scenario

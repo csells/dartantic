@@ -18,7 +18,7 @@ import 'package:dartantic_ai/src/chat_models/helpers/tool_id_helpers.dart';
 
 import 'package:test/test.dart';
 
-import 'test_helpers/run_provider_test.dart';
+import 'test_helpers/run_provider.dart';
 import 'test_tools.dart';
 
 void main() {

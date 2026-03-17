@@ -22,7 +22,7 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 
 import 'package:test/test.dart';
 
-import 'test_helpers/run_provider_test.dart';
+import 'test_helpers/run_provider.dart';
 
 /// First provider that supports typed output (for single-provider tests)
 Provider get _typedOutputProvider => Agent.allProviders.firstWhere(

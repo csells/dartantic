@@ -103,7 +103,6 @@ const providerTestCaps = <String, Set<ProviderTestCaps>>{
     ProviderTestCaps.typedOutput,
     ProviderTestCaps.typedOutputWithTools,
     ProviderTestCaps.chatVision,
-    ProviderTestCaps.mediaGeneration,
   },
   'xai-responses': {
     ProviderTestCaps.chat,

@@ -25,7 +25,7 @@ class XAIProvider extends OpenAIProvider {
   static const providerDisplayName = 'xAI';
 
   /// Default chat model identifier.
-  static const defaultChatModel = 'grok-4.20-beta-latest-non-reasoning';
+  static const defaultChatModel = 'grok-4-1-fast-non-reasoning';
 
   /// Environment variable used to read the API key.
   static const defaultApiKeyName = 'XAI_API_KEY';

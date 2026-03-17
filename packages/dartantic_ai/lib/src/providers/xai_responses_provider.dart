@@ -41,7 +41,7 @@ class XAIResponsesProvider
   static const providerDisplayName = 'xAI Responses';
 
   /// Default chat model identifier.
-  static const defaultChatModel = 'grok-4.20-beta-latest-non-reasoning';
+  static const defaultChatModel = 'grok-4-1-fast-non-reasoning';
 
   /// Default media generation model identifier.
   static const defaultMediaModel = 'grok-imagine-image';

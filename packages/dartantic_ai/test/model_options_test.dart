@@ -46,10 +46,6 @@ void main() {
         'temperature parameter is respected',
         requiredCaps: {ProviderTestCaps.chat},
         (provider) async {
-          if (provider.name == 'xai-responses' || provider.name == 'xai') {
-            // These providers modern models don't support temperature
-            return;
-          }
           final modelName = provider.name == 'openai-responses'
               ? 'openai-responses:gpt-4o'
               : provider.name;
@@ -58,6 +54,8 @@ void main() {
           final result = await agent.send('Say exactly: "Temperature test"');
           expect(result.output, isNotEmpty);
         },
+        // These providers modern models don't support temperature
+        skipProviders: {'xai-responses', 'xai'},
       );
     });
 

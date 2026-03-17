@@ -25,7 +25,9 @@ enum ProviderTestCaps {
   chatVision,
 
   /// The provider can generate media assets (images, audio, documents, etc.).
-  mediaGeneration,
+  documentGeneration,
+  imageGeneration,
+  videoGeneration,
 
   /// The provider can stream or return model reasoning ("thinking").
   thinking,
@@ -50,7 +52,8 @@ const providerTestCaps = <String, Set<ProviderTestCaps>>{
     ProviderTestCaps.typedOutputWithTools,
     ProviderTestCaps.thinking,
     ProviderTestCaps.chatVision,
-    ProviderTestCaps.mediaGeneration,
+    ProviderTestCaps.documentGeneration,
+    ProviderTestCaps.imageGeneration,
   },
   'anthropic': {
     ProviderTestCaps.chat,
@@ -59,7 +62,8 @@ const providerTestCaps = <String, Set<ProviderTestCaps>>{
     ProviderTestCaps.typedOutputWithTools,
     ProviderTestCaps.chatVision,
     ProviderTestCaps.thinking,
-    ProviderTestCaps.mediaGeneration,
+    ProviderTestCaps.documentGeneration,
+    ProviderTestCaps.imageGeneration,
   },
   'google': {
     ProviderTestCaps.chat,
@@ -69,7 +73,8 @@ const providerTestCaps = <String, Set<ProviderTestCaps>>{
     ProviderTestCaps.typedOutputWithTools,
     ProviderTestCaps.chatVision,
     ProviderTestCaps.thinking,
-    ProviderTestCaps.mediaGeneration,
+    ProviderTestCaps.documentGeneration,
+    ProviderTestCaps.imageGeneration,
   },
   'mistral': {
     ProviderTestCaps.chat,
@@ -111,7 +116,8 @@ const providerTestCaps = <String, Set<ProviderTestCaps>>{
     ProviderTestCaps.typedOutputWithTools,
     ProviderTestCaps.chatVision,
     ProviderTestCaps.thinking,
-    ProviderTestCaps.mediaGeneration,
+    ProviderTestCaps.imageGeneration,
+    ProviderTestCaps.videoGeneration,
   },
 };
 

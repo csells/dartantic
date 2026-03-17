@@ -199,6 +199,7 @@ class MistralProvider
     String? name,
     List<Tool>? tools,
     MediaGenerationModelOptions? options,
+    List<String>? mimeTypes,
   }) {
     throw UnsupportedError(
       'Mistral provider does not support media generation',

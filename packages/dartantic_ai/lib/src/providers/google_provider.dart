@@ -191,6 +191,7 @@ class GoogleProvider
     String? name,
     List<Tool>? tools,
     GoogleMediaGenerationModelOptions? options,
+    List<String>? mimeTypes,
   }) {
     final modelName = name ?? _defaultMediaModelName;
     final resolvedOptions =

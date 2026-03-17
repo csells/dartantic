@@ -122,6 +122,7 @@ class EchoProvider
     String? name,
     List<Tool>? tools,
     MediaGenerationModelOptions? options,
+    List<String>? mimeTypes,
   }) => throw UnsupportedError(
     'no support for media generation in this provider',
   );

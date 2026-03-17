@@ -156,6 +156,7 @@ class OllamaProvider
     String? name,
     List<Tool>? tools,
     MediaGenerationModelOptions? options,
+    List<String>? mimeTypes,
   }) {
     throw UnsupportedError('Ollama provider does not support media generation');
   }

@@ -50,6 +50,7 @@ class DummyProvider
     String? name,
     List<Tool>? tools,
     MediaGenerationModelOptions? options,
+    List<String>? mimeTypes,
   }) =>
       throw UnsupportedError('Media generation not supported in DummyProvider');
 }
@@ -153,6 +154,7 @@ class WrapperProvider
     String? name,
     List<Tool>? tools,
     MediaGenerationModelOptions? options,
+    List<String>? mimeTypes,
   }) => throw UnsupportedError('Media not supported in WrapperProvider');
 }
 

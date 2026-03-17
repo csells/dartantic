@@ -23,7 +23,9 @@ class XAIResponsesProvider
         displayName: providerDisplayName,
         defaultModelNames: const {
           ModelKind.chat: defaultChatModel,
-          ModelKind.media: defaultMediaModel,
+          ModelKind.media: defaultImageModel,
+          ModelKind.image: defaultImageModel,
+          ModelKind.video: defaultVideoModel,
         },
         apiKey: apiKey ?? tryGetEnv(defaultApiKeyName),
         apiKeyName: defaultApiKeyName,
@@ -43,8 +45,11 @@ class XAIResponsesProvider
   /// Default chat model identifier.
   static const defaultChatModel = 'grok-4-1-fast-non-reasoning';
 
-  /// Default media generation model identifier.
-  static const defaultMediaModel = 'grok-imagine-image';
+  /// Default image generation model identifier.
+  static const defaultImageModel = 'grok-imagine-image';
+
+  /// Default video generation model identifier.
+  static const defaultVideoModel = 'grok-imagine-video';
 
   /// Environment variable used to read the API key.
   static const defaultApiKeyName = 'XAI_API_KEY';
@@ -135,12 +140,23 @@ class XAIResponsesProvider
     String? name,
     List<Tool>? tools,
     XAIResponsesMediaGenerationModelOptions? options,
+    List<String>? mimeTypes,
   }) {
     _validateApiKeyPresence();
-    final modelName =
-        name ??
-        defaultModelNames[ModelKind.media] ??
-        defaultModelNames[ModelKind.chat]!;
+    assert(mimeTypes != null && mimeTypes.isNotEmpty);
+    final everyIsImage = mimeTypes!.every((m) => m.startsWith('image/'));
+    final everyIsVideo = mimeTypes.every((m) => m.startsWith('video/'));
+    final eitherAnImageOrVideo = everyIsImage || everyIsVideo;
+    if (!eitherAnImageOrVideo) {
+      throw ArgumentError.value(
+        mimeTypes,
+        'mimeTypes',
+        'Only image or video MIME types are supported.',
+      );
+    }
+
+    final modelKind = everyIsImage ? ModelKind.image : ModelKind.video;
+    final modelName = name ?? defaultModelNames[modelKind]!;
 
     _logger.info(
       'Creating xAI Responses media model: $modelName '

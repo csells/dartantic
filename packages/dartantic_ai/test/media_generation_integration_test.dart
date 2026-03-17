@@ -32,7 +32,7 @@ void main() {
           expect(link.url.hasScheme, isTrue);
         }
       },
-      requiredCaps: {ProviderTestCaps.mediaGeneration},
+      requiredCaps: {ProviderTestCaps.imageGeneration},
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -57,7 +57,7 @@ void main() {
           reason: 'Provider ${provider.name} should stream media output',
         );
       },
-      requiredCaps: {ProviderTestCaps.mediaGeneration},
+      requiredCaps: {ProviderTestCaps.imageGeneration},
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -92,7 +92,7 @@ void main() {
           expect(asset.bytes.isNotEmpty, isTrue);
         }
       },
-      requiredCaps: {ProviderTestCaps.mediaGeneration},
+      requiredCaps: {ProviderTestCaps.documentGeneration},
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -131,8 +131,24 @@ void main() {
           expect(asset.name, isNotNull);
         }
       },
-      requiredCaps: {ProviderTestCaps.mediaGeneration},
+      requiredCaps: {ProviderTestCaps.documentGeneration},
       timeout: const Timeout(Duration(minutes: 2)),
+    );
+
+    runProviderTest(
+      'produces video output for basic prompt',
+      (provider) async {
+        final agent = Agent(provider.name);
+
+        final result = await agent.generateMedia(
+          'Create a 1 second looping animation of a rotating neon cube.',
+          mimeTypes: const ['video/mp4'],
+        );
+
+        expect(result.assets.isNotEmpty || result.links.isNotEmpty, isTrue);
+      },
+      requiredCaps: {ProviderTestCaps.videoGeneration},
+      timeout: const Timeout(Duration(minutes: 4)),
     );
   });
 }

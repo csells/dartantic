@@ -638,6 +638,7 @@ class TestProvider
     String? name,
     List<Tool>? tools,
     MediaGenerationModelOptions? options,
+    List<String>? mimeTypes,
   }) {
     throw UnsupportedError('Test provider does not support media generation');
   }

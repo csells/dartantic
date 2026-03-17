@@ -12,7 +12,7 @@ void main() {
       expect(provider.defaultModelNames[ModelKind.chat], isNotNull);
       expect(
         provider.defaultModelNames[ModelKind.media],
-        equals(XAIResponsesProvider.defaultMediaModel),
+        equals(XAIResponsesProvider.defaultImageModel),
       );
       expect(provider.defaultModelNames[ModelKind.embeddings], isNull);
     });
@@ -30,9 +30,9 @@ void main() {
 
       expect(provider.createEmbeddingsModel, throwsA(isA<UnsupportedError>()));
 
-      final mediaModel = provider.createMediaModel();
+      final mediaModel = provider.createMediaModel(mimeTypes: ['image/png']);
       expect(mediaModel, isA<XAIResponsesMediaGenerationModel>());
-      expect(mediaModel.name, equals(XAIResponsesProvider.defaultMediaModel));
+      expect(mediaModel.name, equals(XAIResponsesProvider.defaultImageModel));
     });
 
     test('requires api key to create media model', () {

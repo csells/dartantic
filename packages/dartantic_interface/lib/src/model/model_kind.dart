@@ -18,6 +18,9 @@ enum ModelKind {
   /// Image generation or vision models
   image,
 
+  /// Video generation models
+  video,
+
   /// Text embedding models for semantic similarity
   embeddings,
 

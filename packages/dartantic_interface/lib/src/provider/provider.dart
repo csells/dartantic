@@ -98,5 +98,6 @@ abstract class Provider<
     String? name,
     List<Tool>? tools,
     TMediaOptions? options,
+    List<String>? mimeTypes,
   });
 }

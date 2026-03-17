@@ -74,9 +74,7 @@ void main() {
         (provider) async {
           final agent = Agent(provider.name);
 
-          final result = await agent.send(
-            'Write exactly: "Usage test for ${provider.name}"',
-          );
+          final result = await agent.send('What is 2+2?');
 
           // ALL providers MUST provide usage information
           expect(

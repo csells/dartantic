@@ -64,6 +64,13 @@ class XAIResponsesChatModel extends ChatModel<XAIResponsesChatModelOptions> {
     List<XAIMcpToolConfig>? tools,
   ) => _buildMcpToolsStatic(tools);
 
+  /// Appends x_search tool entry to [existingTools] when enabled in [options].
+  @visibleForTesting
+  static List<dynamic> applyXSearchToolForTesting(
+    List<dynamic> existingTools,
+    XAIResponsesChatModelOptions? options,
+  ) => _applyXSearchStatic(existingTools, options);
+
   List<openai.ResponseTool> _buildFunctionTools() {
     final registeredTools = tools;
     if (registeredTools == null || registeredTools.isEmpty) {
@@ -177,6 +184,13 @@ class XAIResponsesChatModel extends ChatModel<XAIResponsesChatModelOptions> {
       final existing = requestBody['tools'] as List<dynamic>? ?? <dynamic>[];
       requestBody['tools'] = [...existing, ...mcpTools];
     }
+    final toolsAfterXSearch = _applyXSearchStatic(
+      requestBody['tools'] as List<dynamic>? ?? <dynamic>[],
+      xaiOptions,
+    );
+    if (toolsAfterXSearch.isNotEmpty) {
+      requestBody['tools'] = toolsAfterXSearch;
+    }
 
     requestBody['stream'] = true;
 
@@ -184,6 +198,32 @@ class XAIResponsesChatModel extends ChatModel<XAIResponsesChatModelOptions> {
       endpoint: '/responses',
       body: requestBody,
     );
+  }
+
+  static List<dynamic> _applyXSearchStatic(
+    List<dynamic> existingTools,
+    XAIResponsesChatModelOptions? options,
+  ) {
+    final enabled =
+        options?.serverSideTools?.contains(XAIServerSideTool.xSearch) ?? false;
+    if (!enabled) return existingTools;
+    final config = options?.xSearchConfig;
+    return [
+      ...existingTools,
+      <String, Object?>{
+        'type': 'x_search',
+        if (config?.allowedXHandles != null)
+          'allowed_x_handles': config!.allowedXHandles,
+        if (config?.excludedXHandles != null)
+          'excluded_x_handles': config!.excludedXHandles,
+        if (config?.fromDate != null) 'from_date': config!.fromDate,
+        if (config?.toDate != null) 'to_date': config!.toDate,
+        if (config?.enableImageUnderstanding != null)
+          'enable_image_understanding': config!.enableImageUnderstanding,
+        if (config?.enableVideoUnderstanding != null)
+          'enable_video_understanding': config!.enableVideoUnderstanding,
+      },
+    ];
   }
 
   static List<Map<String, Object?>> _buildMcpToolsStatic(
@@ -370,7 +410,11 @@ class XAIResponsesChatModel extends ChatModel<XAIResponsesChatModelOptions> {
     final hasMcpTools = (resolved.mcpTools ?? const []).isNotEmpty;
     final baseTools = resolved.serverSideTools ?? const <XAIServerSideTool>{};
     final openAITools = baseTools
-        .where((tool) => tool != XAIServerSideTool.mcp)
+        .where(
+          (tool) =>
+              tool != XAIServerSideTool.mcp &&
+              tool != XAIServerSideTool.xSearch,
+        )
         .map(_mapToolStatic)
         .toSet();
 
@@ -400,17 +444,16 @@ class XAIResponsesChatModel extends ChatModel<XAIResponsesChatModelOptions> {
     );
   }
 
-  static OpenAIServerSideTool _mapToolStatic(
-    XAIServerSideTool tool,
-  ) => switch (tool) {
-    XAIServerSideTool.webSearch => OpenAIServerSideTool.webSearch,
-    XAIServerSideTool.fileSearch => OpenAIServerSideTool.fileSearch,
-    XAIServerSideTool.imageGeneration => OpenAIServerSideTool.imageGeneration,
-    XAIServerSideTool.codeInterpreter => OpenAIServerSideTool.codeInterpreter,
-    XAIServerSideTool.mcp => throw StateError(
-      'MCP is handled via request JSON',
-    ),
-  };
+  static OpenAIServerSideTool _mapToolStatic(XAIServerSideTool tool) =>
+      switch (tool) {
+        XAIServerSideTool.webSearch => OpenAIServerSideTool.webSearch,
+        XAIServerSideTool.fileSearch => OpenAIServerSideTool.fileSearch,
+        XAIServerSideTool.codeInterpreter =>
+          OpenAIServerSideTool.codeInterpreter,
+        XAIServerSideTool.mcp || XAIServerSideTool.xSearch => throw StateError(
+          'MCP and X Search are handled via request JSON',
+        ),
+      };
 
   static OpenAIReasoningEffort? _mapReasoningEffortStatic(
     XAIReasoningEffort? effort,

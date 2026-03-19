@@ -30,7 +30,7 @@ void main() {
         ),
       );
 
-      expect(mapped.temperature, 0.4);
+      expect(mapped.temperature, isNull);
       expect(mapped.topP, 0.9);
       expect(mapped.maxOutputTokens, 256);
       expect(mapped.store, isTrue);
@@ -83,18 +83,116 @@ void main() {
       expect(mapped.serverSideTools, isEmpty);
     });
 
-    test('keeps image generation mapping in chat path', () {
+    test('keeps xSearch out of OpenAI server-side tool enum mapping', () {
       final mapped = XAIResponsesChatModel.toOpenAIOptionsForTesting(
         const XAIResponsesChatModelOptions(
-          serverSideTools: {XAIServerSideTool.imageGeneration},
+          serverSideTools: {XAIServerSideTool.xSearch},
         ),
       );
 
-      // Chat mapping remains independent from native media endpoint routing.
-      expect(
-        mapped.serverSideTools,
-        contains(OpenAIServerSideTool.imageGeneration),
+      expect(mapped.serverSideTools, isEmpty);
+    });
+
+    test('appends x_search tool entry when xSearch is enabled', () {
+      final tools = XAIResponsesChatModel.applyXSearchToolForTesting(
+        <dynamic>[],
+        const XAIResponsesChatModelOptions(
+          serverSideTools: {XAIServerSideTool.xSearch},
+        ),
       );
+
+      expect(tools, hasLength(1));
+      expect(tools.first, {'type': 'x_search'});
+    });
+
+    test('preserves existing tools when appending x_search', () {
+      final existing = <dynamic>[
+        {'type': 'function', 'name': 'lookup'},
+      ];
+
+      final tools = XAIResponsesChatModel.applyXSearchToolForTesting(
+        existing,
+        const XAIResponsesChatModelOptions(
+          serverSideTools: {XAIServerSideTool.xSearch},
+        ),
+      );
+
+      expect(tools, hasLength(2));
+      expect(tools.first, {'type': 'function', 'name': 'lookup'});
+      expect(tools.last, {'type': 'x_search'});
+    });
+
+    test('does not append x_search when not enabled', () {
+      final existing = <dynamic>[
+        {'type': 'function', 'name': 'lookup'},
+      ];
+
+      final tools = XAIResponsesChatModel.applyXSearchToolForTesting(
+        existing,
+        const XAIResponsesChatModelOptions(
+          serverSideTools: {XAIServerSideTool.webSearch},
+        ),
+      );
+
+      expect(tools, existing);
+    });
+
+    test('does not append x_search when serverSideTools is null', () {
+      final tools = XAIResponsesChatModel.applyXSearchToolForTesting(
+        <dynamic>[],
+        const XAIResponsesChatModelOptions(),
+      );
+
+      expect(tools, isEmpty);
+    });
+
+    test('serializes XAIXSearchConfig parameters into x_search tool entry',
+        () {
+      final tools = XAIResponsesChatModel.applyXSearchToolForTesting(
+        <dynamic>[],
+        const XAIResponsesChatModelOptions(
+          serverSideTools: {XAIServerSideTool.xSearch},
+          xSearchConfig: XAIXSearchConfig(
+            allowedXHandles: ['dartlang', 'FlutterDev'],
+            fromDate: '2025-06-01',
+            toDate: '2025-06-30',
+            enableImageUnderstanding: true,
+            enableVideoUnderstanding: false,
+          ),
+        ),
+      );
+
+      expect(tools, hasLength(1));
+      final tool = tools.first as Map<String, Object?>;
+      expect(tool['type'], 'x_search');
+      expect(tool['allowed_x_handles'], ['dartlang', 'FlutterDev']);
+      expect(tool['from_date'], '2025-06-01');
+      expect(tool['to_date'], '2025-06-30');
+      expect(tool['enable_image_understanding'], isTrue);
+      expect(tool['enable_video_understanding'], isFalse);
+      expect(tool.containsKey('excluded_x_handles'), isFalse);
+    });
+
+    test('serializes only non-null XAIXSearchConfig fields', () {
+      final tools = XAIResponsesChatModel.applyXSearchToolForTesting(
+        <dynamic>[],
+        const XAIResponsesChatModelOptions(
+          serverSideTools: {XAIServerSideTool.xSearch},
+          xSearchConfig: XAIXSearchConfig(
+            excludedXHandles: ['spambot'],
+          ),
+        ),
+      );
+
+      expect(tools, hasLength(1));
+      final tool = tools.first as Map<String, Object?>;
+      expect(tool['type'], 'x_search');
+      expect(tool['excluded_x_handles'], ['spambot']);
+      expect(tool.containsKey('allowed_x_handles'), isFalse);
+      expect(tool.containsKey('from_date'), isFalse);
+      expect(tool.containsKey('to_date'), isFalse);
+      expect(tool.containsKey('enable_image_understanding'), isFalse);
+      expect(tool.containsKey('enable_video_understanding'), isFalse);
     });
 
     test('skips unknown custom tool output item parse errors', () {

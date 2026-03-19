@@ -23,6 +23,7 @@ class XAIResponsesChatModelOptions extends ChatModelOptions {
     this.fileSearchConfig,
     this.webSearchConfig,
     this.codeInterpreterConfig,
+    this.xSearchConfig,
     this.mcpTools,
   });
 
@@ -77,6 +78,9 @@ class XAIResponsesChatModelOptions extends ChatModelOptions {
   /// Configuration for the `code_interpreter` tool.
   final XAICodeInterpreterConfig? codeInterpreterConfig;
 
+  /// Configuration for the `x_search` tool.
+  final XAIXSearchConfig? xSearchConfig;
+
   /// Configuration for one or more remote MCP tools.
   final List<XAIMcpToolConfig>? mcpTools;
 }
@@ -125,11 +129,11 @@ enum XAIServerSideTool {
   /// Web search tool.
   webSearch,
 
+  /// X Search tool.
+  xSearch,
+
   /// File search tool.
   fileSearch,
-
-  /// Image generation tool.
-  imageGeneration,
 
   /// Code interpreter tool.
   codeInterpreter,
@@ -237,6 +241,42 @@ class XAICodeInterpreterConfig {
 
   /// File IDs to mount into the container.
   final List<String>? fileIds;
+}
+
+/// Configuration for the xAI `x_search` tool.
+@immutable
+class XAIXSearchConfig {
+  /// Creates an X Search configuration.
+  const XAIXSearchConfig({
+    this.allowedXHandles,
+    this.excludedXHandles,
+    this.fromDate,
+    this.toDate,
+    this.enableImageUnderstanding,
+    this.enableVideoUnderstanding,
+  });
+
+  /// Only consider posts from these X handles (max 10).
+  ///
+  /// Cannot be set together with [excludedXHandles].
+  final List<String>? allowedXHandles;
+
+  /// Exclude posts from these X handles (max 10).
+  ///
+  /// Cannot be set together with [allowedXHandles].
+  final List<String>? excludedXHandles;
+
+  /// Start date for the search range (ISO8601 format, e.g. `"2025-10-01"`).
+  final String? fromDate;
+
+  /// End date for the search range (ISO8601 format, e.g. `"2025-10-10"`).
+  final String? toDate;
+
+  /// Whether to analyse images found in X posts.
+  final bool? enableImageUnderstanding;
+
+  /// Whether to analyse videos found in X posts.
+  final bool? enableVideoUnderstanding;
 }
 
 /// Configuration for a remote MCP server tool.

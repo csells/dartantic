@@ -59,33 +59,33 @@ void main() {
     });
 
     test('enableThinking adds encrypted reasoning include by default', () {
-        final provider = XAIResponsesProvider(apiKey: 'test-key');
+      final provider = XAIResponsesProvider(apiKey: 'test-key');
       final model =
           provider.createChatModel(enableThinking: true)
               as XAIResponsesChatModel;
 
-        expect(
-          model.defaultOptions.include,
-          contains('reasoning.encrypted_content'),
-        );
+      expect(
+        model.defaultOptions.include,
+        contains('reasoning.encrypted_content'),
+      );
     });
 
     test('enableThinking preserves existing include entries', () {
-        final provider = XAIResponsesProvider(apiKey: 'test-key');
+      final provider = XAIResponsesProvider(apiKey: 'test-key');
       final model =
           provider.createChatModel(
-          enableThinking: true,
-          options: const XAIResponsesChatModelOptions(
-            include: ['foo.bar'],
-          ),
+                enableThinking: true,
+                options: const XAIResponsesChatModelOptions(
+                  include: ['foo.bar'],
+                ),
               )
               as XAIResponsesChatModel;
 
-        expect(model.defaultOptions.include, contains('foo.bar'));
-        expect(
-          model.defaultOptions.include,
-          contains('reasoning.encrypted_content'),
-        );
+      expect(model.defaultOptions.include, contains('foo.bar'));
+      expect(
+        model.defaultOptions.include,
+        contains('reasoning.encrypted_content'),
+      );
     });
   });
 }

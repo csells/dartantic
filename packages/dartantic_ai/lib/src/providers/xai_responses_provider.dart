@@ -78,7 +78,7 @@ class XAIResponsesProvider
     XAIResponsesChatModelOptions? options,
   }) {
     _validateApiKeyPresence();
-    if (temperature != null || options?.temperature != null) {
+    if (temperature != null) {
       throw UnsupportedError(
         '$providerDisplayName provider does not support temperature. '
         'Remove temperature and rely on model defaults.',

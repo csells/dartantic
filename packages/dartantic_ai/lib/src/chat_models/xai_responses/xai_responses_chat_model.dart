@@ -28,7 +28,6 @@ class XAIResponsesChatModel extends ChatModel<XAIResponsesChatModelOptions> {
     required super.name,
     required super.defaultOptions,
     super.tools,
-    super.temperature,
     this.baseUrl,
     this.apiKey,
     http.Client? httpClient,
@@ -159,7 +158,6 @@ class XAIResponsesChatModel extends ChatModel<XAIResponsesChatModelOptions> {
       instructions: invocation.history.instructions,
       previousResponseId: invocation.history.previousResponseId,
       store: invocation.store,
-      temperature: invocation.parameters.temperature ?? temperature,
       topP: invocation.parameters.topP,
       maxOutputTokens: invocation.parameters.maxOutputTokens,
       reasoning: invocation.parameters.reasoning,
@@ -377,7 +375,6 @@ class XAIResponsesChatModel extends ChatModel<XAIResponsesChatModelOptions> {
         .toSet();
 
     return OpenAIResponsesChatModelOptions(
-      temperature: resolved.temperature,
       topP: resolved.topP,
       maxOutputTokens: resolved.maxOutputTokens,
       store: resolved.store,

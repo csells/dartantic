@@ -6,7 +6,6 @@ import 'package:meta/meta.dart';
 class XAIResponsesChatModelOptions extends ChatModelOptions {
   /// Creates a new set of options for the xAI Responses chat model.
   const XAIResponsesChatModelOptions({
-    this.temperature,
     this.topP,
     this.maxOutputTokens,
     this.store,
@@ -26,9 +25,6 @@ class XAIResponsesChatModelOptions extends ChatModelOptions {
     this.codeInterpreterConfig,
     this.mcpTools,
   });
-
-  /// Sampling temperature for generation.
-  final double? temperature;
 
   /// Nucleus sampling parameter.
   final double? topP;

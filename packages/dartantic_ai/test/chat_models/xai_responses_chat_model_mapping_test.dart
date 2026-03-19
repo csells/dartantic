@@ -7,7 +7,6 @@ void main() {
     test('maps xAI options to internal Responses options', () {
       final mapped = XAIResponsesChatModel.toOpenAIOptionsForTesting(
         const XAIResponsesChatModelOptions(
-          temperature: 0.4,
           topP: 0.9,
           maxOutputTokens: 256,
           store: true,

@@ -27,7 +27,7 @@ dev_dependencies:
   firebase_core_platform_interface: ^6.0.2
   flutter_test:
     sdk: flutter
-  test: ^1.28.0
+  test: ^1.26.3
 
 dependency_overrides:
   dartantic_interface:

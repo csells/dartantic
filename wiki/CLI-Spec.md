@@ -236,6 +236,8 @@ configuration:
 | `cohere` | Cohere | |
 | `ollama` | Ollama | |
 | `openrouter` | OpenRouter | |
+| `xai` | xAI (Grok, OpenAI-compatible chat) | `grok` |
+| `xai-responses` | xAI Responses (Grok) | `grok-responses` |
 
 Built-in agents use:
 - The provider's default model
@@ -250,6 +252,7 @@ Tools are specified using provider-specific names with `--no-server-tool`:
 | Provider | Available Tools |
 |----------|-----------------|
 | `openai-responses` | `webSearch`, `codeInterpreter`, `fileSearch`, `imageGeneration` |
+| `xai-responses` | `webSearch`, `xSearch`, `codeInterpreter`, `fileSearch`, `mcp` |
 | `anthropic` | `webSearch`, `webFetch`, `codeInterpreter` |
 | `google` | `googleSearch`, `codeExecution` |
 

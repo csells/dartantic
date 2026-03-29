@@ -66,6 +66,8 @@ flowchart LR
 | OpenAI     | ✅          | Native response_format | ✅ |
 | OpenAI Responses | ✅     | Native text_format (stateful) | ✅ |
 | OpenRouter | ✅          | Native (OpenAI-compatible) | ❌ |
+| xAI        | ✅          | Native response_format (OpenAI-compatible) | ✅ |
+| xAI Responses | ✅       | Native (stateful Responses API) | ✅ |
 | Anthropic  | ✅          | return_result tool | ✅ |
 | Google     | ✅          | Native responseSchema + Double Agent | ✅ |
 | Ollama     | ✅          | Native format param (as of ollama_dart ^0.3.0) | ❌ |

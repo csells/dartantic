@@ -12,6 +12,7 @@ focused on orchestration instead of implementation.
 | Provider | Tools Available |
 |----------|-----------------|
 | **OpenAI Responses** | Web Search, File Search, Image Generation, Code Interpreter |
+| **xAI Responses** | Web Search, X Search, File Search, Code Interpreter, MCP |
 | **Google** | Google Search, Code Execution |
 | **Anthropic** | Web Search, Web Fetch, Code Interpreter |
 
@@ -28,6 +29,20 @@ final agent = Agent(
     serverSideTools: {
       OpenAIServerSideTool.webSearch,
       OpenAIServerSideTool.codeInterpreter,
+    },
+  ),
+);
+```
+
+### xAI Responses
+
+```dart
+final agent = Agent(
+  'xai-responses',
+  chatModelOptions: const XAIResponsesChatModelOptions(
+    serverSideTools: {
+      XAIServerSideTool.webSearch,
+      XAIServerSideTool.codeInterpreter,
     },
   ),
 );

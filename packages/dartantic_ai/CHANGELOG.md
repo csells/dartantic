@@ -1,3 +1,17 @@
+## Unreleased
+
+### Added
+
+- **xAI (Grok)** — `xai` provider (alias `grok`) using the OpenAI-compatible chat
+  completions API at `https://api.x.ai/v1`, API key `XAI_API_KEY`. Chat, vision,
+  tools, streaming, and typed output; embeddings and `temperature` are not
+  supported in Dartantic for this provider.
+- **xAI Responses** — `xai-responses` provider (alias `grok-responses`) using
+  xAI’s Responses API with the same base URL and `XAI_API_KEY`. Supports
+  thinking, server-side tools (including web search, X search, file search, code
+  interpreter, MCP), and media generation defaults `grok-imagine-image` /
+  `grok-imagine-video`.
+
 ## 3.2.0
 
 ### SDK Dependency Upgrades

@@ -178,6 +178,8 @@ Each provider defines its own environment variable for API keys:
 | Mistral          | `MISTRAL_API_KEY`    | `mistralai`                       | `...`             |
 | Cohere           | `COHERE_API_KEY`     | -                                 | `...`             |
 | OpenRouter       | `OPENROUTER_API_KEY` | -                                 | `sk-or-...`       |
+| xAI              | `XAI_API_KEY`        | `grok`                            | `xai-...`         |
+| xAI Responses    | `XAI_API_KEY`        | `grok-responses`                  | `xai-...`         |
 | Ollama           | `null`               | -                                 | No API key needed |
 
 ## Interaction Rules

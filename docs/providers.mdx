@@ -3,7 +3,7 @@ title: Providers
 description: "Providers for chat and embeddings models."
 ---
 
-The `dartantic_ai` package ships **8 built-in providers**. For **Flutter** apps
+The `dartantic_ai` package ships **10 built-in providers**. For **Flutter** apps
 that use Gemini through [Firebase AI Logic](https://firebase.google.com/docs/ai-logic),
 add the optional [`dartantic_firebase_ai`](https://pub.dev/packages/dartantic_firebase_ai)
 package and register it (see [Firebase AI](#firebase-ai-flutter-add-on) below).
@@ -23,6 +23,8 @@ example.
 | **Cohere** | `command-r-08-2024` | `embed-v4.0` | Chat, Embeddings, Tools, Streaming | RAG-optimized |
 | **Ollama** | `qwen2.5:7b-instruct` | - | Chat, Tools, Streaming | Local models only |
 | **OpenRouter** | `google/gemini-2.5-flash` | - | Chat, Vision, Tools, Streaming | Multi-model gateway |
+| **xAI** | `grok-4-1-fast-non-reasoning` | - | Chat, Vision, Tools, Streaming | OpenAI-compatible chat completions; no embeddings or `temperature` in Dartantic |
+| **xAI Responses** | `grok-4-1-fast-non-reasoning` | - | Chat, Vision, Tools, Streaming, Thinking, Server-side tools, Media | Stateful Responses API; default image `grok-imagine-image`, video `grok-imagine-video` |
 
 **Note**: Together AI, Google-OpenAI, and Ollama-OpenAI have been moved to the
 `openai_compat.dart` example. You can still use them by registering them with
@@ -41,6 +43,8 @@ example.
 | **Cohere** | `cohere` | - | `COHERE_API_KEY` | `CohereProvider` |
 | **Ollama** | `ollama` | - | None (local) | `OllamaProvider` |
 | **OpenRouter** | `openrouter` | - | `OPENROUTER_API_KEY` | `OpenAIProvider` |
+| **xAI** | `xai` | `grok` | `XAI_API_KEY` | `XAIProvider` |
+| **xAI Responses** | `xai-responses` | `grok-responses` | `XAI_API_KEY` | `XAIResponsesProvider` |
 
 ## Firebase AI (Flutter add-on)
 
@@ -87,6 +91,7 @@ for dependency versions and setup.
 export OPENAI_API_KEY="sk-..."
 export ANTHROPIC_API_KEY="sk-ant-..."
 export GEMINI_API_KEY="..."
+export XAI_API_KEY="..."
 ```
 
 ## Usage
@@ -101,11 +106,19 @@ Agent('anthropic:claude-3-5-sonnet');
 // Chat + embeddings
 Agent('openai?chat=gpt-4o&embeddings=text-embedding-3-large');
 
-// Extended thinking (OpenAI Responses, Anthropic, Google)
+// Extended thinking (OpenAI Responses, xAI Responses, Anthropic, Google)
 Agent('anthropic:claude-sonnet-4-5', enableThinking: true);
 
 // Server-side tools (OpenAI Responses)
 Agent('openai-responses:gpt-5');
+
+// xAI Grok — OpenAI-compatible chat completions
+Agent('xai');
+Agent('grok:grok-4-1-fast-non-reasoning');
+
+// xAI Grok — Responses API (thinking, server-side tools, media models)
+Agent('xai-responses');
+Agent('xai-responses:grok-4-1-fast-reasoning', enableThinking: true);
 ```
 
 ## Find Providers
@@ -153,7 +166,7 @@ final agent = Agent.forProvider(provider);
 
 Custom headers flow through to all API calls and can override internal headers
 when needed. This works consistently across OpenAI, Google, Anthropic, Mistral,
-and Ollama.
+Ollama, and xAI providers.
 
 ## Check Capabilities
 
@@ -198,6 +211,8 @@ function calling and structured JSON output in the same request:
 | Anthropic | ✅ | `return_result` tool |
 | Google | ✅ | Double agent orchestrator |
 | OpenRouter | ✅ | OpenAI-compatible |
+| xAI | ✅ | OpenAI-compatible |
+| xAI Responses | ✅ | Native `response_format` (Responses API) |
 | Ollama | ❌ | Coming soon |
 | Cohere | ❌ | API limitation |
 

@@ -311,6 +311,8 @@ While Agent is the primary interface, direct model creation is supported for adv
 | Cohere           |   ✅   |     ✅      |   ✅   |      ✅       |      ❌      |   ❌    |    ❌    |   ❌   |
 | Ollama           |   ✅   |     ❌      |   ⚠️   |      ✅       |      ❌      |   ❌    |    ❌    |   ❌   |
 | OpenRouter       |   ✅   |     ❌      |   ✅   |      ✅       |      ❌      |   ✅    |    ❌    |   ❌   |
+| xAI              |   ✅   |     ❌      |   ✅   |      ✅       |      ✅      |   ✅    |    ❌    |   ❌   |
+| xAI Responses    |   ✅   |     ❌      |   ✅   |      ✅       |      ✅      |   ✅    |    ✅    |   ✅   |
 
 **Legend:**
 - **Tools** = `multiToolCalls` capability (⚠️ = limited reliability)
@@ -325,6 +327,7 @@ Note: Capabilities reflect the default model for each provider. Individual model
 - **Anthropic**: No embeddings support in native API
 - **Ollama**: No embeddings in native API (use OpenAI-compatible endpoint)
 - **OpenRouter**: Chat only through model aggregation
+- **xAI** / **xAI Responses**: Chat (and xAI Responses media models); no embeddings in Dartantic yet
 
 ### Limited Capabilities
 - **Mistral**: No typed output or vision support
@@ -333,6 +336,7 @@ Note: Capabilities reflect the default model for each provider. Individual model
 
 ### Full-Featured Providers
 - **OpenAI Responses**: Supports all capabilities including media generation and thinking
+- **xAI Responses**: Supports thinking, server-side tools, and media generation (no embeddings)
 - **OpenAI**: Supports all capabilities except thinking and media generation
 - **Google**: Supports all capabilities including media generation and thinking
 - **Anthropic**: Supports all capabilities including media generation and thinking (no embeddings)

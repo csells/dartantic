@@ -28,6 +28,7 @@ Thinking (also called "extended reasoning" or "chain-of-thought") is a capabilit
 | Provider | Capability | Status | Configuration |
 |----------|-----------|--------|---------------|
 | OpenAI Responses | Reasoning Summary | ✅ Implemented | Agent-level `enableThinking` + optional `reasoningSummary` |
+| xAI Responses | Reasoning Summary | ✅ Implemented | Agent-level `enableThinking` |
 | Anthropic | Extended Thinking | ✅ Implemented | Agent-level `enableThinking` + optional `thinkingBudgetTokens` |
 | Google | Extended Thinking | ✅ Implemented | Agent-level `enableThinking` + optional `thinkingBudgetTokens` |
 | Others | N/A | ❌ Not supported | - |

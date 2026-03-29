@@ -10,7 +10,8 @@ with generative AI easier and more fun!
   autonomously chain tool calls together to solve multi-step problems without
   human intervention.
 - **Multiple Providers Out of the Box** - OpenAI, OpenAI Responses, Google,
-  Anthropic, Mistral, Cohere, Ollama, OpenRouter, and more; optional
+  Anthropic, Mistral, Cohere, Ollama, OpenRouter, xAI (Grok), xAI Responses, and
+  more; optional
   [`dartantic_firebase_ai`](https://pub.dev/packages/dartantic_firebase_ai) for
   Gemini via Firebase on Flutter
 - **OpenAI-Compatibility** - Access to literally thousands of providers via the
@@ -19,13 +20,15 @@ with generative AI easier and more fun!
 - **Typed Outputs and Tool Calling** - Uses Dart types and JSON serialization
 - **Multimedia Input** - Process text, images, and files
 - **Media Generation** - Stream images, PDFs, and other artifacts from OpenAI
-  Responses, Google Gemini (Nano Banana), and Anthropic code execution. Supports
+  Responses, xAI Responses (Grok Imagine), Google Gemini (Nano Banana), and
+  Anthropic code execution. Supports
   image editing with native Imagen API for colorization, style transfer, and more
 - **Embeddings** - Vector generation and semantic search
 - **Model Reasoning ("Thinking")** - Extended reasoning support across OpenAI
-  Responses, Anthropic, and Google
+  Responses, xAI Responses, Anthropic, and Google
 - **Provider-Hosted Server-Side Tools** - Web search, file search, image
-  generation, and code interpreter via OpenAI Responses, Anthropic, and Google
+  generation, and code interpreter via OpenAI Responses, xAI Responses,
+  Anthropic, and Google
 - **MCP Support** - Model Context Protocol server integration
 - **Provider Switching** - Switch between AI providers mid-conversation
 - **Production Ready**: Built-in logging, error handling, and retry handling

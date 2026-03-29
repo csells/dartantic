@@ -189,6 +189,29 @@ class FirebaseAIProvider
     );
   }
 
+  /// Returns a curated list of model metadata for Firebase AI Logic.
+  ///
+  /// [Firebase documents](https://firebase.google.com/docs/ai-logic/models#programmatically-list-available-model-names)
+  /// programmatic discovery via the Gemini Developer API (`models.list` on
+  /// `generativelanguage.googleapis.com`) or the Vertex AI API
+  /// (`publishers.models.list` on `aiplatform.googleapis.com`). Those flows
+  /// are a poor fit for typical client apps:
+  ///
+  /// - The Firebase **Web API key** bundled with the app is commonly
+  ///   restricted so `ListModels` on the Generative Language API is denied
+  ///   (HTTP 403, e.g. `API_KEY_SERVICE_BLOCKED`).
+  /// - Vertex publisher model listing **does not accept API keys**; it
+  ///   expects OAuth2 or other credentials that identify a principal (HTTP
+  ///   401 if only an API key is sent).
+  ///
+  /// Shipping separate long-lived Gemini or Cloud API keys in the client to
+  /// work around that is discouraged. The Firebase AI Logic HTTP proxy also
+  /// does not offer a list-models operation in its published REST surface.
+  ///
+  /// So this method intentionally yields a static catalog kept in sync with
+  /// Firebase-supported model IDs; refresh it when
+  /// [supported models](https://firebase.google.com/docs/ai-logic/models)
+  /// change.
   @override
   Stream<ModelInfo> listModels() async* {
     // General Use Models

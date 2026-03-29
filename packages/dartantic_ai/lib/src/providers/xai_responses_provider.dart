@@ -141,9 +141,9 @@ class XAIResponsesProvider
     String? name,
     List<Tool>? tools,
     XAIResponsesMediaGenerationModelOptions? options,
-    List<String>? mimeTypes,
   }) {
     _validateApiKeyPresence();
+    final mimeTypes = options?.mimeTypes;
     assert(mimeTypes != null && mimeTypes.isNotEmpty);
     final everyIsImage = mimeTypes!.every((m) => m.startsWith('image/'));
     final everyIsVideo = mimeTypes.every((m) => m.startsWith('video/'));

@@ -47,7 +47,9 @@ void main() {
         final mimeTypes = ['image/png'];
         final imageModel = provider.createMediaModel(
           name: imageModelName,
-          mimeTypes: mimeTypes,
+          options: XAIResponsesMediaGenerationModelOptions(
+            mimeTypes: mimeTypes,
+          ),
         );
         final stream = imageModel.generateMediaStream(
           'Generate a simple flat illustration of a blue robot mascot.',
@@ -81,7 +83,9 @@ void main() {
         final mimeTypes = ['image/png'];
         final imageModel = provider.createMediaModel(
           name: imageModelName,
-          mimeTypes: mimeTypes,
+          options: XAIResponsesMediaGenerationModelOptions(
+            mimeTypes: mimeTypes,
+          ),
         );
         final stream = imageModel.generateMediaStream(
           'Colorize this robot. Keep outlines black, make body blue, '
@@ -119,7 +123,9 @@ void main() {
         final mimeTypes = ['video/mp4'];
         final videoMediaModel = videoProvider.createMediaModel(
           name: videoModel,
-          mimeTypes: mimeTypes,
+          options: XAIResponsesMediaGenerationModelOptions(
+            mimeTypes: mimeTypes,
+          ),
         );
 
         final stream = videoMediaModel.generateMediaStream(

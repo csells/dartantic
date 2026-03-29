@@ -30,7 +30,11 @@ void main() {
 
       expect(provider.createEmbeddingsModel, throwsA(isA<UnsupportedError>()));
 
-      final mediaModel = provider.createMediaModel(mimeTypes: ['image/png']);
+      final mediaModel = provider.createMediaModel(
+        options: const XAIResponsesMediaGenerationModelOptions(
+          mimeTypes: ['image/png'],
+        ),
+      );
       expect(mediaModel, isA<XAIResponsesMediaGenerationModel>());
       expect(mediaModel.name, equals(XAIResponsesProvider.defaultImageModel));
     });

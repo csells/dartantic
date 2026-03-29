@@ -1,10 +1,13 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
 
+const _defaultMimeTypes = <String>['image/jpeg'];
+
 /// Options for configuring xAI Responses media generation runs.
 class XAIResponsesMediaGenerationModelOptions
     extends MediaGenerationModelOptions {
   /// Creates a new set of media generation options.
   const XAIResponsesMediaGenerationModelOptions({
+    this.mimeTypes = _defaultMimeTypes,
     this.n,
     this.aspectRatio,
     this.resolution,
@@ -42,4 +45,7 @@ class XAIResponsesMediaGenerationModelOptions
 
   /// End-user identifier forwarded to xAI for abuse monitoring.
   final String? user;
+
+  /// List of MIME types to generate.
+  final List<String>? mimeTypes;
 }

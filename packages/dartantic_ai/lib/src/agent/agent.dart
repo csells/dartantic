@@ -464,7 +464,6 @@ class Agent {
       name: _mediaModelName,
       tools: _tools,
       options: mediaModelOptions,
-      mimeTypes: mimeTypes,
     );
 
     final newUserMessage = ChatMessage.user(prompt, parts: attachments);

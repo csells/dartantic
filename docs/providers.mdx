@@ -3,8 +3,12 @@ title: Providers
 description: "Providers for chat and embeddings models."
 ---
 
-Out of the box support for 8 built-in providers, with more available via the
-`openai_compat.dart` example.
+The `dartantic_ai` package ships **8 built-in providers**. For **Flutter** apps
+that use Gemini through [Firebase AI Logic](https://firebase.google.com/docs/ai-logic),
+add the optional [`dartantic_firebase_ai`](https://pub.dev/packages/dartantic_firebase_ai)
+package and register it (see [Firebase AI](#firebase-ai-flutter-add-on) below).
+Additional OpenAI-compatible endpoints are available via the `openai_compat.dart`
+example.
 
 ## Provider Capabilities
 
@@ -14,6 +18,7 @@ Out of the box support for 8 built-in providers, with more available via the
 | **OpenAI Responses** | `gpt-5` | `text-embedding-3-small` | Chat, Embeddings, Vision, Tools, Streaming, Thinking | Includes built-in server-side tools |
 | **Anthropic** | `claude-sonnet-4-0` | - | Chat, Vision, Tools, Streaming, Thinking | Extended thinking with token budgets |
 | **Google** | `gemini-2.5-flash` | `text-embedding-004` | Chat, Embeddings, Vision, Tools, Streaming, Thinking | Extended thinking with dynamic budgets |
+| **Firebase AI** | `gemini-2.5-flash` | - | Chat, Vision, Tools, Streaming, Thinking, Media | Gemini via Firebase SDK (Flutter only) |
 | **Mistral** | `mistral-small-latest` | `mistral-embed` | Chat, Embeddings, Tools, Streaming | European servers |
 | **Cohere** | `command-r-08-2024` | `embed-v4.0` | Chat, Embeddings, Tools, Streaming | RAG-optimized |
 | **Ollama** | `qwen2.5:7b-instruct` | - | Chat, Tools, Streaming | Local models only |
@@ -31,10 +36,49 @@ Out of the box support for 8 built-in providers, with more available via the
 | **OpenAI Responses** | `openai-responses` | - | `OPENAI_API_KEY` | `OpenAIResponsesProvider` |
 | **Anthropic** | `anthropic` | `claude` | `ANTHROPIC_API_KEY` | `AnthropicProvider` |
 | **Google** | `google` | `gemini`, `googleai` | `GEMINI_API_KEY` | `GoogleProvider` |
+| **Firebase AI** | `firebase` | - | None (Firebase) | `FirebaseAIProvider` |
 | **Mistral** | `mistral` | - | `MISTRAL_API_KEY` | `MistralProvider` |
 | **Cohere** | `cohere` | - | `COHERE_API_KEY` | `CohereProvider` |
 | **Ollama** | `ollama` | - | None (local) | `OllamaProvider` |
 | **OpenRouter** | `openrouter` | - | `OPENROUTER_API_KEY` | `OpenAIProvider` |
+
+## Firebase AI (Flutter add-on)
+
+Use [`dartantic_firebase_ai`](https://pub.dev/packages/dartantic_firebase_ai) when
+you want Gemini through the Firebase SDK (Firebase AI Logic), including App Check
+and Firebase Auth on the Vertex AI path. **Pure Dart** apps should keep using
+[`GoogleProvider`](/providers) with `GEMINI_API_KEY` instead.
+
+Add the package, call `Firebase.initializeApp()`, then register factories for
+each backend you need. Provider **name** is `firebase_ai`; model strings use the
+**aliases** below.
+
+| Backend | Prefix (alias) | Authentication / setup |
+|---------|----------------|-------------------------|
+| Google AI (Gemini Developer API via Firebase) | `firebase-google` | Google AI API key in Firebase console; lighter setup |
+| Vertex AI (through Firebase) | `firebase-vertex` | Full Firebase project, billing; optional App Check / Auth |
+
+```dart
+import 'package:dartantic_ai/dartantic_ai.dart';
+import 'package:dartantic_firebase_ai/dartantic_firebase_ai.dart';
+import 'package:firebase_core/firebase_core.dart';
+
+await Firebase.initializeApp();
+
+Agent.providerFactories['firebase-google'] = () =>
+    FirebaseAIProvider(backend: FirebaseAIBackend.googleAI);
+Agent.providerFactories['firebase-vertex'] = () =>
+    FirebaseAIProvider(backend: FirebaseAIBackend.vertexAI);
+
+final dev = Agent('firebase-google:gemini-2.5-flash');
+final prod = Agent('firebase-vertex:gemini-2.5-flash');
+```
+
+**Platforms:** iOS, Android, macOS, and Web (Flutter only). Supports chat,
+streaming, tools, thinking, structured output, and media generation; **no**
+embeddings model. See the
+[`dartantic_firebase_ai` README](https://pub.dev/packages/dartantic_firebase_ai)
+for dependency versions and setup.
 
 ## Setup
 

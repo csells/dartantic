@@ -10,7 +10,9 @@ with generative AI easier and more fun!
   autonomously chain tool calls together to solve multi-step problems without
   human intervention.
 - **Multiple Providers Out of the Box** - OpenAI, OpenAI Responses, Google,
-  Anthropic, Mistral, Cohere, Ollama, and more
+  Anthropic, Mistral, Cohere, Ollama, OpenRouter, and more; optional
+  [`dartantic_firebase_ai`](https://pub.dev/packages/dartantic_firebase_ai) for
+  Gemini via Firebase on Flutter
 - **OpenAI-Compatibility** - Access to literally thousands of providers via the
   OpenAI API that nearly every single modern LLM provider implements
 - **Streaming Output** - Real-time response generation

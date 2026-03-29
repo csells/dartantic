@@ -2,7 +2,7 @@ This document provides a comprehensive overview of the dartantic_ai package arch
 
 ## System Purpose
 
-The dartantic_ai package provides a unified interface to 8 built-in LLM providers through a single import (extensible via `Agent.providerFactories`), implementing a clean abstraction layer that supports:
+The dartantic_ai package provides a unified interface to 8 built-in LLM providers through a single import (extensible via `Agent.providerFactories`). The companion package **dartantic_firebase_ai** adds Gemini via Firebase AI Logic for Flutter apps by registering `firebase-google` and `firebase-vertex` factories. Together they implement a clean abstraction layer that supports:
 - Chat conversations with streaming
 - Text embeddings generation
 - Tool/function calling 

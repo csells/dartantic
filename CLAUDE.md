@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Dartantic is an agentic AI framework for Dart that provides easy integration with multiple AI providers (OpenAI, OpenAI Responses API, Google, Anthropic, Mistral, Cohere, Ollama, OpenRouter). It features streaming output, typed responses, tool calling, embeddings, and MCP (Model Context Protocol) support.
+Dartantic is an agentic AI framework for Dart that provides easy integration with multiple AI providers (OpenAI, OpenAI Responses API, Google, Anthropic, Mistral, Cohere, Ollama, OpenRouter). The optional `packages/dartantic_firebase_ai/` package adds Gemini through Firebase AI Logic for Flutter. It features streaming output, typed responses, tool calling, embeddings, and MCP (Model Context Protocol) support.
 
 The project is organized as a monorepo with multiple packages:
 - `packages/dartantic_interface/` - Core interfaces and types shared across all Dartantic packages
 - `packages/dartantic_ai/` - Main implementation with provider integrations (primary development focus)
+- `packages/dartantic_firebase_ai/` - Flutter-only Firebase AI Logic provider (`firebase-google` / `firebase-vertex` on `Agent.providerFactories`)
 - `packages/dartantic_chat/` - Flutter chat UI widgets for AI applications (fork of flutter/ai toolkit)
 - `samples/dartantic_cli/` - Command-line interface for the Dartantic framework
 - `samples/chatarang/` - Interactive command-line chat application with tool support

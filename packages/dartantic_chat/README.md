@@ -4,7 +4,8 @@ The [dartantic_chat](https://pub.dev/packages/dartantic_chat) package provides
 Flutter chat UI widgets that make it easy to add an AI chat window to your app.
 Out of the box, it supports [dartantic_ai](https://pub.dev/packages/dartantic_ai)
 for access to multiple LLM providers including Google Gemini, OpenAI, Anthropic,
-Mistral, and Ollama.
+Mistral, Cohere, Ollama, and OpenRouter. For Flutter + Firebase AI Logic, you can
+add [`dartantic_firebase_ai`](https://pub.dev/packages/dartantic_firebase_ai).
 
 ![Screenshot](readme/screenshot.png)
 

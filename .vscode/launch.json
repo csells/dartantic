@@ -195,6 +195,20 @@
       "program": "packages/dartantic_ai/example/bin/server_side_tools_google/server_side_google_search.dart"
     },
     {
+      "name": "firebase: simple chat",
+      "cwd": "packages/dartantic_firebase_ai/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart"
+    },
+    {
+      "name": "firebase: all systems go",
+      "cwd": "packages/dartantic_firebase_ai/example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/all_systems_go.dart"
+    },
+    {
       "name": "chatarang",
       "request": "launch",
       "type": "dart",

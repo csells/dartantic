@@ -38,3 +38,6 @@ tmp/
 .svn/
 migrate_working_dir/
 AGENT.md
+
+# FVM Version Cache
+.fvm/

@@ -1,11 +1,11 @@
+import 'dart:typed_data';
+
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:google_cloud_ai_generativelanguage_v1beta/generativelanguage.dart'
-    as gl;
+import 'package:googleai_dart/googleai_dart.dart' as ga;
 import 'package:logging/logging.dart';
 
 import '../../shared/google_thinking_metadata.dart';
 import '../helpers/message_part_helpers.dart';
-import '../helpers/protobuf_value_helpers.dart';
 import '../helpers/tool_id_helpers.dart';
 import 'google_chat.dart'
     show
@@ -16,17 +16,32 @@ import 'google_chat.dart'
 /// Logger for Google message mapping operations.
 final Logger _logger = Logger('dartantic.chat.mappers.google');
 
-/// Maps Dartantic Parts to Google gl.Parts (public helper for reuse).
+ga.Schema? _parametersSchemaFromTool(Tool tool) {
+  try {
+    return ga.Schema.fromJson(
+      Map<String, dynamic>.from(tool.inputSchema.value),
+    );
+  } on Object catch (e, st) {
+    _logger.warning(
+      'Could not convert tool "${tool.name}" input schema to Google Schema: $e',
+      e,
+      st,
+    );
+    return null;
+  }
+}
+
+/// Maps Dartantic Parts to Google [ga.Part]s (public helper for reuse).
 ///
 /// The [messageMetadata] parameter should contain thought signatures when
 /// available, stored via [GoogleThinkingMetadata].
-List<gl.Part> mapPartsToGoogle(
+List<ga.Part> mapPartsToGoogle(
   Iterable<Part> parts, {
   bool includeToolCalls = false,
   bool includeToolResults = false,
   Map<String, dynamic> messageMetadata = const {},
 }) {
-  final mappedParts = <gl.Part>[];
+  final mappedParts = <ga.Part>[];
   final thoughtSignatures = GoogleThinkingMetadata.getSignatures(
     messageMetadata,
   );
@@ -34,17 +49,13 @@ List<gl.Part> mapPartsToGoogle(
   for (final part in parts) {
     switch (part) {
       case TextPart(:final text):
-        if (text.isNotEmpty) mappedParts.add(gl.Part(text: text));
+        if (text.isNotEmpty) mappedParts.add(ga.TextPart(text));
       case DataPart(:final bytes, :final mimeType):
-        mappedParts.add(
-          gl.Part(
-            inlineData: gl.Blob(mimeType: mimeType, data: bytes),
-          ),
-        );
+        mappedParts.add(ga.InlineDataPart(ga.Blob.fromBytes(mimeType, bytes)));
       case LinkPart(:final url, :final mimeType):
         mappedParts.add(
-          gl.Part(
-            fileData: gl.FileData(
+          ga.FileDataPart(
+            ga.FileData(
               fileUri: url.toString(),
               mimeType: mimeType ?? 'application/octet-stream',
             ),
@@ -54,7 +65,7 @@ List<gl.Part> mapPartsToGoogle(
         if (includeToolCalls && kind == ToolPartKind.call) {
           mappedParts.add(_mapToolCallPart(part, thoughtSignatures));
         } else if (includeToolResults && kind == ToolPartKind.result) {
-          mappedParts.add(_mapToolResultPart(part, thoughtSignatures));
+          mappedParts.add(_mapToolResultPart(part));
         }
       case ThinkingPart():
         // Google maintains reasoning context via thought signatures, not
@@ -66,7 +77,7 @@ List<gl.Part> mapPartsToGoogle(
   return mappedParts;
 }
 
-gl.Part _mapToolCallPart(
+ga.Part _mapToolCallPart(
   ToolPart part,
   Map<String, dynamic> thoughtSignatures,
 ) {
@@ -79,12 +90,8 @@ gl.Part _mapToolCallPart(
           arguments: arguments,
         );
 
-  return gl.Part(
-    functionCall: gl.FunctionCall(
-      id: callId,
-      name: part.toolName,
-      args: ProtobufValueHelpers.structFromJson(arguments),
-    ),
+  return ga.FunctionCallPart(
+    ga.FunctionCall(id: callId, name: part.toolName, args: arguments),
     // Attach signature to preserve reasoning context across tool calls
     thoughtSignature: GoogleThinkingMetadata.getSignatureBytes(
       thoughtSignatures,
@@ -93,37 +100,29 @@ gl.Part _mapToolCallPart(
   );
 }
 
-gl.Part _mapToolResultPart(
-  ToolPart part,
-  Map<String, dynamic> thoughtSignatures,
-) {
+ga.Part _mapToolResultPart(ToolPart part) {
   final responseMap = ToolResultHelpers.ensureMap(part.result);
   _logger.fine('Creating function response for tool: ${part.toolName}');
 
-  return gl.Part(
-    functionResponse: gl.FunctionResponse(
-      id: part.callId,
+  return ga.FunctionResponsePart(
+    ga.FunctionResponse(
+      id: part.callId.isNotEmpty ? part.callId : null,
       name: part.toolName,
-      response: ProtobufValueHelpers.structFromJson(responseMap),
-    ),
-    // Attach signature to preserve reasoning context across tool results
-    thoughtSignature: GoogleThinkingMetadata.getSignatureBytes(
-      thoughtSignatures,
-      part.callId,
+      response: responseMap,
     ),
   );
 }
 
 /// Extension on [List<ChatMessage>] to convert messages to Gemini content.
 extension MessageListMapper on List<ChatMessage> {
-  /// Converts this list of [ChatMessage]s to a list of [gl.Content]s.
+  /// Converts this list of [ChatMessage]s to a list of [ga.Content]s.
   ///
   /// Groups consecutive tool result messages into a single `Content` so we can
-  /// attach all [gl.FunctionResponse] parts in one payload.
+  /// attach all function response parts in one payload.
   ///
   /// ThinkingPart is skipped since Google uses thought signatures (not text)
   /// to maintain reasoning continuity across conversation turns.
-  List<gl.Content> toContentList() {
+  List<ga.Content> toContentList() {
     final nonSystemMessages = where(
       (message) => message.role != ChatMessageRole.system,
     ).toList();
@@ -132,7 +131,7 @@ extension MessageListMapper on List<ChatMessage> {
       'format',
     );
 
-    final result = <gl.Content>[];
+    final result = <ga.Content>[];
 
     for (var i = 0; i < nonSystemMessages.length; i++) {
       final message = nonSystemMessages[i];
@@ -162,7 +161,7 @@ extension MessageListMapper on List<ChatMessage> {
     return result;
   }
 
-  gl.Content _mapMessage(ChatMessage message) {
+  ga.Content _mapMessage(ChatMessage message) {
     switch (message.role) {
       case ChatMessageRole.system:
         throw AssertionError('System messages should already be filtered out');
@@ -173,9 +172,9 @@ extension MessageListMapper on List<ChatMessage> {
     }
   }
 
-  gl.Content _mapUserMessage(ChatMessage message) {
+  ga.Content _mapUserMessage(ChatMessage message) {
     _logger.fine('Mapping user message with ${message.parts.length} parts');
-    return gl.Content(
+    return ga.Content(
       parts: _mapParts(
         message.parts,
         includeToolCalls: false,
@@ -186,9 +185,9 @@ extension MessageListMapper on List<ChatMessage> {
     );
   }
 
-  gl.Content _mapModelMessage(ChatMessage message) {
+  ga.Content _mapModelMessage(ChatMessage message) {
     _logger.fine('Mapping model message with ${message.parts.length} parts');
-    return gl.Content(
+    return ga.Content(
       parts: _mapParts(
         message.parts,
         includeToolCalls: true,
@@ -199,8 +198,8 @@ extension MessageListMapper on List<ChatMessage> {
     );
   }
 
-  gl.Content _mapToolResultMessages(List<ChatMessage> messages) {
-    final parts = <gl.Part>[];
+  ga.Content _mapToolResultMessages(List<ChatMessage> messages) {
+    final parts = <ga.Part>[];
     _logger.fine(
       'Creating function responses for ${messages.length} tool result '
       'messages',
@@ -217,10 +216,10 @@ extension MessageListMapper on List<ChatMessage> {
       );
     }
 
-    return gl.Content(parts: parts, role: 'user');
+    return ga.Content(parts: parts, role: 'user');
   }
 
-  List<gl.Part> _mapParts(
+  List<ga.Part> _mapParts(
     Iterable<Part> parts, {
     required bool includeToolCalls,
     required bool includeToolResults,
@@ -233,117 +232,104 @@ extension MessageListMapper on List<ChatMessage> {
   );
 }
 
-/// Extension on [gl.GenerateContentResponse] to convert to [ChatResult].
-extension GenerateContentResponseMapper on gl.GenerateContentResponse {
-  /// Converts this [gl.GenerateContentResponse] to a [ChatResult].
+/// Extension on [ga.GenerateContentResponse] to convert to [ChatResult].
+extension GenerateContentResponseMapper on ga.GenerateContentResponse {
+  /// Converts this response to a [ChatResult].
   ChatResult<ChatMessage> toChatResult(String model) {
     final candidateList = candidates;
-    if (candidateList.isEmpty) {
+    if (candidateList == null || candidateList.isEmpty) {
       throw StateError('Google response did not contain any candidates.');
     }
 
     final candidate = candidateList.first;
     final parts = <Part>[];
-    final executableCodeParts = <gl.ExecutableCode>[];
-    final executionResults = <gl.CodeExecutionResult>[];
-    // Collect thought signatures keyed by tool call ID for Gemini 3+ models
+    final executableCodeParts = <ga.ExecutableCode>[];
+    final executionResults = <ga.CodeExecutionResult>[];
     final thoughtSignatures = <String, dynamic>{};
 
-    final contentParts = candidate.content?.parts ?? const <gl.Part>[];
+    final contentParts = candidate.content?.parts ?? const <ga.Part>[];
     _logger.fine(
       'Processing ${contentParts.length} parts from Google response',
     );
 
     for (final part in contentParts) {
-      // Check if this is a thinking part (thought=true)
-      final isThought = part.thought;
-
-      final text = part.text;
-      if (text != null && text.isNotEmpty) {
-        if (isThought) {
-          // Add thinking content as ThinkingPart
-          parts.add(ThinkingPart(text));
-          _logger.fine(
-            'Added thinking text as ThinkingPart: ${text.length} chars',
+      switch (part) {
+        case ga.TextPart(:final text, :final thought):
+          if (text.isNotEmpty) {
+            if (thought ?? false) {
+              parts.add(ThinkingPart(text));
+              _logger.fine(
+                'Added thinking text as ThinkingPart: ${text.length} chars',
+              );
+            } else {
+              parts.add(TextPart(text));
+            }
+          }
+        case ga.InlineDataPart(:final inlineData):
+          parts.add(
+            DataPart(
+              Uint8List.fromList(inlineData.toBytes()),
+              mimeType: inlineData.mimeType,
+            ),
           );
-        } else {
-          parts.add(TextPart(text));
-        }
-      }
-
-      final blob = part.inlineData;
-      final blobData = blob?.data;
-      if (blob != null && blobData != null) {
-        parts.add(DataPart(blobData, mimeType: blob.mimeType));
-      }
-
-      final fileData = part.fileData;
-      if (fileData != null) {
-        parts.add(
-          LinkPart(Uri.parse(fileData.fileUri), mimeType: fileData.mimeType),
-        );
-      }
-
-      final functionCall = part.functionCall;
-      if (functionCall != null) {
-        final args = ProtobufValueHelpers.structToJson(functionCall.args);
-        final callId = (functionCall.id.isNotEmpty)
-            ? functionCall.id
-            : ToolIdHelpers.generateToolCallId(
-                toolName: functionCall.name,
-                providerHint: 'google',
-                arguments: args,
-              );
-        parts.add(
-          ToolPart.call(
-            callId: callId,
-            toolName: functionCall.name,
-            arguments: args,
-          ),
-        );
-        // Store signature to preserve reasoning context for subsequent turns
-        GoogleThinkingMetadata.setSignatureBytes(
-          thoughtSignatures,
-          callId,
-          part.thoughtSignature,
-        );
-      }
-
-      final functionResponse = part.functionResponse;
-      if (functionResponse != null) {
-        final responseMap = ProtobufValueHelpers.structToJson(
-          functionResponse.response,
-        );
-        final responseId = (functionResponse.id.isNotEmpty)
-            ? functionResponse.id
-            : ToolIdHelpers.generateToolCallId(
-                toolName: functionResponse.name,
-                providerHint: 'google',
-                arguments: responseMap,
-              );
-        parts.add(
-          ToolPart.result(
-            callId: responseId,
-            toolName: functionResponse.name,
-            result: responseMap,
-          ),
-        );
-        // Store signature to preserve reasoning context for subsequent turns
-        GoogleThinkingMetadata.setSignatureBytes(
-          thoughtSignatures,
-          responseId,
-          part.thoughtSignature,
-        );
-      }
-
-      final executableCode = part.executableCode;
-      if (executableCode != null) {
-        executableCodeParts.add(executableCode);
-      }
-
-      final executionResult = part.codeExecutionResult;
-      if (executionResult != null) {
-        executionResults.add(executionResult);
+        case ga.FileDataPart(:final fileData):
+          parts.add(
+            LinkPart(Uri.parse(fileData.fileUri), mimeType: fileData.mimeType),
+          );
+        case ga.FunctionCallPart(:final functionCall, :final thoughtSignature):
+          final args = functionCall.args ?? const <String, dynamic>{};
+          final callId =
+              (functionCall.id != null && functionCall.id!.isNotEmpty)
+              ? functionCall.id!
+              : ToolIdHelpers.generateToolCallId(
+                  toolName: functionCall.name,
+                  providerHint: 'google',
+                  arguments: args,
+                );
+          parts.add(
+            ToolPart.call(
+              callId: callId,
+              toolName: functionCall.name,
+              arguments: args,
+            ),
+          );
+          if (thoughtSignature != null && thoughtSignature.isNotEmpty) {
+            GoogleThinkingMetadata.setSignatureBytes(
+              thoughtSignatures,
+              callId,
+              Uint8List.fromList(thoughtSignature),
+            );
+          }
+        case ga.FunctionResponsePart(:final functionResponse):
+          final responseMap = Map<String, dynamic>.from(
+            functionResponse.response,
+          );
+          final responseId =
+              (functionResponse.id != null && functionResponse.id!.isNotEmpty)
+              ? functionResponse.id!
+              : ToolIdHelpers.generateToolCallId(
+                  toolName: functionResponse.name,
+                  providerHint: 'google',
+                  arguments: responseMap,
+                );
+          parts.add(
+            ToolPart.result(
+              callId: responseId,
+              toolName: functionResponse.name,
+              result: responseMap,
+            ),
+          );
+        case ga.ExecutableCodePart(:final executableCode):
+          executableCodeParts.add(executableCode);
+        case ga.CodeExecutionResultPart(:final codeExecutionResult):
+          executionResults.add(codeExecutionResult);
+        case ga.ThoughtPart():
+        case ga.ThoughtSignaturePart():
+        case ga.ToolCallPart():
+        case ga.ToolResponsePart():
+        case ga.VideoMetadataPart():
+        case ga.PartMetadataPart():
+          break;
       }
     }
 
@@ -360,38 +346,38 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
 
     final metadata = <String, dynamic>{
       'model': model,
-      'model_version': modelVersion,
+      'model_version': ?modelVersion,
     };
 
-    final blockReason = promptFeedback?.blockReason.value;
+    final blockReason = promptFeedback?.blockReason;
     if (blockReason != null) {
-      metadata['block_reason'] = blockReason;
+      metadata['block_reason'] = ga.finishReasonToString(blockReason);
     }
 
-    final safetyRatings = candidate.safetyRatings
-        .map(
-          (rating) => {
-            'category': rating.category.value,
-            'probability': rating.probability.value,
-          },
-        )
-        .toList(growable: false);
-    if (safetyRatings.isNotEmpty) {
-      metadata['safety_ratings'] = safetyRatings;
+    final safetyRatings = candidate.safetyRatings;
+    if (safetyRatings != null && safetyRatings.isNotEmpty) {
+      metadata['safety_ratings'] = safetyRatings
+          .map(
+            (rating) => {
+              'category': ga.harmCategoryToString(rating.category),
+              'probability': ga.harmProbabilityToString(rating.probability),
+            },
+          )
+          .toList(growable: false);
     }
 
-    final citations = candidate.citationMetadata?.citationSources
-        .map(
-          (s) => {
-            'start_index': s.startIndex,
-            'end_index': s.endIndex,
-            'uri': s.uri,
-            'license': s.license,
-          },
-        )
-        .toList(growable: false);
-    if (citations != null && citations.isNotEmpty) {
-      metadata['citation_metadata'] = citations;
+    final citationSources = candidate.citationMetadata?.citationSources;
+    if (citationSources != null && citationSources.isNotEmpty) {
+      metadata['citation_metadata'] = citationSources
+          .map(
+            (s) => {
+              'start_index': s.startIndex,
+              'end_index': s.endIndex,
+              'uri': s.uri,
+              'license': s.license,
+            },
+          )
+          .toList(growable: false);
     }
 
     if (executableCodeParts.isNotEmpty) {
@@ -409,78 +395,70 @@ extension GenerateContentResponseMapper on gl.GenerateContentResponse {
       (_, value) => value == null || (value is List && value.isEmpty),
     );
 
+    final usage = usageMetadata;
     return ChatResult<ChatMessage>(
       output: message,
       messages: [message],
       finishReason: _mapFinishReason(candidate.finishReason),
       metadata: metadata,
-      usage: usageMetadata != null
+      usage: usage != null
           ? LanguageModelUsage(
-              promptTokens: usageMetadata?.promptTokenCount,
-              responseTokens: usageMetadata?.candidatesTokenCount,
-              totalTokens: usageMetadata?.totalTokenCount,
+              promptTokens: usage.promptTokenCount,
+              responseTokens: usage.candidatesTokenCount,
+              totalTokens: usage.totalTokenCount,
             )
           : null,
     );
   }
 
-  FinishReason _mapFinishReason(gl.Candidate_FinishReason? reason) {
-    switch (reason) {
-      case gl.Candidate_FinishReason.stop:
-        return FinishReason.stop;
-      case gl.Candidate_FinishReason.maxTokens:
-        return FinishReason.length;
-      case gl.Candidate_FinishReason.safety ||
-          gl.Candidate_FinishReason.blocklist ||
-          gl.Candidate_FinishReason.prohibitedContent ||
-          gl.Candidate_FinishReason.imageSafety ||
-          gl.Candidate_FinishReason.spii:
-        return FinishReason.contentFilter;
-      case gl.Candidate_FinishReason.recitation:
-        return FinishReason.recitation;
-      case gl.Candidate_FinishReason.malformedFunctionCall:
-        return FinishReason.unspecified;
-      case gl.Candidate_FinishReason.language ||
-          gl.Candidate_FinishReason.other ||
-          gl.Candidate_FinishReason.finishReasonUnspecified ||
-          null:
-        return FinishReason.unspecified;
-    }
-    return FinishReason.unspecified;
-  }
+  FinishReason _mapFinishReason(ga.FinishReason? reason) => switch (reason) {
+    ga.FinishReason.stop => FinishReason.stop,
+    ga.FinishReason.maxTokens => FinishReason.length,
+    ga.FinishReason.safety ||
+    ga.FinishReason.blocklist ||
+    ga.FinishReason.prohibitedContent ||
+    ga.FinishReason.imageSafety ||
+    ga.FinishReason.imageProhibitedContent ||
+    ga.FinishReason.spii => FinishReason.contentFilter,
+    ga.FinishReason.recitation ||
+    ga.FinishReason.imageRecitation => FinishReason.recitation,
+    ga.FinishReason.malformedFunctionCall => FinishReason.unspecified,
+    null => FinishReason.unspecified,
+    _ => FinishReason.unspecified,
+  };
 }
 
 /// Extension on [List<ChatGoogleGenerativeAISafetySetting>] to convert to
 /// Gemini safety settings.
 extension SafetySettingsMapper on List<ChatGoogleGenerativeAISafetySetting> {
-  /// Converts this list of safety settings to [gl.SafetySetting]s.
-  List<gl.SafetySetting> toSafetySettings() {
+  /// Converts this list of safety settings to [ga.SafetySetting]s.
+  List<ga.SafetySetting> toSafetySettings() {
     _logger.fine('Converting $length safety settings to Google format');
     return map(
-      (setting) => gl.SafetySetting(
+      (setting) => ga.SafetySetting(
         category: switch (setting.category) {
           ChatGoogleGenerativeAISafetySettingCategory.unspecified =>
-            gl.HarmCategory.harmCategoryUnspecified,
+            ga.HarmCategory.unspecified,
           ChatGoogleGenerativeAISafetySettingCategory.harassment =>
-            gl.HarmCategory.harmCategoryHarassment,
+            ga.HarmCategory.harassment,
           ChatGoogleGenerativeAISafetySettingCategory.hateSpeech =>
-            gl.HarmCategory.harmCategoryHateSpeech,
+            ga.HarmCategory.hateSpeech,
           ChatGoogleGenerativeAISafetySettingCategory.sexuallyExplicit =>
-            gl.HarmCategory.harmCategorySexuallyExplicit,
+            ga.HarmCategory.sexuallyExplicit,
           ChatGoogleGenerativeAISafetySettingCategory.dangerousContent =>
-            gl.HarmCategory.harmCategoryDangerousContent,
+            ga.HarmCategory.dangerousContent,
         },
         threshold: switch (setting.threshold) {
           ChatGoogleGenerativeAISafetySettingThreshold.unspecified =>
-            gl.SafetySetting_HarmBlockThreshold.harmBlockThresholdUnspecified,
+            ga.HarmBlockThreshold.unspecified,
           ChatGoogleGenerativeAISafetySettingThreshold.blockLowAndAbove =>
-            gl.SafetySetting_HarmBlockThreshold.blockLowAndAbove,
+            ga.HarmBlockThreshold.blockLowAndAbove,
           ChatGoogleGenerativeAISafetySettingThreshold.blockMediumAndAbove =>
-            gl.SafetySetting_HarmBlockThreshold.blockMediumAndAbove,
+            ga.HarmBlockThreshold.blockMediumAndAbove,
           ChatGoogleGenerativeAISafetySettingThreshold.blockOnlyHigh =>
-            gl.SafetySetting_HarmBlockThreshold.blockOnlyHigh,
+            ga.HarmBlockThreshold.blockOnlyHigh,
           ChatGoogleGenerativeAISafetySettingThreshold.blockNone =>
-            gl.SafetySetting_HarmBlockThreshold.blockNone,
+            ga.HarmBlockThreshold.blockNone,
         },
       ),
     ).toList(growable: false);
@@ -489,9 +467,9 @@ extension SafetySettingsMapper on List<ChatGoogleGenerativeAISafetySetting> {
 
 /// Extension on [List<Tool>?] to convert to Gemini tools.
 extension ChatToolListMapper on List<Tool>? {
-  /// Converts this list of [Tool]s to a list of [gl.Tool]s, optionally enabling
+  /// Converts this list of [Tool]s to a list of [ga.Tool]s, optionally enabling
   /// code execution and Google Search.
-  List<gl.Tool>? toToolList({
+  List<ga.Tool>? toToolList({
     required bool enableCodeExecution,
     required bool enableGoogleSearch,
     required bool enableUrlContext,
@@ -508,21 +486,18 @@ extension ChatToolListMapper on List<Tool>? {
     final functionDeclarations = hasTools
         ? this!
               .map(
-                (tool) => gl.FunctionDeclaration(
+                (tool) => ga.FunctionDeclaration(
                   name: tool.name,
                   description: tool.description,
-                  // Use native JSON Schema support via parametersJsonSchema
-                  parametersJsonSchema: ProtobufValueHelpers.valueFromJson(
-                    Map<String, dynamic>.from(tool.inputSchema.value),
-                  ),
+                  parameters: _parametersSchemaFromTool(tool),
                 ),
               )
               .toList(growable: false)
         : null;
 
-    final codeExecution = enableCodeExecution ? gl.CodeExecution() : null;
-    final googleSearch = enableGoogleSearch ? gl.Tool_GoogleSearch() : null;
-    final urlContext = enableUrlContext ? gl.UrlContext() : null;
+    final codeExecution = enableCodeExecution ? const ga.CodeExecution() : null;
+    final googleSearch = enableGoogleSearch ? const ga.GoogleSearch() : null;
+    final urlContext = enableUrlContext ? const ga.UrlContext() : null;
 
     if ((functionDeclarations == null || functionDeclarations.isEmpty) &&
         codeExecution == null &&
@@ -532,7 +507,7 @@ extension ChatToolListMapper on List<Tool>? {
     }
 
     return [
-      gl.Tool(
+      ga.Tool(
         functionDeclarations: functionDeclarations ?? const [],
         codeExecution: codeExecution,
         googleSearch: googleSearch,

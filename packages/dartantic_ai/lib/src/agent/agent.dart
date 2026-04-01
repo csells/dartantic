@@ -466,26 +466,30 @@ class Agent {
       options: mediaModelOptions,
     );
 
-    final newUserMessage = ChatMessage.user(prompt, parts: attachments);
-    _assertNoMultipleTextParts([newUserMessage]);
+    try {
+      final newUserMessage = ChatMessage.user(prompt, parts: attachments);
+      _assertNoMultipleTextParts([newUserMessage]);
 
-    yield MediaGenerationResult(messages: [newUserMessage], id: '');
+      yield MediaGenerationResult(messages: [newUserMessage], id: '');
 
-    // Convert history to List for the underlying model interface
-    final historyList = history.toList();
+      // Convert history to List for the underlying model interface
+      final historyList = history.toList();
 
-    await for (final chunk in model.generateMediaStream(
-      prompt,
-      mimeTypes: mimeTypes,
-      history: historyList,
-      attachments: attachments,
-      options: options ?? mediaModelOptions,
-      outputSchema: outputSchema,
-    )) {
-      if (chunk.messages.isNotEmpty) {
-        _assertNoMultipleTextParts(chunk.messages);
+      await for (final chunk in model.generateMediaStream(
+        prompt,
+        mimeTypes: mimeTypes,
+        history: historyList,
+        attachments: attachments,
+        options: options ?? mediaModelOptions,
+        outputSchema: outputSchema,
+      )) {
+        if (chunk.messages.isNotEmpty) {
+          _assertNoMultipleTextParts(chunk.messages);
+        }
+        yield chunk;
       }
-      yield chunk;
+    } finally {
+      model.dispose();
     }
   }
 
@@ -498,12 +502,17 @@ class Agent {
       .embedQuery(query);
 
   /// Embed texts and return results with usage data.
-  Future<BatchEmbeddingsResult> embedDocuments(List<String> texts) => _provider
-      .createEmbeddingsModel(
-        name: _embeddingsModelName,
-        options: embeddingsModelOptions,
-      )
-      .embedDocuments(texts);
+  Future<BatchEmbeddingsResult> embedDocuments(List<String> texts) {
+    final model = _provider.createEmbeddingsModel(
+      name: _embeddingsModelName,
+      options: embeddingsModelOptions,
+    );
+    try {
+      return model.embedDocuments(texts);
+    } finally {
+      model.dispose();
+    }
+  }
 
   /// Asserts that no message in the iterable contains more than one TextPart.
   ///

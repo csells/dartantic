@@ -1,8 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:google_cloud_ai_generativelanguage_v1beta/generativelanguage.dart'
-    as gl;
+import 'package:googleai_dart/googleai_dart.dart' as ga;
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 
@@ -20,10 +19,10 @@ class GoogleMediaGenerationModel
   /// Creates a new Google media model instance.
   GoogleMediaGenerationModel({
     required super.name,
-    required gl.GenerativeService service,
+    required ga.GoogleAIClient mediaClient,
     required GoogleChatModel chatModel,
     GoogleMediaGenerationModelOptions? defaultOptions,
-  }) : _service = service,
+  }) : _client = mediaClient,
        _chatModel = chatModel,
        super(
          defaultOptions:
@@ -32,7 +31,7 @@ class GoogleMediaGenerationModel
 
   static final Logger _logger = Logger('dartantic.media.google');
 
-  final gl.GenerativeService _service;
+  final ga.GoogleAIClient _client;
   final GoogleChatModel _chatModel;
 
   @override
@@ -138,11 +137,15 @@ class GoogleMediaGenerationModel
       autoIncludeImageModality: true,
     );
 
+    final modelId = googleModelIdForApiRequest(name);
     var chunkIndex = 0;
-    await for (final response in _service.streamGenerateContent(request)) {
+    await for (final response in _client.models.streamGenerateContent(
+      model: modelId,
+      request: request,
+    )) {
       chunkIndex++;
       _logger.fine(
-        'Received Google Imagen chunk $chunkIndex for model: ${request.model}',
+        'Received Google Imagen chunk $chunkIndex for model: $modelId',
       );
       yield _mapResponse(
         response,
@@ -224,26 +227,31 @@ fpdf. For CSV files, use the csv module. Save the file and return it as output.
   }
 
   /// Resolves response modalities, auto-including IMAGE when needed.
-  List<String>? _resolveModalities(
+  List<ga.ResponseModality>? _resolveModalities(
     List<String>? explicit, {
     required bool autoIncludeImageModality,
   }) {
-    if (!autoIncludeImageModality) return explicit;
+    if (!autoIncludeImageModality) return _mapModalitiesList(explicit);
 
     // Auto-include IMAGE modality for image generation
     if (explicit == null || explicit.isEmpty) {
-      return const ['IMAGE'];
+      return const [ga.ResponseModality.image];
     }
 
     // Check if IMAGE is already included
     final hasImage = explicit.any((m) => m.toUpperCase() == 'IMAGE');
-    if (hasImage) return explicit;
+    if (hasImage) return _mapModalitiesList(explicit);
 
     // Add IMAGE to the existing modalities
-    return [...explicit, 'IMAGE'];
+    return [...?_mapModalitiesList(explicit), ga.ResponseModality.image];
   }
 
-  gl.GenerateContentRequest _buildRequest({
+  List<ga.ResponseModality>? _mapModalitiesList(List<String>? modalities) {
+    if (modalities == null || modalities.isEmpty) return null;
+    return mapGoogleModalities(modalities);
+  }
+
+  ga.GenerateContentRequest _buildRequest({
     required String prompt,
     required List<ChatMessage> history,
     required List<Part> attachments,
@@ -252,22 +260,24 @@ fpdf. For CSV files, use the csv module. Save the file and return it as output.
     bool autoIncludeImageModality = false,
   }) {
     // Build the user message parts: attachments first, then text prompt
-    final userParts = <gl.Part>[
+    final userParts = <ga.Part>[
       ...mapPartsToGoogle(attachments),
-      gl.Part(text: prompt),
+      ga.TextPart(prompt),
     ];
 
-    final contents = <gl.Content>[
+    final contents = <ga.Content>[
       ...history.toContentList(),
-      gl.Content(role: 'user', parts: userParts),
+      ga.Content(role: 'user', parts: userParts),
     ];
 
-    final imageConfig = gl.ImageConfig(aspectRatio: options.aspectRatio);
+    final imageConfig = ga.ImageConfig(aspectRatio: options.aspectRatio);
 
     // Google's responseMimeType only accepts text-based formats
     // (text/plain, application/json, etc.), not image MIME types.
     // For image generation, output format is controlled by responseModalities.
-    final textResponseMimeType = mimeType.startsWith('image/') ? '' : mimeType;
+    final textResponseMimeType = mimeType.startsWith('image/')
+        ? null
+        : mimeType;
 
     // Auto-include IMAGE modality when generating images
     final modalities = _resolveModalities(
@@ -275,7 +285,7 @@ fpdf. For CSV files, use the csv module. Save the file and return it as output.
       autoIncludeImageModality: autoIncludeImageModality,
     );
 
-    final generationConfig = gl.GenerationConfig(
+    final generationConfig = ga.GenerationConfig(
       temperature: options.temperature,
       topP: options.topP,
       topK: options.topK,
@@ -283,23 +293,22 @@ fpdf. For CSV files, use the csv module. Save the file and return it as output.
       responseMimeType: textResponseMimeType,
       candidateCount: options.imageSampleCount,
       imageConfig: imageConfig,
-      responseModalities: mapGoogleModalities(modalities),
+      responseModalities: modalities,
     );
 
-    return gl.GenerateContentRequest(
-      model: normalizeGoogleModelName(name),
+    final safety = options.safetySettings?.toSafetySettings();
+
+    return ga.GenerateContentRequest(
       contents: contents,
       generationConfig: generationConfig,
-      safetySettings:
-          options.safetySettings?.toSafetySettings() ??
-          const <gl.SafetySetting>[],
+      safetySettings: safety != null && safety.isNotEmpty ? safety : null,
     );
   }
 
   /// Test-only hook to expose response mapping without hitting the network.
   @visibleForTesting
   MediaGenerationResult mapResponseForTest(
-    gl.GenerateContentResponse response,
+    ga.GenerateContentResponse response,
   ) => _mapResponse(
     response,
     generationMode: 'test',
@@ -309,7 +318,7 @@ fpdf. For CSV files, use the csv module. Save the file and return it as output.
   );
 
   MediaGenerationResult _mapResponse(
-    gl.GenerateContentResponse response, {
+    ga.GenerateContentResponse response, {
     required String generationMode,
     required int chunkIndex,
     required String resolvedMimeType,
@@ -321,49 +330,52 @@ fpdf. For CSV files, use the csv module. Save the file and return it as output.
     final finishReason = _resolveFinishReason(response);
     final isComplete = finishReason != FinishReason.unspecified;
 
-    for (final candidate in response.candidates) {
-      if (candidate.content != null) {
-        for (final part in candidate.content!.parts) {
-          if (part.inlineData != null) {
-            final data = part.inlineData!;
-            _logger.info('Received inlineData: ${data.mimeType}');
-            assets.add(
-              DataPart(
-                Uint8List.fromList(data.data),
-                mimeType: data.mimeType,
-                name: _suggestName(data.mimeType, assets.length),
-              ),
-            );
-          } else if (part.fileData != null &&
-              part.fileData!.fileUri.isNotEmpty) {
-            _logger.info('Received fileData: ${part.fileData!.fileUri}');
-            final uri = Uri.parse(part.fileData!.fileUri);
-            final name = uri.pathSegments.isNotEmpty
-                ? uri.pathSegments.last
-                : null;
-            links.add(
-              LinkPart(
-                uri,
-                mimeType: part.fileData!.mimeType,
-                name: name?.isEmpty ?? true ? null : name,
-              ),
-            );
-          } else if (part.text != null) {
-            _logger.info('Received text: ${part.text}');
-            messages.add(
-              ChatMessage(
-                role: ChatMessageRole.model,
-                parts: [TextPart(part.text!)],
-              ),
-            );
-          } else if (part.functionCall != null) {
-            _logger.info('Received functionCall: ${part.functionCall!.name}');
-          } else if (part.executableCode != null) {
-            _logger.info('Received executableCode');
-          } else if (part.codeExecutionResult != null) {
-            _logger.info('Received codeExecutionResult');
-          } else {
-            _logger.info('Received unknown part type');
+    final candidates = response.candidates;
+    if (candidates != null) {
+      for (final candidate in candidates) {
+        final content = candidate.content;
+        if (content == null) continue;
+        for (final part in content.parts) {
+          switch (part) {
+            case ga.InlineDataPart(:final inlineData):
+              _logger.info('Received inlineData: ${inlineData.mimeType}');
+              assets.add(
+                DataPart(
+                  Uint8List.fromList(inlineData.toBytes()),
+                  mimeType: inlineData.mimeType,
+                  name: _suggestName(inlineData.mimeType, assets.length),
+                ),
+              );
+            case ga.FileDataPart(:final fileData):
+              if (fileData.fileUri.isEmpty) break;
+              _logger.info('Received fileData: ${fileData.fileUri}');
+              final uri = Uri.parse(fileData.fileUri);
+              final name = uri.pathSegments.isNotEmpty
+                  ? uri.pathSegments.last
+                  : null;
+              links.add(
+                LinkPart(
+                  uri,
+                  mimeType: fileData.mimeType,
+                  name: name?.isEmpty ?? true ? null : name,
+                ),
+              );
+            case ga.TextPart(:final text):
+              _logger.info('Received text: $text');
+              messages.add(
+                ChatMessage(
+                  role: ChatMessageRole.model,
+                  parts: [TextPart(text)],
+                ),
+              );
+            case ga.FunctionCallPart(:final functionCall):
+              _logger.info('Received functionCall: ${functionCall.name}');
+            case ga.ExecutableCodePart():
+              _logger.info('Received executableCode');
+            case ga.CodeExecutionResultPart():
+              _logger.info('Received codeExecutionResult');
+            default:
+              _logger.info('Received unknown part type');
           }
         }
       }
@@ -376,17 +388,18 @@ fpdf. For CSV files, use the csv module. Save the file and return it as output.
       'requested_mime_types': requestedMimeTypes,
     });
 
+    final usageMeta = response.usageMetadata;
     return MediaGenerationResult(
       assets: assets,
       links: links,
       messages: messages,
       metadata: metadata,
-      usage: response.usageMetadata == null
+      usage: usageMeta == null
           ? null
           : LanguageModelUsage(
-              promptTokens: response.usageMetadata!.promptTokenCount,
-              responseTokens: response.usageMetadata!.candidatesTokenCount,
-              totalTokens: response.usageMetadata!.totalTokenCount,
+              promptTokens: usageMeta.promptTokenCount,
+              responseTokens: usageMeta.candidatesTokenCount,
+              totalTokens: usageMeta.totalTokenCount,
             ),
       finishReason: finishReason,
       isComplete: isComplete,
@@ -409,50 +422,53 @@ fpdf. For CSV files, use the csv module. Save the file and return it as output.
     return merged;
   }
 
-  Map<String, dynamic> _extractMetadata(gl.GenerateContentResponse response) {
+  Map<String, dynamic> _extractMetadata(ga.GenerateContentResponse response) {
     final metadata = <String, dynamic>{'model': name};
 
-    final blockReason = response.promptFeedback?.blockReason.value;
+    final blockReason = response.promptFeedback?.blockReason;
     if (blockReason != null) {
-      metadata['block_reason'] = blockReason;
+      metadata['block_reason'] = ga.finishReasonToString(blockReason);
     }
 
     final modelVersion = response.modelVersion;
-    if (modelVersion.isNotEmpty) {
+    if (modelVersion != null && modelVersion.isNotEmpty) {
       metadata['model_version'] = modelVersion;
     }
 
-    final safetyRatings = response.candidates
-        .expand((c) => c.safetyRatings)
-        .map(
-          (rating) => {
-            'category': rating.category.value,
-            'probability': rating.probability.value,
-          },
-        )
-        .toList(growable: false);
-    if (safetyRatings.isNotEmpty) {
-      metadata['safety_ratings'] = safetyRatings;
-    }
+    final candidates = response.candidates;
+    if (candidates != null) {
+      final safetyRatings = candidates
+          .expand((c) => c.safetyRatings ?? const <ga.SafetyRating>[])
+          .map(
+            (rating) => {
+              'category': ga.harmCategoryToString(rating.category),
+              'probability': ga.harmProbabilityToString(rating.probability),
+            },
+          )
+          .toList(growable: false);
+      if (safetyRatings.isNotEmpty) {
+        metadata['safety_ratings'] = safetyRatings;
+      }
 
-    final citations = response.candidates
-        .map(
-          (c) =>
-              c.citationMetadata?.citationSources ??
-              const <gl.CitationSource>[],
-        )
-        .expand((s) => s)
-        .map(
-          (source) => {
-            'start_index': source.startIndex,
-            'end_index': source.endIndex,
-            'uri': source.uri,
-            'license': source.license,
-          },
-        )
-        .toList(growable: false);
-    if (citations.isNotEmpty) {
-      metadata['citation_metadata'] = citations;
+      final citations = candidates
+          .map(
+            (c) =>
+                c.citationMetadata?.citationSources ??
+                const <ga.CitationSource>[],
+          )
+          .expand((s) => s)
+          .map(
+            (source) => {
+              'start_index': source.startIndex,
+              'end_index': source.endIndex,
+              'uri': source.uri,
+              'license': source.license,
+            },
+          )
+          .toList(growable: false);
+      if (citations.isNotEmpty) {
+        metadata['citation_metadata'] = citations;
+      }
     }
 
     metadata.removeWhere((_, value) {
@@ -465,8 +481,10 @@ fpdf. For CSV files, use the csv module. Save the file and return it as output.
     return metadata;
   }
 
-  FinishReason _resolveFinishReason(gl.GenerateContentResponse response) {
-    for (final candidate in response.candidates) {
+  FinishReason _resolveFinishReason(ga.GenerateContentResponse response) {
+    final candidates = response.candidates;
+    if (candidates == null) return FinishReason.unspecified;
+    for (final candidate in candidates) {
       final mapped = mapGoogleMediaFinishReason(candidate.finishReason);
       if (mapped != FinishReason.unspecified) return mapped;
     }
@@ -481,31 +499,29 @@ fpdf. For CSV files, use the csv module. Save the file and return it as output.
 
   @override
   void dispose() {
-    _service.close();
+    _client.close();
     _chatModel.dispose();
   }
 }
 
 /// Maps Google finish reasons to Dartantic finish reasons.
 @visibleForTesting
-FinishReason mapGoogleMediaFinishReason(gl.Candidate_FinishReason? reason) =>
+FinishReason mapGoogleMediaFinishReason(ga.FinishReason? reason) =>
     switch (reason) {
-      gl.Candidate_FinishReason.stop => FinishReason.stop,
-      gl.Candidate_FinishReason.maxTokens => FinishReason.length,
-      gl.Candidate_FinishReason.safety ||
-      gl.Candidate_FinishReason.blocklist ||
-      gl.Candidate_FinishReason.prohibitedContent ||
-      gl.Candidate_FinishReason.imageSafety ||
-      gl.Candidate_FinishReason.spii => FinishReason.contentFilter,
-      gl.Candidate_FinishReason.recitation => FinishReason.recitation,
+      ga.FinishReason.stop => FinishReason.stop,
+      ga.FinishReason.maxTokens => FinishReason.length,
+      ga.FinishReason.safety ||
+      ga.FinishReason.blocklist ||
+      ga.FinishReason.prohibitedContent ||
+      ga.FinishReason.imageSafety ||
+      ga.FinishReason.spii => FinishReason.contentFilter,
+      ga.FinishReason.recitation => FinishReason.recitation,
       _ => FinishReason.unspecified,
     };
 
 /// Validates and maps response modalities to Google enums.
 @visibleForTesting
-List<gl.GenerationConfig_Modality> mapGoogleModalities(
-  List<String>? modalities,
-) {
+List<ga.ResponseModality> mapGoogleModalities(List<String>? modalities) {
   const allowed = {'TEXT', 'IMAGE', 'AUDIO'};
   if (modalities == null) return const [];
 
@@ -521,10 +537,10 @@ List<gl.GenerationConfig_Modality> mapGoogleModalities(
   return normalized
       .map(
         (m) => switch (m) {
-          'TEXT' => gl.GenerationConfig_Modality.text,
-          'IMAGE' => gl.GenerationConfig_Modality.image,
-          'AUDIO' => gl.GenerationConfig_Modality.audio,
-          _ => gl.GenerationConfig_Modality.modalityUnspecified,
+          'TEXT' => ga.ResponseModality.text,
+          'IMAGE' => ga.ResponseModality.image,
+          'AUDIO' => ga.ResponseModality.audio,
+          _ => ga.ResponseModality.unspecified,
         },
       )
       .toList(growable: false);

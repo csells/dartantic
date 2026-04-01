@@ -1,6 +1,5 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:google_cloud_ai_generativelanguage_v1beta/generativelanguage.dart'
-    as gl;
+import 'package:googleai_dart/googleai_dart.dart' as ga;
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
@@ -10,7 +9,6 @@ import '../chat_models/google_chat/google_chat_model.dart';
 import '../chat_models/google_chat/google_chat_options.dart';
 import '../chat_models/google_chat/google_double_agent_orchestrator.dart';
 import '../chat_models/google_chat/google_server_side_tools.dart';
-import '../custom_http_client.dart';
 import '../embeddings_models/google_embeddings/google_embeddings_model.dart';
 import '../embeddings_models/google_embeddings/google_embeddings_model_options.dart';
 import '../media_gen_models/google/google_media_gen_model.dart';
@@ -147,21 +145,20 @@ class GoogleProvider
 
   @override
   Stream<ModelInfo> listModels() async* {
-    final apiKey = this.apiKey ?? getEnv(defaultApiKeyName);
+    final key = apiKey ?? getEnv(defaultApiKeyName);
     final resolvedBaseUrl = baseUrl ?? defaultBaseUrl;
-    final client = CustomHttpClient(
-      baseHttpClient: RetryHttpClient(inner: http.Client()),
-      baseUrl: resolvedBaseUrl,
-      headers: {'x-goog-api-key': apiKey, ...headers},
-      queryParams: const {},
+    final client = createGoogleAiClient(
+      apiKey: key,
+      configuredBaseUrl: resolvedBaseUrl,
+      extraHeaders: headers,
+      httpClient: RetryHttpClient(inner: http.Client()),
     );
-
-    final service = gl.ModelService(client: client);
     try {
       String? pageToken;
       do {
-        final response = await service.listModels(
-          gl.ListModelsRequest(pageSize: 1000, pageToken: pageToken ?? ''),
+        final response = await client.models.list(
+          pageSize: 1000,
+          pageToken: pageToken,
         );
         final models = response.models;
         _logger.info(
@@ -172,8 +169,9 @@ class GoogleProvider
           final info = _mapModel(model);
           if (info != null) yield info;
         }
-        pageToken = response.nextPageToken;
-      } while (pageToken.isNotEmpty);
+        final next = response.nextPageToken;
+        pageToken = (next != null && next.isNotEmpty) ? next : null;
+      } while (pageToken != null);
     } catch (error, stackTrace) {
       _logger.warning(
         'Failed to fetch models from Google API',
@@ -182,7 +180,7 @@ class GoogleProvider
       );
       rethrow;
     } finally {
-      service.close();
+      client.close();
     }
   }
 
@@ -208,16 +206,13 @@ class GoogleProvider
 
     final resolvedBaseUrl = baseUrl ?? defaultBaseUrl;
 
-    // Create the GenerativeService for native image generation (Imagen)
-    final httpClient = CustomHttpClient(
-      baseHttpClient: RetryHttpClient(inner: http.Client()),
-      baseUrl: resolvedBaseUrl,
-      headers: {'x-goog-api-key': apiKey!, ...headers},
-      queryParams: const {},
+    final mediaClient = createGoogleAiClient(
+      apiKey: apiKey!,
+      configuredBaseUrl: resolvedBaseUrl,
+      extraHeaders: headers,
+      httpClient: RetryHttpClient(inner: http.Client()),
     );
-    final service = gl.GenerativeService(client: httpClient);
 
-    // Create chat model with code execution for non-image file generation
     final chatOptions = GoogleChatModelOptions(
       temperature: resolvedOptions.temperature,
       topP: resolvedOptions.topP,
@@ -233,26 +228,27 @@ class GoogleProvider
       baseUrl: resolvedBaseUrl,
       headers: headers,
       tools: tools,
+      client: RetryHttpClient(inner: http.Client()),
       defaultOptions: chatOptions,
     );
 
     return GoogleMediaGenerationModel(
       name: modelName,
-      service: service,
+      mediaClient: mediaClient,
       chatModel: chatModel,
       defaultOptions: resolvedOptions,
     );
   }
 
-  ModelInfo? _mapModel(gl.Model model) {
+  ModelInfo? _mapModel(ga.Model model) {
     final id = model.name;
     if (id.isEmpty) {
       _logger.warning('Skipping model with missing name: $model');
       return null;
     }
 
-    final description = model.description;
-    final methods = model.supportedGenerationMethods
+    final description = model.description ?? '';
+    final methods = (model.supportedGenerationMethods ?? const <String>[])
         .map((method) => method.toLowerCase())
         .toList(growable: false);
 
@@ -281,7 +277,7 @@ class GoogleProvider
     }
 
     final lowerId = id.toLowerCase();
-    final lowerBase = model.baseModelId.toLowerCase();
+    final lowerBase = (model.baseModelId ?? '').toLowerCase();
     final lowerDescription = description.toLowerCase();
 
     bool contains(String value) =>
@@ -303,15 +299,15 @@ class GoogleProvider
     if (kinds.isEmpty) kinds.add(ModelKind.other);
 
     final extra = <String, dynamic>{
-      'baseModelId': model.baseModelId,
-      'version': model.version,
-      'contextWindow': model.inputTokenLimit,
-      'outputTokenLimit': model.outputTokenLimit,
-      'supportedGenerationMethods': model.supportedGenerationMethods,
-      if (model.temperature != null) 'temperature': model.temperature,
-      if (model.maxTemperature != null) 'maxTemperature': model.maxTemperature,
-      if (model.topP != null) 'topP': model.topP,
-      if (model.topK != null) 'topK': model.topK,
+      'baseModelId': ?model.baseModelId,
+      'version': ?model.version,
+      'contextWindow': ?model.inputTokenLimit,
+      'outputTokenLimit': ?model.outputTokenLimit,
+      'supportedGenerationMethods': ?model.supportedGenerationMethods,
+      'temperature': ?model.temperature,
+      'maxTemperature': ?model.maxTemperature,
+      'topP': ?model.topP,
+      'topK': ?model.topK,
     };
 
     return ModelInfo(

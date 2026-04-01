@@ -2,8 +2,7 @@ import 'dart:typed_data';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_ai/src/agent/media_response_accumulator.dart';
-import 'package:google_cloud_ai_generativelanguage_v1beta/generativelanguage.dart'
-    as gl;
+import 'package:googleai_dart/googleai_dart.dart' as ga;
 import 'package:test/test.dart';
 
 void main() {
@@ -29,9 +28,9 @@ void main() {
 
     test('mapGoogleModalities validates and maps values', () {
       expect(mapGoogleModalities(['text', 'IMAGE', 'audio']), [
-        gl.GenerationConfig_Modality.text,
-        gl.GenerationConfig_Modality.image,
-        gl.GenerationConfig_Modality.audio,
+        ga.ResponseModality.text,
+        ga.ResponseModality.image,
+        ga.ResponseModality.audio,
       ]);
 
       expect(() => mapGoogleModalities(['video']), throwsUnsupportedError);
@@ -39,55 +38,55 @@ void main() {
 
     test('mapGoogleMediaFinishReason maps known values', () {
       expect(
-        mapGoogleMediaFinishReason(gl.Candidate_FinishReason.stop),
+        mapGoogleMediaFinishReason(ga.FinishReason.stop),
         FinishReason.stop,
       );
       expect(
-        mapGoogleMediaFinishReason(gl.Candidate_FinishReason.maxTokens),
+        mapGoogleMediaFinishReason(ga.FinishReason.maxTokens),
         FinishReason.length,
       );
       expect(
-        mapGoogleMediaFinishReason(gl.Candidate_FinishReason.safety),
+        mapGoogleMediaFinishReason(ga.FinishReason.safety),
         FinishReason.contentFilter,
       );
       expect(
-        mapGoogleMediaFinishReason(gl.Candidate_FinishReason.recitation),
+        mapGoogleMediaFinishReason(ga.FinishReason.recitation),
         FinishReason.recitation,
       );
       expect(
-        mapGoogleMediaFinishReason(gl.Candidate_FinishReason.other),
+        mapGoogleMediaFinishReason(ga.FinishReason.other),
         FinishReason.unspecified,
       );
       expect(mapGoogleMediaFinishReason(null), FinishReason.unspecified);
     });
 
     test('maps fileData, inlineData, and metadata into media result', () {
-      final provider = Agent.getProvider('google');
-      final model = provider.createMediaModel() as GoogleMediaGenerationModel;
+      final model =
+          GoogleProvider(apiKey: 'test').createMediaModel()
+              as GoogleMediaGenerationModel;
 
-      final response = gl.GenerateContentResponse(
+      final response = ga.GenerateContentResponse(
         modelVersion: 'v1beta',
-        promptFeedback: gl.GenerateContentResponse_PromptFeedback(
-          blockReason:
-              gl.GenerateContentResponse_PromptFeedback_BlockReason.safety,
+        promptFeedback: const ga.PromptFeedback(
+          blockReason: ga.FinishReason.safety,
         ),
-        usageMetadata: gl.GenerateContentResponse_UsageMetadata(
+        usageMetadata: const ga.UsageMetadata(
           promptTokenCount: 1,
           candidatesTokenCount: 2,
           totalTokenCount: 3,
         ),
         candidates: [
-          gl.Candidate(
-            finishReason: gl.Candidate_FinishReason.stop,
-            safetyRatings: [
-              gl.SafetyRating(
-                category: gl.HarmCategory.harmCategoryHarassment,
-                probability: gl.SafetyRating_HarmProbability.medium,
+          ga.Candidate(
+            finishReason: ga.FinishReason.stop,
+            safetyRatings: const [
+              ga.SafetyRating(
+                category: ga.HarmCategory.harassment,
+                probability: ga.HarmProbability.medium,
               ),
             ],
-            citationMetadata: gl.CitationMetadata(
+            citationMetadata: const ga.CitationMetadata(
               citationSources: [
-                gl.CitationSource(
+                ga.CitationSource(
                   uri: 'https://example.com',
                   startIndex: 0,
                   endIndex: 10,
@@ -95,22 +94,19 @@ void main() {
                 ),
               ],
             ),
-            content: gl.Content(
+            content: ga.Content(
               role: 'model',
               parts: [
-                gl.Part(
-                  inlineData: gl.Blob(
-                    mimeType: 'image/png',
-                    data: Uint8List.fromList([1, 2, 3]),
-                  ),
+                ga.InlineDataPart(
+                  ga.Blob.fromBytes('image/png', Uint8List.fromList([1, 2, 3])),
                 ),
-                gl.Part(
-                  fileData: gl.FileData(
+                const ga.FileDataPart(
+                  ga.FileData(
                     fileUri: 'https://files.example.com/file.png',
                     mimeType: 'image/png',
                   ),
                 ),
-                gl.Part(text: 'caption'),
+                const ga.TextPart('caption'),
               ],
             ),
           ),
@@ -152,8 +148,9 @@ void main() {
     // With code execution enabled, non-image types are now supported
     // via the Python sandbox fallback.
     test('non-image mime types use code execution fallback', () async {
-      final provider = Agent.getProvider('google');
-      final model = provider.createMediaModel() as GoogleMediaGenerationModel;
+      final model =
+          GoogleProvider(apiKey: 'test').createMediaModel()
+              as GoogleMediaGenerationModel;
 
       // Non-image types should not throw - they use code execution
       // This test just verifies the model can be created and accepts PDF

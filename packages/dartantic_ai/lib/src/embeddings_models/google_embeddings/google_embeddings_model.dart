@@ -1,13 +1,10 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:google_cloud_ai_generativelanguage_v1beta/generativelanguage.dart'
-    as gl;
+import 'package:googleai_dart/googleai_dart.dart' as ga;
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 
-import '../../custom_http_client.dart';
 import '../../providers/google_api_utils.dart';
-import '../../retry_http_client.dart';
 import '../chunk_list.dart';
 import 'google_embeddings_model_options.dart';
 
@@ -24,11 +21,11 @@ class GoogleEmbeddingsModel
     super.dimensions,
     super.batchSize = 100,
     GoogleEmbeddingsModelOptions? options,
-  }) : _httpClient = CustomHttpClient(
-         baseHttpClient: client ?? RetryHttpClient(inner: http.Client()),
-         baseUrl: baseUrl,
-         headers: {'x-goog-api-key': apiKey, ...?headers},
-         queryParams: const {},
+  }) : _client = createGoogleAiClient(
+         apiKey: apiKey,
+         configuredBaseUrl: baseUrl,
+         extraHeaders: headers ?? const {},
+         httpClient: client,
        ),
        super(
          name: name ?? defaultName,
@@ -39,8 +36,6 @@ class GoogleEmbeddingsModel
                batchSize: batchSize,
              ),
        ) {
-    _service = gl.GenerativeService(client: _httpClient);
-
     _logger.info(
       'Created Google embeddings model: ${this.name} '
       '(dimensions: $dimensions, batchSize: $batchSize)',
@@ -52,12 +47,11 @@ class GoogleEmbeddingsModel
   /// The default model name.
   static const defaultName = 'gemini-embedding-001';
 
-  late final gl.GenerativeService _service;
-  final CustomHttpClient _httpClient;
+  final ga.GoogleAIClient _client;
 
-  /// The resolved base URL.
+  /// The configured API base URL (including version path when provided).
   @visibleForTesting
-  Uri get resolvedBaseUrl => _httpClient.baseUrl;
+  Uri get resolvedBaseUrl => Uri.parse(_client.config.baseUrl);
 
   @override
   Future<EmbeddingsResult> embedQuery(
@@ -72,15 +66,18 @@ class GoogleEmbeddingsModel
       '(length: $queryLength, dimensions: $effectiveDimensions)',
     );
 
-    final request = gl.EmbedContentRequest(
-      model: normalizeGoogleModelName(name),
-      content: gl.Content(parts: [gl.Part(text: query)]),
-      taskType: gl.TaskType.retrievalQuery,
+    final modelId = googleModelIdForApiRequest(name);
+    final request = ga.EmbedContentRequest(
+      content: ga.Content(parts: [ga.TextPart(query)]),
+      taskType: ga.TaskType.retrievalQuery,
       outputDimensionality: effectiveDimensions,
     );
 
-    final response = await _service.embedContent(request);
-    final embedding = response.embedding?.values ?? const <double>[];
+    final response = await _client.models.embedContent(
+      model: modelId,
+      request: request,
+    );
+    final embedding = response.embedding.values;
 
     // Google doesn't provide token usage, so estimate
     final estimatedTokens = (queryLength / 4).round();
@@ -142,7 +139,7 @@ class GoogleEmbeddingsModel
     );
 
     final allEmbeddings = <List<double>>[];
-    final modelName = normalizeGoogleModelName(name);
+    final modelId = googleModelIdForApiRequest(name);
 
     for (var i = 0; i < batches.length; i++) {
       final batch = batches[i];
@@ -155,21 +152,22 @@ class GoogleEmbeddingsModel
         '(${batch.length} texts, $batchCharacters chars)',
       );
 
-      final request = gl.BatchEmbedContentsRequest(
-        model: modelName,
+      final request = ga.BatchEmbedContentsRequest(
         requests: batch
             .map(
-              (text) => gl.EmbedContentRequest(
-                model: modelName,
-                content: gl.Content(parts: [gl.Part(text: text)]),
-                taskType: gl.TaskType.retrievalDocument,
+              (text) => ga.EmbedContentRequest(
+                content: ga.Content(parts: [ga.TextPart(text)]),
+                taskType: ga.TaskType.retrievalDocument,
                 outputDimensionality: effectiveDimensions,
               ),
             )
             .toList(growable: false),
       );
 
-      final response = await _service.batchEmbedContents(request);
+      final response = await _client.models.batchEmbedContents(
+        model: modelId,
+        request: request,
+      );
       final batchEmbeddings = response.embeddings
           .map((embedding) => embedding.values)
           .toList(growable: false);
@@ -212,6 +210,6 @@ class GoogleEmbeddingsModel
 
   @override
   void dispose() {
-    _service.close();
+    _client.close();
   }
 }

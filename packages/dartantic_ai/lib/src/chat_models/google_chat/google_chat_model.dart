@@ -1,15 +1,10 @@
 import 'package:dartantic_interface/dartantic_interface.dart';
-import 'package:google_cloud_ai_generativelanguage_v1beta/generativelanguage.dart'
-    as gl;
-import 'package:google_cloud_protobuf/protobuf.dart' as pb;
+import 'package:googleai_dart/googleai_dart.dart' as ga;
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 
-import '../../custom_http_client.dart';
 import '../../providers/google_api_utils.dart';
-import '../../retry_http_client.dart';
-import '../helpers/protobuf_value_helpers.dart';
 import 'google_chat_options.dart';
 import 'google_message_mappers.dart';
 import 'google_server_side_tools.dart';
@@ -29,30 +24,28 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
     bool enableThinking = false,
     super.defaultOptions = const GoogleChatModelOptions(),
   }) : _enableThinking = enableThinking,
-       _httpClient = CustomHttpClient(
-         baseHttpClient: client ?? RetryHttpClient(inner: http.Client()),
-         baseUrl: baseUrl,
-         headers: {'x-goog-api-key': apiKey, ...?headers},
-         queryParams: const {},
+       _client = createGoogleAiClient(
+         apiKey: apiKey,
+         configuredBaseUrl: baseUrl,
+         extraHeaders: headers ?? const {},
+         httpClient: client,
        ) {
     _logger.info(
       'Creating Google model: $name '
       'with ${super.tools?.length ?? 0} tools, temp: $temperature, '
       'thinking: $enableThinking',
     );
-    _service = gl.GenerativeService(client: _httpClient);
   }
 
   /// Logger for Google chat model operations.
   static final Logger _logger = Logger('dartantic.chat.models.google');
 
-  late final gl.GenerativeService _service;
-  final CustomHttpClient _httpClient;
+  final ga.GoogleAIClient _client;
   final bool _enableThinking;
 
   /// The resolved base URL.
   @visibleForTesting
-  Uri get resolvedBaseUrl => _httpClient.baseUrl;
+  Uri get resolvedBaseUrl => Uri.parse(_client.config.baseUrl);
 
   @override
   Stream<ChatResult<ChatMessage>> sendStream(
@@ -66,25 +59,28 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
       outputSchema: outputSchema,
     );
 
+    final modelId = googleModelIdForApiRequest(name);
     var chunkCount = 0;
     _logger.info(
       'Starting Google chat stream with ${messages.length} messages '
-      'for model: ${request.model}',
+      'for model: $modelId',
     );
 
-    return _service.streamGenerateContent(request).map((response) {
-      chunkCount++;
-      _logger.fine('Received Google stream chunk $chunkCount');
-      return response.toChatResult(request.model);
-    });
+    return _client.models
+        .streamGenerateContent(model: modelId, request: request)
+        .where(_streamResponseHasCandidates)
+        .map((response) {
+          chunkCount++;
+          _logger.fine('Received Google stream chunk $chunkCount');
+          return response.toChatResult(normalizeGoogleModelName(name));
+        });
   }
 
-  gl.GenerateContentRequest _buildRequest(
+  ga.GenerateContentRequest _buildRequest(
     List<ChatMessage> messages, {
     GoogleChatModelOptions? options,
     Schema? outputSchema,
   }) {
-    final normalizedModel = normalizeGoogleModelName(name);
     final safetySettings =
         (options?.safetySettings ?? defaultOptions.safetySettings)
             ?.toSafetySettings();
@@ -129,25 +125,23 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
         : (tools ?? const <Tool>[]);
 
     final toolConfig = _buildToolConfig(options);
+    final toolList = toolsToSend.toToolList(
+      enableCodeExecution: enableCodeExecution,
+      enableGoogleSearch: enableGoogleSearch,
+      enableUrlContext: enableUrlContext,
+    );
 
-    return gl.GenerateContentRequest(
-      model: normalizedModel,
+    return ga.GenerateContentRequest(
       systemInstruction: _extractSystemInstruction(messages),
       contents: contents,
-      safetySettings: safetySettings ?? const [],
+      safetySettings: safetySettings,
       generationConfig: generationConfig,
       toolConfig: toolConfig,
-      tools:
-          toolsToSend.toToolList(
-            enableCodeExecution: enableCodeExecution,
-            enableGoogleSearch: enableGoogleSearch,
-            enableUrlContext: enableUrlContext,
-          ) ??
-          const [],
+      tools: toolList,
     );
   }
 
-  gl.ToolConfig? _buildToolConfig(GoogleChatModelOptions? options) {
+  ga.ToolConfig? _buildToolConfig(GoogleChatModelOptions? options) {
     final mode =
         options?.functionCallingMode ?? defaultOptions.functionCallingMode;
     final allowedNames =
@@ -156,24 +150,25 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
     // If no mode specified and no allowed names, use default behavior
     if (mode == null && allowedNames == null) return null;
 
-    final glMode = switch (mode) {
-      GoogleFunctionCallingMode.auto => gl.FunctionCallingConfig_Mode.auto,
-      GoogleFunctionCallingMode.any => gl.FunctionCallingConfig_Mode.any,
-      GoogleFunctionCallingMode.none => gl.FunctionCallingConfig_Mode.none,
-      GoogleFunctionCallingMode.validated =>
-        gl.FunctionCallingConfig_Mode.validated,
-      null => gl.FunctionCallingConfig_Mode.auto, // default
+    final gaMode = switch (mode) {
+      GoogleFunctionCallingMode.auto => ga.FunctionCallingMode.auto,
+      GoogleFunctionCallingMode.any => ga.FunctionCallingMode.any,
+      GoogleFunctionCallingMode.none => ga.FunctionCallingMode.none,
+      GoogleFunctionCallingMode.validated => ga.FunctionCallingMode.validated,
+      null => ga.FunctionCallingMode.auto,
     };
 
-    return gl.ToolConfig(
-      functionCallingConfig: gl.FunctionCallingConfig(
-        mode: glMode,
-        allowedFunctionNames: allowedNames ?? const [],
+    return ga.ToolConfig(
+      functionCallingConfig: ga.FunctionCallingConfig(
+        mode: gaMode,
+        allowedFunctionNames: allowedNames == null || allowedNames.isEmpty
+            ? null
+            : allowedNames,
       ),
     );
   }
 
-  gl.GenerationConfig _buildGenerationConfig({
+  ga.GenerationConfig _buildGenerationConfig({
     GoogleChatModelOptions? options,
     Schema? outputSchema,
   }) {
@@ -186,7 +181,6 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
         ? 'application/json'
         : options?.responseMimeType ?? defaultOptions.responseMimeType;
 
-    // Use native JSON Schema support via responseJsonSchema
     final responseJsonSchema = _resolveResponseJsonSchema(
       outputSchema: outputSchema,
       responseSchema: options?.responseSchema ?? defaultOptions.responseSchema,
@@ -194,7 +188,7 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
 
     final thinkingConfig = _buildThinkingConfig(options);
 
-    return gl.GenerationConfig(
+    return ga.GenerationConfig(
       candidateCount: options?.candidateCount ?? defaultOptions.candidateCount,
       stopSequences: stopSequences,
       maxOutputTokens:
@@ -203,13 +197,13 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
           temperature ?? options?.temperature ?? defaultOptions.temperature,
       topP: options?.topP ?? defaultOptions.topP,
       topK: options?.topK ?? defaultOptions.topK,
-      responseMimeType: responseMimeType ?? '',
+      responseMimeType: responseMimeType,
       responseJsonSchema: responseJsonSchema,
       thinkingConfig: thinkingConfig,
     );
   }
 
-  gl.ThinkingConfig? _buildThinkingConfig(GoogleChatModelOptions? options) {
+  ga.ThinkingConfig? _buildThinkingConfig(GoogleChatModelOptions? options) {
     if (!_enableThinking) return null;
 
     // Default to dynamic thinking (-1) if no budget specified
@@ -218,32 +212,26 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
         defaultOptions.thinkingBudgetTokens ??
         -1;
 
-    return gl.ThinkingConfig(
+    return ga.ThinkingConfig(
       includeThoughts: true,
       thinkingBudget: thinkingBudget,
     );
   }
 
-  /// Converts JSON Schema to protobuf Value for native Gemini JSON Schema
-  /// support. This uses the new responseJsonSchema API which accepts standard
-  /// JSON Schema directly, eliminating the need for custom schema conversion.
-  pb.Value? _resolveResponseJsonSchema({
+  Map<String, dynamic>? _resolveResponseJsonSchema({
     Schema? outputSchema,
     Map<String, dynamic>? responseSchema,
   }) {
     if (outputSchema != null) {
-      final schemaMap = Map<String, dynamic>.from(outputSchema.value);
-      return ProtobufValueHelpers.valueFromJson(schemaMap);
+      return Map<String, dynamic>.from(outputSchema.value);
     }
     if (responseSchema != null) {
-      return ProtobufValueHelpers.valueFromJson(
-        Map<String, dynamic>.from(responseSchema),
-      );
+      return Map<String, dynamic>.from(responseSchema);
     }
     return null;
   }
 
-  gl.Content? _extractSystemInstruction(List<ChatMessage> messages) {
+  ga.Content? _extractSystemInstruction(List<ChatMessage> messages) {
     for (final message in messages) {
       if (message.role == ChatMessageRole.system) {
         final instructions = message.parts
@@ -255,7 +243,7 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
         if (instructions.isEmpty) {
           return null;
         }
-        return gl.Content(parts: [gl.Part(text: instructions)]);
+        return ga.Content(parts: [ga.TextPart(instructions)]);
       }
     }
     return null;
@@ -263,6 +251,11 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
 
   @override
   void dispose() {
-    _service.close();
+    _client.close();
   }
+}
+
+bool _streamResponseHasCandidates(ga.GenerateContentResponse response) {
+  final candidates = response.candidates;
+  return candidates != null && candidates.isNotEmpty;
 }

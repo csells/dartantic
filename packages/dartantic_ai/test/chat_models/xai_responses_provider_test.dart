@@ -74,6 +74,17 @@ void main() {
       );
     });
 
+    test('forwards maxTurns to chat model default options', () {
+      final provider = XAIResponsesProvider(apiKey: 'test-key');
+      final model =
+          provider.createChatModel(
+                options: const XAIResponsesChatModelOptions(maxTurns: 4),
+              )
+              as XAIResponsesChatModel;
+
+      expect(model.defaultOptions.maxTurns, 4);
+    });
+
     test('enableThinking preserves existing include entries', () {
       final provider = XAIResponsesProvider(apiKey: 'test-key');
       final model =

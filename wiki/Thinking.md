@@ -355,7 +355,7 @@ final agentDynamic = Agent(
 
 #### Implementation Details
 
-**SDK Support**: `google_cloud_ai_generativelanguage_v1beta` v0.1.2+ includes full thinking support
+**SDK Support**: `googleai_dart` v5.0.0+ includes full thinking support
 
 **Content Parts**: Google includes thinking as regular text parts with a `thought` boolean flag:
 

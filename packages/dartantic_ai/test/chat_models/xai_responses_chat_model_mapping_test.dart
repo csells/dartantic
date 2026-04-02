@@ -4,6 +4,24 @@ import 'package:test/test.dart';
 
 void main() {
   group('XAIResponsesChatModel option mapping', () {
+    test('merges max_turns into request body when maxTurns is set', () {
+      final body = <String, dynamic>{'model': 'grok-test'};
+      XAIResponsesChatModel.mergeXaiResponsesRequestBodyForTesting(
+        body,
+        const XAIResponsesChatModelOptions(maxTurns: 7),
+      );
+      expect(body['max_turns'], 7);
+    });
+
+    test('omits max_turns when maxTurns is null', () {
+      final body = <String, dynamic>{'model': 'grok-test'};
+      XAIResponsesChatModel.mergeXaiResponsesRequestBodyForTesting(
+        body,
+        const XAIResponsesChatModelOptions(),
+      );
+      expect(body.containsKey('max_turns'), isFalse);
+    });
+
     test('maps xAI options to internal Responses options', () {
       final mapped = XAIResponsesChatModel.toOpenAIOptionsForTesting(
         const XAIResponsesChatModelOptions(
@@ -146,8 +164,7 @@ void main() {
       expect(tools, isEmpty);
     });
 
-    test('serializes XAIXSearchConfig parameters into x_search tool entry',
-        () {
+    test('serializes XAIXSearchConfig parameters into x_search tool entry', () {
       final tools = XAIResponsesChatModel.applyXSearchToolForTesting(
         <dynamic>[],
         const XAIResponsesChatModelOptions(
@@ -178,9 +195,7 @@ void main() {
         <dynamic>[],
         const XAIResponsesChatModelOptions(
           serverSideTools: {XAIServerSideTool.xSearch},
-          xSearchConfig: XAIXSearchConfig(
-            excludedXHandles: ['spambot'],
-          ),
+          xSearchConfig: XAIXSearchConfig(excludedXHandles: ['spambot']),
         ),
       );
 

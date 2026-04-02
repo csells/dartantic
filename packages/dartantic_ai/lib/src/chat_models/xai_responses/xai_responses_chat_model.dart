@@ -71,6 +71,13 @@ class XAIResponsesChatModel extends ChatModel<XAIResponsesChatModelOptions> {
     XAIResponsesChatModelOptions? options,
   ) => _applyXSearchStatic(existingTools, options);
 
+  /// Merges xAI-only top-level fields into a Responses `POST /responses` body.
+  @visibleForTesting
+  static void mergeXaiResponsesRequestBodyForTesting(
+    Map<String, dynamic> requestBody,
+    XAIResponsesChatModelOptions options,
+  ) => _mergeXaiResponsesRequestBodyStatic(requestBody, options);
+
   List<openai.ResponseTool> _buildFunctionTools() {
     final registeredTools = tools;
     if (registeredTools == null || registeredTools.isEmpty) {
@@ -179,6 +186,8 @@ class XAIResponsesChatModel extends ChatModel<XAIResponsesChatModelOptions> {
       truncation: invocation.parameters.truncation,
     ).toJson();
 
+    _mergeXaiResponsesRequestBodyStatic(requestBody, xaiOptions);
+
     final mcpTools = _buildMcpToolsStatic(xaiOptions.mcpTools);
     if (mcpTools.isNotEmpty) {
       final existing = requestBody['tools'] as List<dynamic>? ?? <dynamic>[];
@@ -198,6 +207,16 @@ class XAIResponsesChatModel extends ChatModel<XAIResponsesChatModelOptions> {
       endpoint: '/responses',
       body: requestBody,
     );
+  }
+
+  static void _mergeXaiResponsesRequestBodyStatic(
+    Map<String, dynamic> requestBody,
+    XAIResponsesChatModelOptions options,
+  ) {
+    final maxTurns = options.maxTurns;
+    if (maxTurns != null) {
+      requestBody['max_turns'] = maxTurns;
+    }
   }
 
   static List<dynamic> _applyXSearchStatic(

@@ -811,8 +811,15 @@ for (final msg in history) {
 
 ## Google Gemini Provider
 
-Google Gemini provides server-side tools through the Gemini API, offering code
-execution and Google Search grounding capabilities.
+Google Gemini exposes several provider-executed capabilities:
+
+- **Enum-based tools** (`GoogleServerSideTool` via `serverSideTools`): code
+  execution, Google Search grounding, and URL context.
+- **Separate option fields** on `GoogleChatModelOptions` (not enum members):
+  semantic **File Search** against configured file search stores, and **Maps
+  grounding** for geospatial context. Typed-output orchestration omits these
+  alongside user tools in the same way as other server-side tools (double-agent
+  phase applies when needed).
 
 ### Configuration
 
@@ -830,12 +837,18 @@ final agent = Agent(
 );
 ```
 
-### Supported Tools
+Use **`fileSearch`** with `GoogleFileSearchToolConfig` (store resource names,
+optional `topK` and metadata filter) and **`mapsGrounding`** with
+`GoogleMapsGroundingOptions` (optional widget context) for the non-enum
+capabilities described above.
+
+### Supported Tools (`GoogleServerSideTool`)
 
 | Tool | Enum Value | Description |
 |------|------------|-------------|
 | Code Execution | `codeExecution` | Python sandbox for code execution |
 | Google Search | `googleSearch` | Web search with grounding |
+| URL Context | `urlContext` | Retrieve context from URLs allowed in the request |
 
 ### Provider-Specific Details
 
@@ -857,7 +870,18 @@ Google Search provides web grounding for responses:
 
 - Results are integrated into the model's response
 - Grounding metadata includes source URLs and citations
-- No separate metadata key - grounding is embedded in response
+- When the API returns grounding information, Dartantic may attach it on the
+  **model message** as metadata under the key `grounding_metadata` (JSON
+  aligned with the API’s grounding metadata), so callers can read citations,
+  Maps widget context tokens (when Maps grounding is enabled), and related
+  fields without relying only on inline response text
+
+#### File Search and Maps Grounding (options, not enum tools)
+
+- **File Search**: Configure `fileSearch` with at least one file search store
+  resource name; the model retrieves chunks from those stores.
+- **Maps grounding**: Configure `mapsGrounding`; optional `enableWidget`
+  requests widget context in grounding metadata where supported.
 
 ### Example Usage
 

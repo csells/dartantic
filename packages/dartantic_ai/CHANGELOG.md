@@ -1,3 +1,37 @@
+## 3.4.0
+
+### Dependencies
+
+- **Google Generative AI SDK** — Replaced
+  `google_cloud_ai_generativelanguage_v1beta` with
+  [`googleai_dart`](https://pub.dev/packages/googleai_dart) ^5.0.1
+  ([#107](https://github.com/csells/dartantic/pull/107)). Chat, embeddings, and
+  media generation now use this client; user-facing Dartantic APIs are unchanged
+  aside from new options below.
+
+### Added
+
+- **Google (Gemini) — thinking levels** — `GoogleChatModelOptions.thinkingLevel`
+  (`GoogleThinkingLevel`: minimal, low, medium, high) for Gemini 3+ models that
+  support thinking depth. Do not combine with `thinkingBudgetTokens`; the API
+  rejects both. ([#108](https://github.com/csells/dartantic/pull/108))
+- **Google (Gemini) — File Search** — `GoogleChatModelOptions.fileSearch` with
+  `GoogleFileSearchToolConfig` (file search store names, optional `topK` and
+  `metadataFilter`) for semantic retrieval from configured stores.
+  ([#108](https://github.com/csells/dartantic/pull/108))
+- **Google (Gemini) — Maps grounding** — `GoogleChatModelOptions.mapsGrounding`
+  with `GoogleMapsGroundingOptions` (optional `enableWidget` for widget context
+  in grounding metadata when supported).
+  ([#108](https://github.com/csells/dartantic/pull/108))
+- **Google (Gemini) — grounding metadata** — Model messages from Gemini can
+  include `grounding_metadata` in message metadata (JSON from the API’s
+  grounding metadata), including for Maps when enabled.
+  ([#108](https://github.com/csells/dartantic/pull/108))
+- **xAI Responses — `max_turns`** — `XAIResponsesChatModelOptions.maxTurns`
+  maps to the API’s `max_turns` (cap on assistant / server-side tool iterations
+  per request). See xAI’s tool documentation for interaction with client- vs
+  server-side tools. ([#106](https://github.com/csells/dartantic/pull/106))
+
 ## 3.3.0
 
 ### Dependencies

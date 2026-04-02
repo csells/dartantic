@@ -30,7 +30,7 @@ Thinking (also called "extended reasoning" or "chain-of-thought") is a capabilit
 | OpenAI Responses | Reasoning Summary | ✅ Implemented | Agent-level `enableThinking` + optional `reasoningSummary` |
 | xAI Responses | Reasoning Summary | ✅ Implemented | Agent-level `enableThinking` |
 | Anthropic | Extended Thinking | ✅ Implemented | Agent-level `enableThinking` + optional `thinkingBudgetTokens` |
-| Google | Extended Thinking | ✅ Implemented | Agent-level `enableThinking` + optional `thinkingBudgetTokens` |
+| Google | Extended Thinking | ✅ Implemented | `enableThinking`; `thinkingBudgetTokens` **or** `thinkingLevel` (Gemini 3+), not both |
 | Others | N/A | ❌ Not supported | - |
 
 ## Generic Architecture
@@ -321,7 +321,7 @@ See `anthropic_message_mappers.dart` for the complete implementation.
 
 ### Google
 
-Google's Gemini API supports extended thinking through the `thinkingConfig` parameter with explicit token budget control and dynamic thinking modes.
+Google's Gemini API supports extended thinking through the `thinkingConfig` parameter with explicit token budget control and dynamic thinking modes. **Gemini 3 and later** also support **thinking levels** (`GoogleThinkingLevel`: minimal, low, medium, high) via `GoogleChatModelOptions.thinkingLevel`. The API does **not** allow **`thinkingBudgetTokens`** and **`thinkingLevel`** in the same request; choose one. Set `thinkingLevel` when you need depth presets; keep using `enableThinking: true` if you also want thought summaries as `ThinkingPart` in addition to level control.
 
 #### Configuration
 
@@ -414,13 +414,17 @@ See `google_message_mappers.dart` for the complete implementation.
 - Set to -1 for dynamic thinking (recommended)
 - Set to 0 to disable thinking
 
+**Thinking levels (Gemini 3+)**:
+- Optional `GoogleChatModelOptions.thinkingLevel` when the model uses levels instead of (or in addition to) token budget
+- Mutually exclusive with `thinkingBudgetTokens` in a single request
+
 ## Provider Comparison
 
 | Feature | OpenAI Responses | Anthropic | Google |
 |---------|-----------------|-----------|---------|
 | **Enable Method** | Agent `enableThinking` parameter | Agent `enableThinking` parameter | Agent `enableThinking` parameter |
 | **ChatModel Storage** | No (merged into options at Provider level) | Yes (stored in ChatModel field) | Yes (stored in ChatModel field) |
-| **Fine-Tuning Options** | `reasoningSummary`, `reasoningEffort` | `thinkingBudgetTokens` | `thinkingBudgetTokens` |
+| **Fine-Tuning Options** | `reasoningSummary`, `reasoningEffort` | `thinkingBudgetTokens` | `thinkingBudgetTokens` **or** `thinkingLevel` (Gemini 3+), not both |
 | **Default Behavior** | `reasoningSummary: detailed` when enabled | 4096 token budget | Dynamic (-1, model decides) |
 | **Token Budget Control** | No (model-controlled) | Yes (4096 default, min 1024) | Yes (dynamic default, model-specific ranges) |
 | **Dynamic Budget** | No | No | Yes (-1 for model-determined) |

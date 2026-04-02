@@ -14,7 +14,7 @@ dependencies:
   anthropic_sdk_dart: ^1.2.0
   collection: ^1.19.1
   dartantic_interface: ^4.0.0
-  googleai_dart: ^5.0.0
+  googleai_dart: ^5.0.1
   html: ^0.15.6
   http: ^1.6.0
   logging: ^1.3.0

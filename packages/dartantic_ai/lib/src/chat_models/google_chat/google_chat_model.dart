@@ -106,7 +106,9 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
 
     final resolvedFileSearch = options?.fileSearch ?? defaultOptions.fileSearch;
     ga.FileSearch? fileSearchForRequest;
-    if (outputSchema == null && resolvedFileSearch != null) {
+    // File search is supported in Gemini 3+ and can be used with outputSchema
+    // so we do not remove it when outputSchema is provided.
+    if (resolvedFileSearch != null) {
       if (resolvedFileSearch.fileSearchStoreNames.isEmpty) {
         throw ArgumentError(
           'GoogleFileSearchToolConfig.fileSearchStoreNames must not be empty.',

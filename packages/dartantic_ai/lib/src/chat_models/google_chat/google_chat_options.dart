@@ -131,7 +131,7 @@ class GoogleChatModelOptions extends ChatModelOptions {
   /// 3+).
   ///
   /// This is sent to the API whenever set; it does not require
-  /// `Agent(..., enableThinking: true)`. Enable enableThinking as well
+  /// `Agent(..., enableThinking: true)`. Set `enableThinking: true` as well
   /// if you want thought summaries (`ThinkingPart`) in addition to level
   /// control.
   ///

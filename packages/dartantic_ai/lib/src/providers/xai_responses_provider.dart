@@ -120,6 +120,7 @@ class XAIResponsesProvider
         webSearchConfig: options?.webSearchConfig,
         codeInterpreterConfig: options?.codeInterpreterConfig,
         mcpTools: options?.mcpTools,
+        maxTurns: options?.maxTurns,
       ),
     );
   }

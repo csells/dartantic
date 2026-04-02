@@ -25,6 +25,7 @@ class XAIResponsesChatModelOptions extends ChatModelOptions {
     this.codeInterpreterConfig,
     this.xSearchConfig,
     this.mcpTools,
+    this.maxTurns,
   });
 
   /// Nucleus sampling parameter.
@@ -83,6 +84,13 @@ class XAIResponsesChatModelOptions extends ChatModelOptions {
 
   /// Configuration for one or more remote MCP tools.
   final List<XAIMcpToolConfig>? mcpTools;
+
+  /// Maximum assistant / server-side tool iterations for a single Responses
+  /// request (`max_turns` in the xAI API).
+  ///
+  /// See xAI tool documentation for behavior with client-side vs server-side
+  /// tools.
+  final int? maxTurns;
 }
 
 /// Reasoning effort levels for xAI Responses models.

@@ -25,6 +25,9 @@ class GoogleChatModelOptions extends ChatModelOptions {
     this.serverSideTools,
     this.functionCallingMode,
     this.allowedFunctionNames,
+    this.thinkingLevel,
+    this.fileSearch,
+    this.mapsGrounding,
   });
 
   /// The model to use (e.g. 'gemini-1.5-pro').
@@ -123,6 +126,35 @@ class GoogleChatModelOptions extends ChatModelOptions {
   /// )
   /// ```
   final int? thinkingBudgetTokens;
+
+  /// Optional thinking depth for models that use thinking levels (e.g. Gemini
+  /// 3+).
+  ///
+  /// This is sent to the API whenever set; it does not require
+  /// `Agent(..., enableThinking: true)`. Enable enableThinking as well
+  /// if you want thought summaries (`ThinkingPart`) in addition to level
+  /// control.
+  ///
+  /// Do not set [thinkingBudgetTokens] when this is set; the API rejects using
+  /// both together.
+  final GoogleThinkingLevel? thinkingLevel;
+
+  /// Enables the Gemini File Search tool against the given file search stores.
+  ///
+  /// Omit or set to null to disable. When set,
+  /// [GoogleFileSearchToolConfig] must list at least one store name (e.g.
+  /// `fileSearchStores/my-store-id`).
+  ///
+  /// Like other server-side tools, this is omitted when a typed output schema
+  /// is used in the same request (double-agent phase handles that separately).
+  final GoogleFileSearchToolConfig? fileSearch;
+
+  /// Enables Google Maps grounding for geospatial context in responses.
+  ///
+  /// Omit or set to null to disable. A non-null value enables the tool; use
+  /// [GoogleMapsGroundingOptions.enableWidget] to request widget context
+  /// tokens in grounding metadata when supported.
+  final GoogleMapsGroundingOptions? mapsGrounding;
 
   /// The server-side tools to enable.
   final Set<GoogleServerSideTool>? serverSideTools;
@@ -245,4 +277,55 @@ enum GoogleFunctionCallingMode {
   /// limited to those functions. Otherwise, any provided function may be
   /// called.
   validated,
+}
+
+/// Reasoning depth for Gemini models that support thinking levels (e.g. Gemini
+/// 3).
+///
+/// See Gemini API documentation for model-specific support.
+enum GoogleThinkingLevel {
+  /// Minimal thinking tokens (e.g. Gemini 3 Flash).
+  minimal,
+
+  /// Lower latency and cost; simple tasks.
+  low,
+
+  /// Balanced (e.g. Gemini 3 Flash).
+  medium,
+
+  /// Deeper reasoning; default for many Gemini 3 models.
+  high,
+}
+
+/// Configuration for Gemini File Search (semantic retrieval from file stores).
+@immutable
+class GoogleFileSearchToolConfig {
+  /// Creates file search tool configuration.
+  ///
+  /// [fileSearchStoreNames] must be non-empty when passed to the API.
+  const GoogleFileSearchToolConfig({
+    required this.fileSearchStoreNames,
+    this.topK,
+    this.metadataFilter,
+  });
+
+  /// Resource names of file search stores to query.
+  final List<String> fileSearchStoreNames;
+
+  /// Optional number of semantic chunks to retrieve.
+  final int? topK;
+
+  /// Optional metadata filter expression for documents and chunks.
+  final String? metadataFilter;
+}
+
+/// Options for Google Maps grounding on Gemini.
+@immutable
+class GoogleMapsGroundingOptions {
+  /// Creates Maps grounding options.
+  const GoogleMapsGroundingOptions({this.enableWidget});
+
+  /// When true, responses may include a widget context token in grounding
+  /// metadata for rendering a Maps widget.
+  final bool? enableWidget;
 }

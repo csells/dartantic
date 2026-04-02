@@ -8,6 +8,7 @@ import '../../providers/google_api_utils.dart';
 import 'google_chat_options.dart';
 import 'google_message_mappers.dart';
 import 'google_server_side_tools.dart';
+import 'google_thinking_config_mapper.dart';
 
 /// Wrapper around [Google AI for Developers](https://ai.google.dev/) API
 /// (aka Gemini API).
@@ -103,6 +104,28 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
         outputSchema == null &&
         serverSideTools.contains(GoogleServerSideTool.urlContext);
 
+    final resolvedFileSearch = options?.fileSearch ?? defaultOptions.fileSearch;
+    ga.FileSearch? fileSearchForRequest;
+    if (outputSchema == null && resolvedFileSearch != null) {
+      if (resolvedFileSearch.fileSearchStoreNames.isEmpty) {
+        throw ArgumentError(
+          'GoogleFileSearchToolConfig.fileSearchStoreNames must not be empty.',
+        );
+      }
+      fileSearchForRequest = ga.FileSearch(
+        fileSearchStoreNames: resolvedFileSearch.fileSearchStoreNames,
+        topK: resolvedFileSearch.topK,
+        metadataFilter: resolvedFileSearch.metadataFilter,
+      );
+    }
+
+    final resolvedMapsGrounding =
+        options?.mapsGrounding ?? defaultOptions.mapsGrounding;
+    final googleMapsForRequest =
+        outputSchema == null && resolvedMapsGrounding != null
+        ? ga.GoogleMaps(enableWidget: resolvedMapsGrounding.enableWidget)
+        : null;
+
     final generationConfig = _buildGenerationConfig(
       options: options,
       outputSchema: outputSchema,
@@ -129,6 +152,8 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
       enableCodeExecution: enableCodeExecution,
       enableGoogleSearch: enableGoogleSearch,
       enableUrlContext: enableUrlContext,
+      fileSearch: fileSearchForRequest,
+      googleMaps: googleMapsForRequest,
     );
 
     return ga.GenerateContentRequest(
@@ -204,17 +229,15 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
   }
 
   ga.ThinkingConfig? _buildThinkingConfig(GoogleChatModelOptions? options) {
-    if (!_enableThinking) return null;
+    final thinkingLevel =
+        options?.thinkingLevel ?? defaultOptions.thinkingLevel;
+    final thinkingBudgetTokens =
+        options?.thinkingBudgetTokens ?? defaultOptions.thinkingBudgetTokens;
 
-    // Default to dynamic thinking (-1) if no budget specified
-    final thinkingBudget =
-        options?.thinkingBudgetTokens ??
-        defaultOptions.thinkingBudgetTokens ??
-        -1;
-
-    return ga.ThinkingConfig(
-      includeThoughts: true,
-      thinkingBudget: thinkingBudget,
+    return buildGoogleGenerationThinkingConfig(
+      enableThinking: _enableThinking,
+      thinkingBudgetTokens: thinkingBudgetTokens,
+      thinkingLevel: thinkingLevel,
     );
   }
 

@@ -115,6 +115,9 @@ class GoogleProvider
         responseSchema: options?.responseSchema,
         safetySettings: options?.safetySettings,
         thinkingBudgetTokens: options?.thinkingBudgetTokens,
+        thinkingLevel: options?.thinkingLevel,
+        fileSearch: options?.fileSearch,
+        mapsGrounding: options?.mapsGrounding,
         serverSideTools: options?.serverSideTools,
       ),
     );

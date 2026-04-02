@@ -235,6 +235,11 @@ extension MessageListMapper on List<ChatMessage> {
 /// Extension on [ga.GenerateContentResponse] to convert to [ChatResult].
 extension GenerateContentResponseMapper on ga.GenerateContentResponse {
   /// Converts this response to a [ChatResult].
+  ///
+  /// Populates [ChatResult.metadata] with `model`, optional `model_version`,
+  /// `block_reason`, `safety_ratings`, `citation_metadata`,
+  /// `grounding_metadata` (JSON from [ga.GroundingMetadata.toJson] when
+  /// present and non-empty), and code-execution fields when applicable.
   ChatResult<ChatMessage> toChatResult(String model) {
     final candidateList = candidates;
     if (candidateList == null || candidateList.isEmpty) {
@@ -380,6 +385,14 @@ extension GenerateContentResponseMapper on ga.GenerateContentResponse {
           .toList(growable: false);
     }
 
+    final grounding = candidate.groundingMetadata;
+    if (grounding != null) {
+      final groundingJson = grounding.toJson();
+      if (groundingJson.isNotEmpty) {
+        metadata['grounding_metadata'] = groundingJson;
+      }
+    }
+
     if (executableCodeParts.isNotEmpty) {
       metadata['executable_code'] = executableCodeParts
           .map((code) => code.toJson())
@@ -473,6 +486,8 @@ extension ChatToolListMapper on List<Tool>? {
     required bool enableCodeExecution,
     required bool enableGoogleSearch,
     required bool enableUrlContext,
+    ga.FileSearch? fileSearch,
+    ga.GoogleMaps? googleMaps,
   }) {
     final hasTools = this != null && this!.isNotEmpty;
     _logger.fine(
@@ -480,6 +495,8 @@ extension ChatToolListMapper on List<Tool>? {
       'enableCodeExecution=$enableCodeExecution, '
       'enableGoogleSearch=$enableGoogleSearch, '
       'enableUrlContext=$enableUrlContext, '
+      'fileSearch=${fileSearch != null}, '
+      'googleMaps=${googleMaps != null}, '
       'toolCount=${this?.length ?? 0}',
     );
 
@@ -502,7 +519,9 @@ extension ChatToolListMapper on List<Tool>? {
     if ((functionDeclarations == null || functionDeclarations.isEmpty) &&
         codeExecution == null &&
         googleSearch == null &&
-        urlContext == null) {
+        urlContext == null &&
+        fileSearch == null &&
+        googleMaps == null) {
       return null;
     }
 
@@ -512,6 +531,8 @@ extension ChatToolListMapper on List<Tool>? {
         codeExecution: codeExecution,
         googleSearch: googleSearch,
         urlContext: urlContext,
+        fileSearch: fileSearch,
+        googleMaps: googleMaps,
       ),
     ];
   }

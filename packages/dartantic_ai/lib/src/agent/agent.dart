@@ -285,7 +285,9 @@ class Agent {
     // Detect if server-side tools are configured (e.g., Google Search)
     final hasServerSideTools = switch (chatModelOptions) {
       final GoogleChatModelOptions opts =>
-        opts.serverSideTools?.isNotEmpty ?? false,
+        (opts.serverSideTools?.isNotEmpty ?? false) ||
+            opts.fileSearch != null ||
+            opts.mapsGrounding != null,
       _ => false,
     };
 

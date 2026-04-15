@@ -14,6 +14,8 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:googleai_dart/googleai_dart.dart' as ga;
 import 'package:test/test.dart';
 
+import 'test_tools.dart';
+
 /// Display name for the shared E2E File Search store (stable across runs).
 const String kDartanticE2eStoreDisplayName = 'dartantic_ai_e2e_file_search';
 
@@ -208,6 +210,36 @@ void main() {
 
         expect(result.output, contains('2011')); // Or 2013
         expect(result.output, contains('Dart'));
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
+
+    test(
+      'Google Search with user tools: ToolConfig includes server invocations',
+      () async {
+        // Gemini rejects mixed built-in tools + function declarations unless
+        // tool_config.include_server_side_tool_invocations is set.
+        // GoogleChatModel sets that when both are present.
+        final agent = Agent(
+          'google:gemini-3-flash-preview',
+          tools: [stringTool],
+          chatModelOptions: const GoogleChatModelOptions(
+            serverSideTools: {GoogleServerSideTool.googleSearch},
+          ),
+        );
+
+        final result = await agent.send(
+          'Use the string_tool with input "server-side-plus-functions-e2e"',
+        );
+
+        final toolResults = result.messages
+            .expand((msg) => msg.toolResults)
+            .toList();
+        expect(toolResults, hasLength(1));
+        expect(
+          toolResults.first.result,
+          equals('String result: server-side-plus-functions-e2e'),
+        );
       },
       timeout: const Timeout(Duration(minutes: 2)),
     );

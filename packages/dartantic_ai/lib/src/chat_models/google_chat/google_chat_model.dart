@@ -149,7 +149,6 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
         ? const <Tool>[]
         : (tools ?? const <Tool>[]);
 
-    final toolConfig = _buildToolConfig(options);
     final toolList = toolsToSend.toToolList(
       enableCodeExecution: enableCodeExecution,
       enableGoogleSearch: enableGoogleSearch,
@@ -157,6 +156,7 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
       fileSearch: fileSearchForRequest,
       googleMaps: googleMapsForRequest,
     );
+    final toolConfig = _buildToolConfig(options, toolList);
 
     return ga.GenerateContentRequest(
       systemInstruction: _extractSystemInstruction(messages),
@@ -168,14 +168,35 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
     );
   }
 
-  ga.ToolConfig? _buildToolConfig(GoogleChatModelOptions? options) {
+  ga.ToolConfig? _buildToolConfig(
+    GoogleChatModelOptions? options,
+    List<ga.Tool>? toolList,
+  ) {
     final mode =
         options?.functionCallingMode ?? defaultOptions.functionCallingMode;
     final allowedNames =
         options?.allowedFunctionNames ?? defaultOptions.allowedFunctionNames;
 
+    final includeServerSideToolInvocations =
+        toolList != null &&
+        toolList.isNotEmpty &&
+        toolList.any(
+          (tool) =>
+              tool.functionDeclarations != null &&
+              tool.functionDeclarations!.isNotEmpty &&
+              (tool.codeExecution != null ||
+                  tool.googleSearch != null ||
+                  tool.urlContext != null ||
+                  tool.fileSearch != null ||
+                  tool.googleMaps != null),
+        );
+
     // If no mode specified and no allowed names, use default behavior
-    if (mode == null && allowedNames == null) return null;
+    if (mode == null &&
+        allowedNames == null &&
+        !includeServerSideToolInvocations) {
+      return null;
+    }
 
     final gaMode = switch (mode) {
       GoogleFunctionCallingMode.auto => ga.FunctionCallingMode.auto,
@@ -186,6 +207,7 @@ class GoogleChatModel extends ChatModel<GoogleChatModelOptions> {
     };
 
     return ga.ToolConfig(
+      includeServerSideToolInvocations: includeServerSideToolInvocations,
       functionCallingConfig: ga.FunctionCallingConfig(
         mode: gaMode,
         allowedFunctionNames: allowedNames == null || allowedNames.isEmpty

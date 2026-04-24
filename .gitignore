@@ -41,3 +41,8 @@ AGENT.md
 
 # FVM Version Cache
 .fvm/
+
+# Gas City
+.beads/*
+!.beads/config.yaml
+!.beads/metadata.json

@@ -1,3 +1,14 @@
+## 3.4.1
+
+### Fixed
+
+- **Google (Gemini) — server-side tools with client function tools** — Requests
+  that combine built-in server-side tools (Google Search, URL context, File
+  Search, Maps grounding, code execution) with client-side function tools are
+  rejected by Gemini unless `tool_config.include_server_side_tool_invocations`
+  is true. `GoogleChatModel` now detects that combination and sets the flag on
+  `ToolConfig` automatically.
+
 ## 3.4.0
 
 ### Dependencies

@@ -257,7 +257,7 @@ FinishReason mapFinishReason(fai.FinishReason? reason) => switch (reason) {
   fai.FinishReason.malformedFunctionCall => FinishReason.unspecified,
   fai.FinishReason.other => FinishReason.unspecified,
   fai.FinishReason.unknown => FinishReason.unspecified,
-  null => FinishReason.unspecified,
+  _ => FinishReason.unspecified,
 };
 
 /// Extension on [List<FirebaseAISafetySetting>] to convert to Firebase SDK

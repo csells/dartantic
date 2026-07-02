@@ -1,3 +1,8 @@
+## 0.2.1
+
+- Fix `mapFinishReason` to handle new Firebase AI SDK finish reasons without a
+  non-exhaustive switch expression warning.
+
 ## 0.2.0
 
 - Requires `dartantic_interface` ^4.0.0 (`ModelKind.video` and related discovery

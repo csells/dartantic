@@ -3,10 +3,16 @@ description: >
   Firebase AI provider for dartantic_ai. Provides access to Google's Gemini
   models through Firebase with App Check security and Firebase Auth
   integration.
-version: 0.2.0
+version: 0.2.1
 repository: https://github.com/csells/dartantic_ai
 homepage: https://docs.dartantic.ai
 issue_tracker: https://github.com/csells/dartantic_ai/issues
+
+platforms:
+  android:
+  ios:
+  macos:
+  web:
 
 environment:
   sdk: ^3.10.0

@@ -7,6 +7,7 @@ version: 0.2.2
 repository: https://github.com/csells/dartantic_ai
 homepage: https://docs.dartantic.ai
 issue_tracker: https://github.com/csells/dartantic_ai/issues
+resolution: workspace
 
 platforms:
   android:

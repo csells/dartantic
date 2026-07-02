@@ -2,6 +2,7 @@ name: firebase_ai_example
 description: Example app demonstrating Firebase AI provider usage
 version: 0.1.0
 publish_to: none
+resolution: workspace
 
 environment:
   sdk: '>=3.10.0 <4.0.0'

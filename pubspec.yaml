@@ -7,8 +7,10 @@ workspace:
   - packages/dartantic_ai
   - packages/dartantic_interface
   - packages/dartantic_chat
+  - packages/dartantic_firebase_ai
   - packages/dartantic_ai/example
   - packages/dartantic_chat/example
+  - packages/dartantic_firebase_ai/example
   - samples/chatarang
   - samples/dartantic_cli
 melos:

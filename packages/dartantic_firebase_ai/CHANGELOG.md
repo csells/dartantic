@@ -1,3 +1,10 @@
+## 0.2.2
+
+- Updated Firebase SDK, `dartantic_interface`, `meta`, `uuid`, and test
+  dependency constraints to current compatible releases.
+- Added targeted `deprecated_member_use` ignores for Firebase AI App Check and
+  Auth constructor parameters while retaining the existing integration behavior.
+
 ## 0.2.1
 
 - Fix `mapFinishReason` to handle new Firebase AI SDK finish reasons without a

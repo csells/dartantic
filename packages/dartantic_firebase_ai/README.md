@@ -29,17 +29,17 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  dartantic_firebase_ai: ^0.1.0
-  firebase_core: ^4.4.0
+  dartantic_firebase_ai: ^0.2.2
+  firebase_core: ^4.11.0
 ```
 
 To use with the `Agent` orchestration layer, also add `dartantic_ai`:
 
 ```yaml
 dependencies:
-  dartantic_ai: ^3.0.0
-  dartantic_firebase_ai: ^0.1.0
-  firebase_core: ^4.4.0
+  dartantic_ai: ^3.4.2
+  dartantic_firebase_ai: ^0.2.2
+  firebase_core: ^4.11.0
 ```
 
 ## Setup Requirements

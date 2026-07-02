@@ -297,9 +297,12 @@ class OpenAIResponsesMessageMapper {
       // PDFs: Use InputFileContent (only file type supported by Responses API)
       final base64Data = base64Encode(bytes);
       final fileName = name ?? PartHelpers.nameFromMimeType(mimeType);
-      final fileDataUrl = 'data:$mimeType;base64,$base64Data';
       content.add(
-        openai.InputFileContent.data(fileDataUrl, filename: fileName),
+        openai.InputFileContent.data(
+          base64Data,
+          mediaType: mimeType,
+          filename: fileName,
+        ),
       );
     } else {
       // All other files: Include as text with base64 data URL

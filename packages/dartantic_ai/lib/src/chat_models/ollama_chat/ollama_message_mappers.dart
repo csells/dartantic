@@ -36,7 +36,7 @@ o.ChatRequest generateChatCompletionRequest(
     model: modelName,
     messages: messages.toMessages(),
     format: format,
-    keepAlive: options?.keepAlive ?? defaultOptions.keepAlive,
+    keepAlive: _mapKeepAlive(options?.keepAlive ?? defaultOptions.keepAlive),
     tools: tools?.toOllamaTools(),
     stream: true,
     think: enableThinking ? const o.ThinkEnabled(true) : null,
@@ -63,7 +63,7 @@ o.ChatRequest generateChatCompletionRequest(
       mirostatEta: options?.mirostatEta ?? defaultOptions.mirostatEta,
       penalizeNewline:
           options?.penalizeNewline ?? defaultOptions.penalizeNewline,
-      stop: options?.stop ?? defaultOptions.stop,
+      stop: _mapStopSequence(options?.stop ?? defaultOptions.stop),
       numa: options?.numa ?? defaultOptions.numa,
       numCtx: options?.numCtx ?? defaultOptions.numCtx,
       numBatch: options?.numBatch ?? defaultOptions.numBatch,
@@ -79,6 +79,23 @@ o.ChatRequest generateChatCompletionRequest(
     ),
   );
 }
+
+o.KeepAlive? _mapKeepAlive(Object? keepAlive) => switch (keepAlive) {
+  null => null,
+  final o.KeepAlive value => value,
+  final String value => o.KeepAlive.duration(value),
+  final num value => o.KeepAlive.number(value),
+  _ => throw ArgumentError.value(keepAlive, 'keepAlive'),
+};
+
+o.StopSequence? _mapStopSequence(Object? stop) => switch (stop) {
+  null => null,
+  final o.StopSequence value => value,
+  final String value => o.StopSequence.string(value),
+  final List<String> value => o.StopSequence.list(value),
+  final Iterable<String> value => o.StopSequence.list(value.toList()),
+  _ => throw ArgumentError.value(stop, 'stop'),
+};
 
 /// Extension on [List<Tool>] to convert to Ollama SDK tool list.
 extension OllamaToolListMapper on List<Tool> {

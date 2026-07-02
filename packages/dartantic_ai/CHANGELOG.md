@@ -1,3 +1,19 @@
+## 3.4.2
+
+### Dependencies
+
+- Updated provider SDK constraints for Anthropic, Google AI, Mistral, Ollama,
+  OpenAI, MCP, `meta`, `uuid`, and `test`.
+- Updated generated schema examples to use `json_serializable` schema
+  generation instead of `soti_schema_plus`.
+
+### Fixed
+
+- Updated provider mappers for current SDK shapes, including Anthropic unknown
+  content blocks, Mistral nullable/message-part content, Ollama typed
+  `keepAlive` and stop values, OpenAI unknown finish reasons, OpenAI Responses
+  file uploads, and Google/Ollama embeddings request shapes.
+
 ## 3.4.1
 
 ### Fixed

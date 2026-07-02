@@ -1094,6 +1094,11 @@ List<Part> _mapContentBlock(a.ContentBlock contentBlock) =>
       a.ToolSearchToolResultBlock() => const [],
       a.ContainerUploadBlock() => const [],
       a.CompactionBlock() => const [],
+      a.FallbackBlock() => const [],
+      a.MCPToolUseBlock() => const [],
+      a.MCPToolResultBlock() => const [],
+      a.UnknownContentBlock() => const [],
+      a.AdvisorToolResultBlock() => const [],
     };
 
 /// Maps an Anthropic [a.ContentBlockDelta] to message parts.
@@ -1111,6 +1116,7 @@ List<Part> _mapContentBlockDelta(
   a.CitationsDelta() => const [],
   // Compaction deltas are not mapped to parts.
   a.CompactionDelta() => const [],
+  a.UnknownContentBlockDelta() => const [],
 };
 
 /// Extension on [List<Tool>] to convert tool specs to Anthropic SDK tools.

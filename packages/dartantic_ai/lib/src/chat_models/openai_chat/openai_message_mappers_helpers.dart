@@ -17,6 +17,7 @@ FinishReason mapFinishReason(oai.FinishReason? reason) {
     oai.FinishReason.toolCalls => FinishReason.toolCalls,
     oai.FinishReason.contentFilter => FinishReason.contentFilter,
     oai.FinishReason.functionCall => FinishReason.toolCalls,
+    oai.FinishReason.unknown => FinishReason.unspecified,
   };
 }
 

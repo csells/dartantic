@@ -175,7 +175,7 @@ extension ChatResultMapper on mistral.ChatCompletionResponse {
   /// Converts this [mistral.ChatCompletionResponse] to a [ChatResult].
   ChatResult<ChatMessage> toChatResult() {
     final choice = choices.first;
-    final content = choice.message.content ?? '';
+    final content = _messageContentToText(choice.message?.content);
     _logger.fine(
       'Converting Mistral response to ChatResult: id=$id, '
       'content=${content.length} characters',
@@ -183,7 +183,7 @@ extension ChatResultMapper on mistral.ChatCompletionResponse {
 
     // Extract tool calls from the response
     final toolCallParts =
-        choice.message.toolCalls
+        choice.message?.toolCalls
             ?.map(
               (tc) => ToolPart.call(
                 callId: tc.id,
@@ -213,6 +213,14 @@ extension ChatResultMapper on mistral.ChatCompletionResponse {
       usage: responseUsage != null ? _mapUsage(responseUsage) : null,
     );
   }
+
+  String _messageContentToText(mistral.MessageContent? content) =>
+      switch (content) {
+        mistral.MessageTextContent(:final text) => text,
+        mistral.MessagePartsContent(:final parts) =>
+          parts.map((part) => part.toJson()).map(json.encode).join('\n'),
+        null => '',
+      };
 
   LanguageModelUsage _mapUsage(mistral.UsageInfo usage) {
     _logger.fine(

@@ -69,8 +69,10 @@ class GoogleEmbeddingsModel
     final modelId = googleModelIdForApiRequest(name);
     final request = ga.EmbedContentRequest(
       content: ga.Content(parts: [ga.TextPart(query)]),
-      taskType: ga.TaskType.retrievalQuery,
-      outputDimensionality: effectiveDimensions,
+      embedContentConfig: ga.EmbedContentConfig(
+        taskType: ga.TaskType.retrievalQuery,
+        outputDimensionality: effectiveDimensions,
+      ),
     );
 
     final response = await _client.models.embedContent(
@@ -157,8 +159,10 @@ class GoogleEmbeddingsModel
             .map(
               (text) => ga.EmbedContentRequest(
                 content: ga.Content(parts: [ga.TextPart(text)]),
-                taskType: ga.TaskType.retrievalDocument,
-                outputDimensionality: effectiveDimensions,
+                embedContentConfig: ga.EmbedContentConfig(
+                  taskType: ga.TaskType.retrievalDocument,
+                  outputDimensionality: effectiveDimensions,
+                ),
               ),
             )
             .toList(growable: false),

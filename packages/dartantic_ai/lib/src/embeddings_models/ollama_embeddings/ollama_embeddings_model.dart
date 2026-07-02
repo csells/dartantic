@@ -112,10 +112,10 @@ class OllamaEmbeddingsModel
       final response = await _client.embeddings.create(
         request: EmbedRequest(
           model: name,
-          input: chunk,
+          input: EmbedInput.list(chunk),
           truncate: actualTruncate,
           dimensions: actualDimensions,
-          keepAlive: actualKeepAlive,
+          keepAlive: _mapKeepAlive(actualKeepAlive),
         ),
       );
 
@@ -167,3 +167,11 @@ class OllamaEmbeddingsModel
   @override
   void dispose() => _client.close();
 }
+
+KeepAlive? _mapKeepAlive(Object? keepAlive) => switch (keepAlive) {
+  null => null,
+  final KeepAlive value => value,
+  final String value => KeepAlive.duration(value),
+  final num value => KeepAlive.number(value),
+  _ => throw ArgumentError.value(keepAlive, 'keepAlive'),
+};

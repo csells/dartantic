@@ -177,13 +177,17 @@ class FirebaseAIChatModel extends ChatModel<FirebaseAIChatModelOptions> {
     final firebaseAI = switch (backend) {
       FirebaseAIBackend.googleAI => fai.FirebaseAI.googleAI(
         app: app,
+        // ignore: deprecated_member_use
         appCheck: appCheck,
+        // ignore: deprecated_member_use
         auth: auth,
         useLimitedUseAppCheckTokens: useLimitedUseAppCheckTokens,
       ),
       FirebaseAIBackend.vertexAI => fai.FirebaseAI.vertexAI(
         app: app,
+        // ignore: deprecated_member_use
         appCheck: appCheck,
+        // ignore: deprecated_member_use
         auth: auth,
         useLimitedUseAppCheckTokens: useLimitedUseAppCheckTokens,
       ),

@@ -1,3 +1,11 @@
+## 0.3.1
+
+- Updated dependencies to current compatible releases, including
+  `dartantic_ai` ^3.4.2 and `dartantic_interface` ^4.0.1.
+- Split drag-and-drop handling into conditional native, web, and fallback
+  implementations so web and WASM builds avoid native extension imports while
+  preserving native drag-and-drop support.
+
 ## 0.3.0
 
 - Requires `dartantic_interface` ^4.0.0 and `dartantic_ai` ^3.3.0 (stack aligned

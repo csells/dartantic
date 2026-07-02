@@ -1,3 +1,10 @@
+## 4.0.1
+
+### Dependencies
+
+- Updated `genai_primitives`, `json_schema_builder`, `meta`, and `uuid`
+  dependency constraints to their latest compatible releases.
+
 ## 4.0.0
 
 ### Breaking change: `ModelKind.video`

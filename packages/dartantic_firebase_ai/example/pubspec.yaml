@@ -14,15 +14,15 @@ dependencies:
     path: ../
   dartantic_ai:
     path: ../../dartantic_ai
-  dartantic_interface: ^4.0.0
+  dartantic_interface: ^4.0.1
 
-  firebase_core: any
-  logging: ^1.2.0
+  firebase_core: ^4.11.0
+  logging: ^1.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true

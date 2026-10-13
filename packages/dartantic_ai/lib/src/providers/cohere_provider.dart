@@ -7,7 +7,6 @@ import 'package:logging/logging.dart';
 import '../chat_models/cohere_chat/cohere_chat_model.dart';
 import '../chat_models/cohere_chat/cohere_chat_options.dart';
 import '../platform/platform.dart';
-import '../retry_http_client.dart';
 import 'openai_provider.dart';
 
 /// Provider for Cohere OpenAI-compatible API.
@@ -15,7 +14,7 @@ class CohereProvider extends OpenAIProvider {
   /// Creates a new Cohere OpenAI provider instance.
   ///
   /// [apiKey]: The API key for the Cohere provider.
-  CohereProvider({String? apiKey, super.headers})
+  CohereProvider({String? apiKey, super.headers, super.httpClient})
     : super(
         apiKey: apiKey ?? tryGetEnv(defaultApiKeyName),
         apiKeyName: defaultApiKeyName,
@@ -73,6 +72,7 @@ class CohereProvider extends OpenAIProvider {
       apiKey: apiKey ?? tryGetEnv(apiKeyName),
       baseUrl: baseUrl,
       headers: headers,
+      client: httpClient,
       defaultOptions: CohereChatOptions(
         frequencyPenalty: options?.frequencyPenalty,
         logitBias: options?.logitBias,
@@ -95,7 +95,8 @@ class CohereProvider extends OpenAIProvider {
   Stream<ModelInfo> listModels() async* {
     final url = Uri.parse('https://docs.cohere.com/docs/models');
     _logger.info('Fetching models from Cohere docs: $url');
-    final client = RetryHttpClient(inner: http.Client());
+    final ownsClient = httpClient == null;
+    final client = httpClient ?? http.Client();
     try {
       final response = await client.get(url);
       if (response.statusCode != 200) {
@@ -122,7 +123,7 @@ class CohereProvider extends OpenAIProvider {
         }
       }
     } finally {
-      client.close();
+      if (ownsClient) client.close();
     }
   }
 

@@ -4,7 +4,6 @@ import 'package:logging/logging.dart';
 import 'package:openai_dart/openai_dart.dart'
     hide ChatMessage, FinishReason, Tool;
 
-import '../../retry_http_client.dart';
 import '../chunk_list.dart';
 import 'openai_embeddings_model_options.dart';
 
@@ -22,18 +21,7 @@ class OpenAIEmbeddingsModel
     super.batchSize = 512,
     String? user,
     OpenAIEmbeddingsModelOptions? options,
-  }) : _client = OpenAIClient(
-         config: OpenAIConfig(
-           authProvider: apiKey != null ? ApiKeyProvider(apiKey) : null,
-           baseUrl: baseUrl?.toString() ?? 'https://api.openai.com/v1',
-           defaultHeaders: headers ?? const {},
-           retryPolicy: const RetryPolicy(maxRetries: 0),
-         ),
-         httpClient: client != null
-             ? RetryHttpClient(inner: client)
-             : RetryHttpClient(inner: http.Client()),
-       ),
-       _user = user,
+  }) : _user = user,
        super(
          defaultOptions:
              options ??
@@ -43,6 +31,15 @@ class OpenAIEmbeddingsModel
                user: user,
              ),
        ) {
+    _client = OpenAIClient(
+      config: OpenAIConfig(
+        authProvider: apiKey != null ? ApiKeyProvider(apiKey) : null,
+        baseUrl: baseUrl?.toString() ?? 'https://api.openai.com/v1',
+        defaultHeaders: headers ?? const {},
+        retryPolicy: const RetryPolicy(maxRetries: 0),
+      ),
+      httpClient: client,
+    );
     _logger.info(
       'Created OpenAI embeddings model: $name '
       '(dimensions: $dimensions, batchSize: $batchSize)',
@@ -50,7 +47,7 @@ class OpenAIEmbeddingsModel
   }
   static final _logger = Logger('dartantic.embeddings.models.openai');
 
-  final OpenAIClient _client;
+  late final OpenAIClient _client;
   final String? _user;
 
   @override
@@ -197,5 +194,7 @@ class OpenAIEmbeddingsModel
   }
 
   @override
-  void dispose() => _client.close();
+  void dispose() {
+    _client.close();
+  }
 }

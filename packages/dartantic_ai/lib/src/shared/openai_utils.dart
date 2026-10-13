@@ -97,6 +97,7 @@ class OpenAIUtils {
     required Logger logger,
     String? apiKey,
     Map<String, String>? headers,
+    http.Client? httpClient,
   }) async* {
     final url = appendPath(baseUrl, 'models');
     final requestHeaders = <String, String>{
@@ -108,8 +109,10 @@ class OpenAIUtils {
 
     logger.info('Fetching models from $url');
 
+    final ownsClient = httpClient == null;
+    final client = httpClient ?? http.Client();
     try {
-      final response = await http.get(url, headers: requestHeaders);
+      final response = await client.get(url, headers: requestHeaders);
       if (response.statusCode != 200) {
         logger.warning(
           'Failed to fetch models: HTTP ${response.statusCode}, '
@@ -147,6 +150,8 @@ class OpenAIUtils {
     } catch (e) {
       logger.severe('Error fetching models: $e');
       rethrow;
+    } finally {
+      if (ownsClient) client.close();
     }
   }
 

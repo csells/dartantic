@@ -4,8 +4,6 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
-import '../../retry_http_client.dart';
-
 /// Lightweight client for interacting with Anthropic's Files API.
 class AnthropicFilesClient {
   /// Creates a new Anthropic files API client.
@@ -17,7 +15,8 @@ class AnthropicFilesClient {
     Map<String, String>? headers,
   }) : _betaHeader = _composeBetaHeader(betaFeatures),
        _baseUri = baseUrl ?? Uri.parse('https://api.anthropic.com/'),
-       _client = client ?? RetryHttpClient(inner: http.Client()),
+       _ownsClient = client == null,
+       _client = client ?? http.Client(),
        _customHeaders = headers ?? const {};
 
   static final Logger _logger = Logger('dartantic.media.anthropic.files');
@@ -27,6 +26,7 @@ class AnthropicFilesClient {
   final String _betaHeader;
   final Uri _baseUri;
   final http.Client _client;
+  final bool _ownsClient;
   final Map<String, String> _customHeaders;
 
   static String _composeBetaHeader(List<String> features) {
@@ -138,7 +138,7 @@ class AnthropicFilesClient {
 
   /// Releases the underlying HTTP client.
   void close() {
-    _client.close();
+    if (_ownsClient) _client.close();
   }
 }
 

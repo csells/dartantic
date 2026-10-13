@@ -6,7 +6,6 @@ import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 import 'package:openai_dart/openai_dart.dart' as openai;
 
-import '../../retry_http_client.dart';
 import '../../shared/openai_utils.dart';
 import '../openai_responses/openai_responses_attachment_types.dart';
 import '../openai_responses/openai_responses_chat_options.dart';
@@ -32,19 +31,25 @@ class XAIResponsesChatModel extends ChatModel<XAIResponsesChatModelOptions> {
     this.apiKey,
     http.Client? httpClient,
     Map<String, String>? headers,
-  }) : _client = openai.OpenAIClient(
-         config: openai.OpenAIConfig(
-           authProvider: apiKey != null ? openai.ApiKeyProvider(apiKey) : null,
-           baseUrl: baseUrl?.toString() ?? 'https://api.x.ai/v1',
-           defaultHeaders: headers ?? const {},
-           retryPolicy: const openai.RetryPolicy(maxRetries: 0),
-         ),
-         httpClient: RetryHttpClient(inner: httpClient ?? http.Client()),
-       );
+  }) : super() {
+    // Capture fields into locals so Dart can promote nullability for the
+    // null-check pattern used by the SDK config.
+    final key = apiKey;
+    final url = baseUrl;
+    _client = openai.OpenAIClient(
+      config: openai.OpenAIConfig(
+        authProvider: key != null ? openai.ApiKeyProvider(key) : null,
+        baseUrl: url?.toString() ?? 'https://api.x.ai/v1',
+        defaultHeaders: headers ?? const {},
+        retryPolicy: const openai.RetryPolicy(maxRetries: 0),
+      ),
+      httpClient: httpClient,
+    );
+  }
 
   static final Logger _logger = Logger('dartantic.chat.models.xai_responses');
 
-  final openai.OpenAIClient _client;
+  late final openai.OpenAIClient _client;
 
   /// Base URL override for the xAI API.
   final Uri? baseUrl;
@@ -111,7 +116,9 @@ class XAIResponsesChatModel extends ChatModel<XAIResponsesChatModelOptions> {
   }
 
   @override
-  void dispose() => _client.close();
+  void dispose() {
+    _client.close();
+  }
 
   Future<ContainerFileData> _downloadContainerFile(
     String containerId,

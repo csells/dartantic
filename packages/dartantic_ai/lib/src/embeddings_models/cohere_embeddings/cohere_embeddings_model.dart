@@ -4,7 +4,6 @@ import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
-import '../../retry_http_client.dart';
 import '../chunk_list.dart';
 import 'cohere_embeddings_model_options.dart';
 
@@ -18,6 +17,7 @@ class CohereEmbeddingsModel
     required super.name,
     required String apiKey,
     required Uri baseUrl,
+    http.Client? client,
     super.dimensions,
     super.batchSize,
     String? inputType,
@@ -29,7 +29,8 @@ class CohereEmbeddingsModel
        _truncate = truncate,
        _embeddingTypes = embeddingTypes,
        _inputType = inputType,
-       _httpClient = RetryHttpClient(inner: http.Client()) {
+       _ownsHttpClient = client == null,
+       _httpClient = client ?? http.Client() {
     _logger.info(
       'Created Cohere embeddings model: $name '
       '(dimensions: $dimensions, batchSize: $batchSize)',
@@ -44,6 +45,7 @@ class CohereEmbeddingsModel
   final List<String>? _embeddingTypes;
   final String? _truncate;
   final http.Client _httpClient;
+  final bool _ownsHttpClient;
 
   @override
   Future<EmbeddingsResult> embedQuery(
@@ -233,6 +235,6 @@ class CohereEmbeddingsModel
 
   @override
   void dispose() {
-    _httpClient.close();
+    if (_ownsHttpClient) _httpClient.close();
   }
 }

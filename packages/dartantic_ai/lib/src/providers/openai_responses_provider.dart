@@ -22,6 +22,7 @@ class OpenAIResponsesProvider
     super.baseUrl,
     super.aliases,
     super.headers,
+    super.httpClient,
   }) : super(
          name: providerName,
          displayName: providerDisplayName,
@@ -90,6 +91,7 @@ class OpenAIResponsesProvider
       apiKey: apiKey,
       baseUrl: baseUrl ?? defaultResponsesBaseUrl,
       headers: headers,
+      httpClient: httpClient,
       defaultOptions: _mergeOptions(temperature, enableThinking, options),
     );
   }
@@ -172,6 +174,7 @@ class OpenAIResponsesProvider
       apiKey: apiKey,
       baseUrl: baseUrl ?? defaultResponsesBaseUrl,
       headers: headers,
+      httpClient: httpClient,
       defaultOptions: chatOptions,
     );
 

@@ -4,7 +4,6 @@ import 'package:logging/logging.dart';
 import 'package:openai_dart/openai_dart.dart'
     hide ChatMessage, FinishReason, Tool;
 
-import '../../retry_http_client.dart';
 import 'openai_chat_options.dart';
 import 'openai_message_mappers.dart';
 import 'openai_message_mappers_helpers.dart';
@@ -23,24 +22,23 @@ class OpenAIChatModel extends ChatModel<OpenAIChatOptions> {
     Uri? baseUrl,
     Map<String, String>? headers,
     http.Client? client,
-  }) : _client = OpenAIClient(
-         config: OpenAIConfig(
-           authProvider: apiKey != null ? ApiKeyProvider(apiKey) : null,
-           organization: organization,
-           baseUrl: baseUrl?.toString() ?? 'https://api.openai.com/v1',
-           defaultHeaders: headers ?? const {},
-           retryPolicy: const RetryPolicy(maxRetries: 0),
-         ),
-         httpClient: client != null
-             ? RetryHttpClient(inner: client)
-             : RetryHttpClient(inner: http.Client()),
-       ),
-       _isTogetherAI =
+  }) : _isTogetherAI =
            baseUrl?.toString().toLowerCase().contains('together.xyz') ?? false,
        super(
          defaultOptions: defaultOptions ?? const OpenAIChatOptions(),
          tools: tools,
        ) {
+    _client = OpenAIClient(
+      config: OpenAIConfig(
+        authProvider: apiKey != null ? ApiKeyProvider(apiKey) : null,
+        organization: organization,
+        baseUrl: baseUrl?.toString() ?? 'https://api.openai.com/v1',
+        defaultHeaders: headers ?? const {},
+        retryPolicy: const RetryPolicy(maxRetries: 0),
+      ),
+      httpClient: client,
+    );
+
     // Validate that providers with known tool limitations don't use tools
     if (tools != null && tools.isNotEmpty) {
       if (_isTogetherAI) {
@@ -56,7 +54,7 @@ class OpenAIChatModel extends ChatModel<OpenAIChatOptions> {
   /// Logger for OpenAI chat model operations.
   static final Logger _logger = Logger('dartantic.chat.models.openai');
 
-  final OpenAIClient _client;
+  late final OpenAIClient _client;
   final bool _isTogetherAI;
 
   @override
@@ -198,5 +196,7 @@ class OpenAIChatModel extends ChatModel<OpenAIChatOptions> {
   }
 
   @override
-  void dispose() => _client.close();
+  void dispose() {
+    _client.close();
+  }
 }

@@ -30,6 +30,7 @@ class OpenAIProvider
     super.apiKeyName = 'OPENAI_API_KEY',
     super.aliases,
     super.headers,
+    super.httpClient,
   }) : super(apiKey: apiKey ?? tryGetEnv(apiKeyName));
 
   static final Logger _logger = Logger('dartantic.chat.providers.openai');
@@ -76,6 +77,7 @@ class OpenAIProvider
       apiKey: apiKey ?? tryGetEnv(apiKeyName),
       baseUrl: baseUrl,
       headers: headers,
+      client: httpClient,
       defaultOptions: OpenAIChatOptions(
         temperature: temperature ?? options?.temperature,
         topP: options?.topP,

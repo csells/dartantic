@@ -43,6 +43,7 @@ class AnthropicChatModel extends ChatModel<AnthropicChatOptions> {
            ? AnthropicFilesClient(
                apiKey: apiKey,
                baseUrl: baseUrl,
+               client: client,
                betaFeatures: betaFeatures,
              )
            : null,

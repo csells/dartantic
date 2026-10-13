@@ -4,7 +4,7 @@
 library;
 
 export 'package:dartantic_interface/dartantic_interface.dart';
-
+export 'src/abortable_http_client.dart';
 export 'src/agent/agent.dart';
 export 'src/agent/model_string_parser.dart';
 export 'src/agent/orchestrators/orchestrators.dart';

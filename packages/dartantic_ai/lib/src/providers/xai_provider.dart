@@ -8,7 +8,7 @@ import 'openai_provider.dart';
 /// Provider for xAI Grok via the OpenAI-compatible chat completions API.
 class XAIProvider extends OpenAIProvider {
   /// Creates a new xAI provider instance.
-  XAIProvider({String? apiKey, super.headers})
+  XAIProvider({String? apiKey, super.headers, super.httpClient})
     : super(
         apiKey: apiKey ?? tryGetEnv(defaultApiKeyName),
         apiKeyName: defaultApiKeyName,

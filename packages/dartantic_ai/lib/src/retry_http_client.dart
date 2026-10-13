@@ -89,8 +89,17 @@ class _RequestInfo {
 
 /// HTTP client wrapper that implements retry logic for rate limiting (429)
 /// errors with exponential backoff and respect for Retry-After headers.
+@Deprecated(
+  'Use http.RetryClient from package:http for retry-on-429. '
+  'This class is no longer used internally: it swallows '
+  'RequestAbortedException from inner abortable clients, which prevents '
+  'the user-supplied client pattern from working cleanly. '
+  'See AbortHttpClient in lib/src/abortable_http_client.dart for the '
+  'recommended composition.',
+)
 class RetryHttpClient extends http.BaseClient {
   /// Creates a new RetryHttpClient that wraps the provided HTTP client.
+  @Deprecated('Use http.RetryClient from package:http instead.')
   RetryHttpClient({
     required this.inner,
     this.maxRetries = 3,
